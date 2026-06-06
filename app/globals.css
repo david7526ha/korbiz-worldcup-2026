@@ -1,0 +1,14 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #D4A843; --gold2: #F0C460; --gold-dim: #8B6914;
+  --gold-bg: rgba(212,168,67,0.1); --gold-bd: rgba(212,168,67,0.28);
+  --bg: #060C14; --s1: #0C1620; --s2: #111E2E; --s3: #162436;
+  --bd: rgba(255,255,255,0.07); --txt: #E0E8F0; --muted: #5A7090;
+  --red: #ef4444; --green: #22c55e; --blue: #3B82F6;
+}
+html, body { background: var(--bg); color: var(--txt); font-family: 'Outfit', sans-serif; min-height: 100vh; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--s1); }
+::-webkit-scrollbar-thumb { background: var(--gold-bd); border-radius: 2px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.fadeUp { animation: fadeUp .35s ease both; }
