@@ -1,14 +1,18 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --gold: #D4A843; --gold2: #F0C460; --gold-dim: #8B6914;
-  --gold-bg: rgba(212,168,67,0.1); --gold-bd: rgba(212,168,67,0.28);
-  --bg: #060C14; --s1: #0C1620; --s2: #111E2E; --s3: #162436;
-  --bd: rgba(255,255,255,0.07); --txt: #E0E8F0; --muted: #5A7090;
-  --red: #ef4444; --green: #22c55e; --blue: #3B82F6;
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
-html, body { background: var(--bg); color: var(--txt); font-family: 'Outfit', sans-serif; min-height: 100vh; }
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--s1); }
-::-webkit-scrollbar-thumb { background: var(--gold-bd); border-radius: 2px; }
-@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-.fadeUp { animation: fadeUp .35s ease both; }
+
+html, body {
+  font-family: 'Outfit', sans-serif;
+  background: #060C14;
+  color: #E0E8F0;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0C1620; }
+::-webkit-scrollbar-thumb { background: #2A3A50; border-radius: 3px; }
