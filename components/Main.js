@@ -7,6 +7,8 @@ import {
   subscribeTournamentState, saveTournamentState,
 } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
+
 
 // ─── GROUPS — 나라 이름 4개 언어 ────────────────────────────────────────────
 const TEAM_NAMES = {
@@ -119,6 +121,7 @@ const T = {
     phase2Max:"Max Phase 2: 330 pts",
     keyDates:"KEY DATES",
     groupLock:"Group picks lock: June 12, 2026 (kickoff)",
+    bracketLock:"Bracket picks lock: June 27, 2026 midnight ET",
     finalDate:"Final: July 19, 2026 — MetLife Stadium, NJ",
     // Group picks
     phase1Header:"PHASE 1 — GROUP PICKS",
@@ -171,6 +174,7 @@ const T = {
     phase2Max:"Máx Fase 2: 330 pts",
     keyDates:"FECHAS CLAVE",
     groupLock:"Picks cierran: 12 jun 2026",
+    bracketLock:"Bracket picks cierran: 27 jun 2026 medianoche ET",
     finalDate:"Final: 19 jul 2026 — MetLife Stadium, NJ",
     phase1Header:"FASE 1 — PICKS DE GRUPO",
     phase1Sub:"Selecciona hasta 3 equipos por grupo",
@@ -219,6 +223,7 @@ const T = {
     phase2Max:"Дээд 2-р үе: 330 оноо",
     keyDates:"ГОЛ ОГНООНУУД",
     groupLock:"Сонголт хаагдах: 2026.06.12",
+    bracketLock:"Bracket хаагдах: 2026.06.27 шөнө дунд ET",
     finalDate:"Финал: 2026.07.19 — MetLife Stadium",
     phase1Header:"1-Р ҮЕ ШАТ — БҮЛГИЙН СОНГОЛТ",
     phase1Sub:"Бүлэг тус бүрээс 3 хүртэлх баг сонго",
@@ -267,6 +272,7 @@ const T = {
     phase2Max:"2단계 최대: 330점",
     keyDates:"주요 일정",
     groupLock:"조별 픽 마감: 2026년 6월 12일 (킥오프)",
+    bracketLock:"브래킷 픽 마감: 2026년 6월 27일 자정 (ET)",
     finalDate:"결승: 2026년 7월 19일 — MetLife Stadium, NJ",
     phase1Header:"1단계 — 조별 픽",
     phase1Sub:"각 조에서 최대 3팀 선택",
@@ -320,6 +326,88 @@ function Avatar({name,photoURL,size=36}){
   return <div style={{width:size,height:size,borderRadius:"50%",background:`linear-gradient(135deg,${c[0]},${c[1]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.38,fontWeight:700,color:"#fff",flexShrink:0}}>{ini}</div>;
 }
 
+
+// ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
+function CountdownBanner({ lang, phase, uid }) {
+  const [groupTime, setGroupTime] = useState(null);
+  const [bracketTime, setBracketTime] = useState(null);
+  const [notifGranted, setNotifGranted] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    // 알림 권한 상태 확인
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifGranted(Notification.permission === "granted");
+    }
+    // 카운트다운 업데이트
+    const update = () => {
+      setGroupTime(getTimeRemaining("group", lang));
+      setBracketTime(getTimeRemaining("bracket", lang));
+    };
+    update();
+    const iv = setInterval(update, 60000); // 1분마다 갱신
+    return () => clearInterval(iv);
+  }, [lang]);
+
+  const handleNotif = async () => {
+    setNotifLoading(true);
+    const granted = await requestNotificationPermission(uid, lang);
+    setNotifGranted(granted);
+    setNotifLoading(false);
+  };
+
+  const NOTIF_LABELS = {
+    en: { allow: "🔔 Get Reminders", enabled: "🔔 Reminders On", loading: "Setting up..." },
+    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." },
+    mn: { allow: "🔔 Мэдэгдэл", enabled: "🔔 Идэвхтэй", loading: "Тохируулж байна..." },
+    ko: { allow: "🔔 알림 받기", enabled: "🔔 알림 켜짐", loading: "설정 중..." },
+  };
+  const nl = NOTIF_LABELS[lang] || NOTIF_LABELS.en;
+
+  // 표시할 마감: 조별 안 지났으면 조별, 지났으면 브래킷
+  const activeTime = groupTime && !groupTime.expired ? groupTime : bracketTime;
+  const activeKey = groupTime && !groupTime.expired ? "group" : "bracket";
+  const DEADLINE_LABELS = {
+    group: { en: "Group Picks Deadline", es: "Vence Picks de Grupo", mn: "Бүлгийн Сонголт Дуусна", ko: "조별 픽 마감" },
+    bracket: { en: "Bracket Picks Deadline", es: "Vence Picks de Bracket", mn: "Bracket Сонголт Дуусна", ko: "브래킷 픽 마감" },
+  };
+
+  if (!activeTime || activeTime.expired) return null;
+
+  return (
+    <div style={{
+      background: activeTime.urgent ? "rgba(239,68,68,.12)" : "rgba(212,168,67,.08)",
+      border: `1px solid ${activeTime.urgent ? "rgba(239,68,68,.35)" : "rgba(212,168,67,.25)"}`,
+      borderRadius: 10, padding: "10px 14px", marginBottom: 14,
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: activeTime.urgent ? "#f87171" : "#D4A843", fontWeight: 600, marginBottom: 2 }}>
+          {activeTime.urgent ? "🚨" : "⏰"} {DEADLINE_LABELS[activeKey][lang] || DEADLINE_LABELS[activeKey].en}
+        </div>
+        <div style={{
+          fontFamily: "'Teko',sans-serif", fontSize: 20,
+          color: activeTime.urgent ? "#EF4444" : "#D4A843", lineHeight: 1,
+        }}>{activeTime.text}</div>
+      </div>
+      {!notifGranted && typeof window !== "undefined" && "Notification" in window && Notification.permission !== "denied" && (
+        <button onClick={handleNotif} disabled={notifLoading} style={{
+          padding: "6px 13px", borderRadius: 8,
+          border: "1px solid rgba(212,168,67,.4)",
+          background: "rgba(212,168,67,.1)", color: "#D4A843",
+          fontSize: 12, fontWeight: 600, cursor: "pointer",
+          opacity: notifLoading ? 0.7 : 1, whiteSpace: "nowrap",
+        }}>
+          {notifLoading ? nl.loading : nl.allow}
+        </button>
+      )}
+      {notifGranted && (
+        <div style={{ fontSize: 11, color: "#22C55E", whiteSpace: "nowrap" }}>{nl.enabled}</div>
+      )}
+    </div>
+  );
+}
+
 function LangSwitcher({lang,setLang}){
   return <div style={{display:"flex",gap:4}}>{[["en","EN"],["es","ES"],["mn","MN"],["ko","KO"]].map(([k,l])=><button key={k} onClick={()=>setLang(k)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${lang===k?"#D4A843":"rgba(255,255,255,.14)"}`,background:lang===k?"rgba(212,168,67,.15)":"transparent",color:lang===k?"#D4A843":"#6b7280",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}</div>;
 }
@@ -359,6 +447,7 @@ function HowToPlay({lang}){
       <S icon="📅" title={t.keyDates} accent="#8B5CF6">
         <div style={{fontSize:13,color:"#D1D5DB",lineHeight:2.2}}>
           <div>🔒 {t.groupLock}</div>
+          <div>🏆 {t.bracketLock}</div>
           <div>🏆 {t.finalDate}</div>
         </div>
       </S>
@@ -445,6 +534,7 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
   const total=Object.values(picks).reduce((a,b)=>a+b.length,0);
   return(
     <div>
+      <CountdownBanner lang={lang} phase="group" uid={uid}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase1Header}</div>
@@ -509,6 +599,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   );
   return(
     <div>
+      <CountdownBanner lang={lang} phase="bracket" uid={uid}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase2Header}</div>
@@ -796,6 +887,18 @@ export default function Main(){
   },[firebaseUser?.uid]);
 
   const showMsg=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
+
+  // 포그라운드 푸시 수신 → 토스트로 표시
+  useEffect(()=>{
+    if(!firebaseUser)return;
+    try{
+      const unsub=onForegroundMessage((payload)=>{
+        const {title,body}=payload.notification||{};
+        showMsg(`${title}: ${body}`);
+      });
+      return unsub;
+    }catch(e){}
+  },[firebaseUser?.uid]);
 
   if(!authReady)return(
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#060C14"}}>
