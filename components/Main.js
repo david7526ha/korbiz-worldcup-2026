@@ -582,7 +582,20 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
   const locked=tournament.groupLocked;
   const gr=tournament.groupResults||{};
   useEffect(()=>{setPicks(myPicks||{});},[JSON.stringify(myPicks)]);
-  const toggle=(grp,team)=>{if(locked)return;setPicks(prev=>{const cur=prev[grp]||[];if(cur.includes(team))return{...prev,[grp]:cur.filter(x=>x!==team)};if(cur.length>=3)return prev;return{...prev,[grp]:[...cur,team]};});};
+  const toggle=(grp,team)=>{
+    if(locked)return;
+    setPicks(prev=>{
+      const cur=prev[grp]||[];
+      // 선택 해제
+      if(cur.includes(team))return{...prev,[grp]:cur.filter(x=>x!==team)};
+      // 조당 최대 3팀
+      if(cur.length>=3)return prev;
+      // 전체 최대 32팀
+      const totalPicked=Object.values(prev).reduce((a,b)=>a+b.length,0);
+      if(totalPicked>=32)return prev;
+      return{...prev,[grp]:[...cur,team]};
+    });
+  };
   const handleSave=async()=>{setSaving(true);try{await saveGroupPicks(uid,picks);showToast(t.savePicks+" ✓");}catch{showToast("Error","error");}setSaving(false);};
   const total=Object.values(picks).reduce((a,b)=>a+b.length,0);
   return(
@@ -591,9 +604,13 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase1Header}</div>
-          <div style={{color:"#5A7090",fontSize:13,marginTop:2}}>{t.phase1Sub} · <span style={{color:"#D4A843"}}>{t.perCorrect}</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2,flexWrap:"wrap"}}>
+            <span style={{color:"#5A7090",fontSize:13}}>{t.phase1Sub}</span>
+            <span style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:total>=32?"#EF4444":"#D4A843"}}>{total}/32</span>
+            <span style={{color:"#5A7090",fontSize:13}}>· {t.perCorrect}</span>
+          </div>
         </div>
-        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:`${t.savePicks} (${total})`}</button>}
+        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:`${t.savePicks} (${total}/32)`}</button>}
       </div>
       {locked&&<div style={{background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:9,padding:"9px 14px",marginBottom:14,color:"#60a5fa",fontSize:13}}>🔒 {t.lockedMsg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
