@@ -10,6 +10,59 @@ import { onAuthStateChanged } from "firebase/auth";
 import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
 
 
+
+// ─── TEAM META (FIFA Rank June 2026 + Confederation) ─────────────────────────
+const TEAM_META = {
+  "Mexico":            {rank:15,  conf:"CONCACAF"},
+  "South Africa":      {rank:67,  conf:"CAF"},
+  "South Korea":       {rank:22,  conf:"AFC"},
+  "Czechia":           {rank:37,  conf:"UEFA"},
+  "Canada":            {rank:40,  conf:"CONCACAF"},
+  "Bosnia-Herzegovina":{rank:63,  conf:"UEFA"},
+  "Qatar":             {rank:58,  conf:"AFC"},
+  "Switzerland":       {rank:20,  conf:"UEFA"},
+  "Brazil":            {rank:4,   conf:"CONMEBOL"},
+  "Morocco":           {rank:13,  conf:"CAF"},
+  "Haiti":             {rank:97,  conf:"CONCACAF"},
+  "Scotland":          {rank:38,  conf:"UEFA"},
+  "United States":     {rank:14,  conf:"CONCACAF"},
+  "Paraguay":          {rank:39,  conf:"CONMEBOL"},
+  "Australia":         {rank:26,  conf:"AFC"},
+  "Türkiye":           {rank:25,  conf:"UEFA"},
+  "Germany":           {rank:12,  conf:"UEFA"},
+  "Curaçao":           {rank:77,  conf:"CONCACAF"},
+  "Ivory Coast":       {rank:48,  conf:"CAF"},
+  "Ecuador":           {rank:35,  conf:"CONMEBOL"},
+  "Netherlands":       {rank:7,   conf:"UEFA"},
+  "Japan":             {rank:16,  conf:"AFC"},
+  "Sweden":            {rank:24,  conf:"UEFA"},
+  "Tunisia":           {rank:54,  conf:"CAF"},
+  "Belgium":           {rank:3,   conf:"UEFA"},
+  "Egypt":             {rank:34,  conf:"CAF"},
+  "Iran":              {rank:22,  conf:"AFC"},
+  "New Zealand":       {rank:91,  conf:"OFC"},
+  "Spain":             {rank:1,   conf:"UEFA"},
+  "Cape Verde":        {rank:57,  conf:"CAF"},
+  "Saudi Arabia":      {rank:59,  conf:"AFC"},
+  "Uruguay":           {rank:17,  conf:"CONMEBOL"},
+  "France":            {rank:2,   conf:"UEFA"},
+  "Senegal":           {rank:18,  conf:"CAF"},
+  "Iraq":              {rank:60,  conf:"AFC"},
+  "Norway":            {rank:27,  conf:"UEFA"},
+  "Argentina":         {rank:5,   conf:"CONMEBOL"},
+  "Algeria":           {rank:50,  conf:"CAF"},
+  "Austria":           {rank:29,  conf:"UEFA"},
+  "Jordan":            {rank:73,  conf:"AFC"},
+  "Portugal":          {rank:6,   conf:"UEFA"},
+  "Congo DR":          {rank:54,  conf:"CAF"},
+  "Uzbekistan":        {rank:70,  conf:"AFC"},
+  "Colombia":          {rank:21,  conf:"CONMEBOL"},
+  "England":           {rank:8,   conf:"UEFA"},
+  "Croatia":           {rank:10,  conf:"UEFA"},
+  "Ghana":             {rank:66,  conf:"CAF"},
+  "Panama":            {rank:43,  conf:"CONCACAF"},
+};
+
 // ─── GROUPS — 나라 이름 4개 언어 ────────────────────────────────────────────
 const TEAM_NAMES = {
   en: {
@@ -558,6 +611,10 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
                   <div key={team} onClick={()=>toggle(grp,team)} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 9px",borderRadius:8,marginBottom:4,cursor:locked?"default":"pointer",background:correct?"rgba(34,197,94,.12)":wrong?"rgba(239,68,68,.1)":picked?"rgba(212,168,67,.1)":"transparent",border:`1px solid ${correct?"rgba(34,197,94,.4)":wrong?"rgba(239,68,68,.35)":picked?"rgba(212,168,67,.28)":"rgba(255,255,255,.07)"}`,transition:"all .12s"}}>
                     <span style={{fontSize:16}}>{flags[i]}</span>
                     <span style={{flex:1,fontSize:13,fontWeight:picked?600:400,color:correct?"#22C55E":wrong?"#EF4444":picked?"#D4A843":"#E0E8F0"}}>{tn(team,lang)}</span>
+                    <span style={{display:"flex",gap:3,alignItems:"center",flexShrink:0}}>
+                      {TEAM_META[team]&&<span style={{fontSize:9,color:"#5A7090",background:"rgba(255,255,255,.07)",borderRadius:3,padding:"1px 4px"}}>{TEAM_META[team].conf}</span>}
+                      {TEAM_META[team]&&<span style={{fontSize:9,color:"#5A7090",background:"rgba(255,255,255,.07)",borderRadius:3,padding:"1px 4px"}}>#{TEAM_META[team].rank}</span>}
+                    </span>
                     {correct&&<span style={{fontSize:12}}>✅ +3</span>}
                     {wrong&&<span style={{fontSize:12}}>❌</span>}
                     {!hasRes&&picked&&<span style={{color:"#D4A843",fontSize:10}}>✓</span>}
