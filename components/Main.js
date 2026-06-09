@@ -1467,6 +1467,21 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                   </div>
                 );
               })()}
+              {!tournament.groupLocked&&(()=>{
+                const noPick=approved.filter(u=>Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)===0);
+                if(!noPick.length)return null;
+                return <div style={{background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.3)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#F59E0B",fontWeight:700,marginBottom:6}}>⚠️ 픽 미완료 {noPick.length}명 — 마감 전 독촉 필요</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {noPick.map(u=>(
+                      <div key={u.uid} style={{display:"flex",alignItems:"center",gap:4,background:"rgba(245,158,11,.12)",borderRadius:20,padding:"2px 8px"}}>
+                        <Avatar name={u.name} photoURL={u.photoURL} size={16}/>
+                        <span style={{fontSize:11,color:"#fbbf24"}}>{u.name?.split(" ")[0]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>;
+              })()}
               <div style={{fontFamily:"'Teko',sans-serif",color:"#22C55E",fontSize:12,marginBottom:6}}>✓ {t.approvedUsers} ({approved.length})</div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 {approved.map(u=>{
