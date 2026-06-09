@@ -592,7 +592,7 @@ function Dashboard({users, tournament, currentUid, lang}){
         </div>
 
         {/* 카운트다운 */}
-        <CountdownBanner lang={lang} phase={tournament.phase||"group"} uid={currentUid} dashMode/>
+        <NextMatchCard lang={lang}/>
       </div>
 
       {/* 스프린트 레이스 */}
@@ -617,6 +617,74 @@ function Dashboard({users, tournament, currentUid, lang}){
         </div>
       )}
 
+    </div>
+  );
+}
+
+
+// ─── NEXT MATCH CARD (dashboard용) ───────────────────────────────────────────
+function NextMatchCard({lang}){
+  const WC = [
+    {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A"},
+    {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D"},
+    {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C"},
+    {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H"},
+    {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I"},
+    {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J"},
+    {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E"},
+    {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L"},
+    {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32"},
+  ];
+  const [tl, setTl] = useState({d:0,h:0,m:0,s:0});
+  const [next, setNext] = useState(null);
+
+  useEffect(()=>{
+    const findNext = () => {
+      const now = Date.now();
+      const m = WC.find(x => new Date(x.date).getTime() > now);
+      setNext(m || null);
+      return m;
+    };
+    let cur = findNext();
+    const iv = setInterval(()=>{
+      if(!cur){ cur = findNext(); return; }
+      const ms = new Date(cur.date).getTime() - Date.now();
+      if(ms <= 0){ cur = findNext(); return; }
+      setTl({
+        d: Math.floor(ms/86400000),
+        h: Math.floor((ms%86400000)/3600000),
+        m: Math.floor((ms%3600000)/60000),
+        s: Math.floor((ms%60000)/1000),
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const lbl = lang==="ko"?"다음 경기":lang==="es"?"Próximo partido":"Next match";
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px"}}>
+      <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:6}}>{lbl.toUpperCase()}</div>
+      {next ? (
+        <>
+          <div style={{fontSize:13,fontWeight:500,color:"#E0E8F0",marginBottom:10}}>
+            ⚽ {next.teams}
+            <span style={{fontSize:10,color:"#5A7090",marginLeft:6}}>Group {next.group}</span>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            {[["d","day"],["h","hr"],["m","min"],["s","sec"]].map(([k,lbl])=>(
+              <div key={k} style={{flex:1,textAlign:"center",background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 2px",border:"0.5px solid rgba(255,255,255,.07)"}}>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#60a5fa",lineHeight:1}}>{tl[k]}</div>
+                <div style={{fontSize:10,color:"#5A7090"}}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{fontSize:13,color:"#5A7090"}}>
+          {lang==="ko"?"일정 없음":lang==="es"?"Sin partido":"No upcoming matches"}
+        </div>
+      )}
     </div>
   );
 }
