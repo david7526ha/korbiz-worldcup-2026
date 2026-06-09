@@ -1249,7 +1249,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
                   display:"flex",alignItems:"center",gap:6,
                 }}>
                   {isMe&&<span style={{fontSize:10}}>⭐</span>}
-                  <span style={{fontSize:12,color:isMe?"#D4A843":"team?"#E0E8F0":"#5A7090",flex:1}}>
+                  <span style={{fontSize:12,color:isMe?"#D4A843":team?"#E0E8F0":"#5A7090",flex:1}}>
                     {team||src}
                   </span>
                   <span style={{fontSize:9,color:"#3A5070"}}>{src}</span>
