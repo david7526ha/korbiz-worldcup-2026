@@ -1,87 +1,52 @@
-import { adminDb, adminMessaging } from '../../lib/firebaseAdmin';
+import { adminDb, adminMessaging } from '../../../lib/firebaseAdmin';
+import { NextResponse } from 'next/server';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-
-  // Admin 인증 확인
-  const { adminSecret, groupKey, advancedTeams, groupResults, allUsers } = req.body;
+export async function POST(req) {
+  const { adminSecret, groupKey, advancedTeams } = await req.json();
   if (adminSecret !== process.env.NOTIFY_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    // 1. 모든 유저 FCM 토큰 수집
     const usersSnap = await adminDb.collection('users').get();
     const tokens = [];
-    const matchedUsers = {}; // team -> [user names]
+    const matchedUsers = {};
 
     usersSnap.forEach(doc => {
       const u = doc.data();
       if (!u.approved) return;
-
-      // FCM 토큰
       (u.fcmTokens || []).forEach(t => { if (t) tokens.push(t); });
-
-      // 각 팀별로 맞춘 유저 집계
       const userPicks = u.groupPicks?.[groupKey] || [];
       advancedTeams.forEach(team => {
         if (userPicks.includes(team)) {
           if (!matchedUsers[team]) matchedUsers[team] = [];
-          matchedUsers[team].push(u.name?.split(' ')[0] || u.email?.split('@')[0]);
+          matchedUsers[team].push(u.name?.split(' ')[0] || '?');
         }
       });
     });
 
-    // 2. 알림 메시지 구성
-    const teamLines = advancedTeams.map(team => {
+    // 알림 메시지
+    const lines = advancedTeams.map(team => {
       const names = matchedUsers[team] || [];
-      if (names.length === 0) return `${team}: 아무도 못 맞춤`;
-      return `${team}: ${names.join(', ')}`;
-    }).join('\n');
-
+      return names.length > 0 ? `✅ ${team}: ${names.join(', ')}` : `❌ ${team}: 아무도 못 맞춤`;
+    });
     const title = `🏆 Group ${groupKey} 결과 확정!`;
-    const body = teamLines.length > 100 ? teamLines.substring(0, 97) + '...' : teamLines;
+    const body = lines.join(' / ');
 
-    // 3. FCM 발송 (토큰 배치 최대 500개)
     if (tokens.length > 0) {
-      const uniqueTokens = [...new Set(tokens)];
-      const chunks = [];
-      for (let i = 0; i < uniqueTokens.length; i += 500) {
-        chunks.push(uniqueTokens.slice(i, i + 500));
-      }
-
-      let successCount = 0;
-      for (const chunk of chunks) {
-        const response = await adminMessaging.sendEachForMulticast({
-          tokens: chunk,
-          notification: { title, body },
-          webpush: {
-            notification: {
-              title,
-              body,
-              icon: '/favicon.ico',
-              badge: '/favicon.ico',
-              tag: `group-${groupKey}-result`,
-              requireInteraction: false,
-            },
-            fcmOptions: { link: 'https://korbizwc2026.vercel.app' },
-          },
-        });
-        successCount += response.successCount;
-      }
-
-      return res.json({
-        success: true,
-        sent: successCount,
-        matchedUsers,
-        message: `Group ${groupKey}: ${title}`,
+      const unique = [...new Set(tokens)];
+      const res = await adminMessaging.sendEachForMulticast({
+        tokens: unique,
+        notification: { title, body: body.substring(0, 150) },
+        webpush: {
+          notification: { title, body: body.substring(0, 150), icon: '/favicon.ico', tag: `grp-${groupKey}` },
+          fcmOptions: { link: 'https://korbizwc2026.vercel.app' },
+        },
       });
+      return NextResponse.json({ success: true, sent: res.successCount, matchedUsers });
     }
-
-    return res.json({ success: true, sent: 0, matchedUsers, message: 'No FCM tokens found' });
-
-  } catch (err) {
-    console.error('Notify error:', err);
-    return res.status(500).json({ error: err.message });
+    return NextResponse.json({ success: true, sent: 0, matchedUsers });
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
