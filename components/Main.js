@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   auth, signInWithGoogle, signOutUser, isAdmin,
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
@@ -528,7 +528,7 @@ function PicksModal({user,tournament,lang,onClose}){
 
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({users, tournament, currentUid, lang}){
+function Dashboard({users, tournament, currentUid, currentUser, lang}){
   const MAX_PTS = 438;
   const gr = tournament.groupResults || {};
 
@@ -615,7 +615,7 @@ function Dashboard({users, tournament, currentUid, lang}){
       </div>
 
       {/* 스프린트 레이스 */}
-      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang}/>
+      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
 
       {/* 최근 결과 */}
       {recentResults.length > 0 && (
@@ -889,9 +889,33 @@ function NextMatchCard({lang}){
 }
 
 // ─── SPRINT RACE ──────────────────────────────────────────────────────────────
-function SprintRace({ranked, currentUid, maxPts, lang}){
+function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
   const [animated, setAnimated] = useState(false);
+  const [winProbs, setWinProbs] = useState({});
+
   useEffect(()=>{ const t = setTimeout(()=>setAnimated(true), 100); return ()=>clearTimeout(t); }, []);
+
+  // 전체 우승 확률 계산 (1500회 빠른 시뮬)
+  useEffect(()=>{
+    if(!ranked||ranked.length<2) return;
+    const SIMS=1500;
+    const grpDone=Object.keys(tournament.groupResults||{}).length;
+    const grpLeft=12-grpDone;
+    const remaining=(grpLeft*9)+(tournament.groupLocked?330:0);
+    const probs={};
+    ranked.forEach(u=>{ probs[u.uid]=0; });
+    for(let i=0;i<SIMS;i++){
+      let best=-1, bestUid=null;
+      ranked.forEach(u=>{
+        const sim=u.total+Math.random()*remaining;
+        if(sim>best){ best=sim; bestUid=u.uid; }
+      });
+      if(bestUid) probs[bestUid]=(probs[bestUid]||0)+1;
+    }
+    const result={};
+    ranked.forEach(u=>{ result[u.uid]=Math.round((probs[u.uid]||0)/SIMS*100); });
+    setWinProbs(result);
+  },[ranked.map(r=>r.total).join(','), Object.keys(tournament.groupResults||{}).length]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
@@ -969,9 +993,12 @@ width:28,height:28,borderRadius:"50%",
               </div>
             </div>
 
-            {/* 점수 */}
-            <div style={{width:38,textAlign:"right",fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF",flexShrink:0}}>
-              {u.total}
+            {/* 점수 + 확률 */}
+            <div style={{width:64,textAlign:"right",flexShrink:0}}>
+              <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}</div>
+              <div style={{fontSize:10,color:winProbs[u.uid]>=30?"#22C55E":winProbs[u.uid]>=10?"#D4A843":"#5A7090"}}>
+                {winProbs[u.uid]!==undefined ? winProbs[u.uid]+"%" : ""}
+              </div>
             </div>
           </div>
         );
@@ -1668,7 +1695,7 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
-        {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} currentUser={firebaseUser} lang={lang}/>}
         {tab==="picks"&&phase==="group"&&(
           <div>
             <PrizeDashboard users={users} lang={lang}/>
