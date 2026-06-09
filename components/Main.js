@@ -1,11 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import {
-  auth, signInWithGoogle, signOutUser, isAdmin,
+  auth, db, signInWithGoogle, signOutUser, isAdmin,
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
   setApproved, setPaid, subscribeUsers,
   subscribeTournamentState, saveTournamentState,
 } from "../lib/firebase";
+import {
+  collection, addDoc, onSnapshot, query,
+  orderBy, limit, serverTimestamp,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
 
