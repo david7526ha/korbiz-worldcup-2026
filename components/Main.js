@@ -7,6 +7,7 @@ import {
   subscribeTournamentState, saveTournamentState,
 } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { doc as fsDoc, setDoc as fsSetDoc, onSnapshot as fsOnSnapshot } from "firebase/firestore";
 import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
 
 
@@ -353,6 +354,148 @@ function PrizeDashboard({users, lang}){
         </div>
       </div>
       {pool===0&&<div style={{fontSize:11,color:"#5A7090",textAlign:"center",marginTop:8}}>{empty}</div>}
+    </div>
+  );
+}
+
+
+
+const REACTION_TYPES = ["🔥","😱","😂","🥶","💀","🎯"];
+// ─── NEXT MATCH COUNTDOWN ─────────────────────────────────────────────────────
+const WC_SCHEDULE = [
+  // Group Stage (June 11 - June 27) - major matches ET
+  {date:"2026-06-11T17:00:00-04:00", teams:"Mexico vs South Africa", group:"A"},
+  {date:"2026-06-11T20:00:00-04:00", teams:"USA vs Panama", group:"D"},
+  {date:"2026-06-12T14:00:00-04:00", teams:"Brazil vs Morocco", group:"C"},
+  {date:"2026-06-12T17:00:00-04:00", teams:"Spain vs Cape Verde", group:"H"},
+  {date:"2026-06-13T14:00:00-04:00", teams:"France vs Senegal", group:"I"},
+  {date:"2026-06-13T17:00:00-04:00", teams:"Argentina vs Algeria", group:"J"},
+  {date:"2026-06-14T14:00:00-04:00", teams:"Germany vs Curaçao", group:"E"},
+  {date:"2026-06-14T17:00:00-04:00", teams:"England vs Croatia", group:"L"},
+  {date:"2026-06-28T12:00:00-04:00", teams:"Round of 32 begins", group:"R32"},
+];
+
+function NextMatchBanner({lang}){
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [nextMatch, setNextMatch] = useState(null);
+
+  useEffect(()=>{
+    const findNext = () => {
+      const now = Date.now();
+      const next = WC_SCHEDULE.find(m => new Date(m.date).getTime() > now);
+      setNextMatch(next || null);
+    };
+    findNext();
+    const iv = setInterval(()=>{
+      if(!nextMatch) return;
+      const ms = new Date(nextMatch.date).getTime() - Date.now();
+      if(ms <= 0){ findNext(); return; }
+      const d = Math.floor(ms/86400000);
+      const h = Math.floor((ms%86400000)/3600000);
+      const m = Math.floor((ms%3600000)/60000);
+      const s = Math.floor((ms%60000)/1000);
+      setTimeLeft(d>0 ? `${d}d ${h}h ${m}m` : h>0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`);
+    }, 1000);
+    return ()=>clearInterval(iv);
+  },[nextMatch?.date]);
+
+  if(!nextMatch || !timeLeft) return null;
+  const label = lang==="ko"?"다음 경기":lang==="es"?"Próximo partido":"Next match";
+  return(
+    <div style={{background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <span style={{fontSize:16}}>⚽</span>
+      <div style={{flex:1}}>
+        <div style={{fontSize:10,color:"#5A7090",letterSpacing:".1em"}}>{label} · Group {nextMatch.group}</div>
+        <div style={{fontSize:13,color:"#E0E8F0",fontWeight:600}}>{nextMatch.teams}</div>
+      </div>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa",lineHeight:1}}>{timeLeft}</div>
+    </div>
+  );
+}
+
+// ─── PICK STATS (마감 후 공개) ──────────────────────────────────────────────
+function PickStats({users, tournament, lang}){
+  const locked = tournament.groupLocked;
+  if(!locked) return(
+    <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
+      <div style={{fontSize:32,marginBottom:8}}>🔒</div>
+      <div style={{fontSize:14}}>{lang==="ko"?"조별 픽 마감 후 통계가 공개됩니다":lang==="es"?"Las estadísticas se revelarán después del cierre":"Stats revealed after group picks deadline"}</div>
+    </div>
+  );
+
+  const approved = Object.values(users).filter(u=>u.approved);
+  const total = approved.length;
+  if(total===0) return null;
+
+  return(
+    <div>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843",marginBottom:14}}>
+        {lang==="ko"?"픽 통계":lang==="es"?"ESTADÍSTICAS":"PICK STATS"}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
+        {Object.entries(GROUPS).map(([grp,{teams,flags}])=>(
+          <div key={grp} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:14}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".12em",marginBottom:10}}>
+              {lang==="ko"?"조":lang==="es"?"GRUPO":"GROUP"} {grp}
+            </div>
+            {teams.map((team,i)=>{
+              const count = approved.filter(u=>(u.groupPicks?.[grp]||[]).includes(team)).length;
+              const pct = total > 0 ? Math.round(count/total*100) : 0;
+              return(
+                <div key={team} style={{marginBottom:7}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:12,color:"#E0E8F0"}}>{flags[i]} {tn(team,lang)}</span>
+                    <span style={{fontSize:11,color:"#D4A843",fontWeight:700}}>{count}/{total} ({pct}%)</span>
+                  </div>
+                  <div style={{height:5,background:"rgba(255,255,255,.07)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:pct+"%",background:pct>=50?"#D4A843":"rgba(212,168,67,.4)",borderRadius:3,transition:"width .3s"}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── REACTION BAR ──────────────────────────────────────────────────────────────
+function ReactionBar({uid, matchKey}){
+  const [reactions, setReactions] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(()=>{
+    if(!matchKey) return;
+    const ref = fsDoc(db, "reactions", matchKey);
+    const unsub = fsOnSnapshot(ref, snap=>setReactions(snap.exists()?snap.data():{}));
+    return unsub;
+  },[matchKey]);
+
+  const handle = async(emoji) => {
+    if(loading) return;
+    setLoading(true);
+    try {
+      const ref = fsDoc(db, "reactions", matchKey);
+      const current = reactions[emoji]||[];
+      const next = current.includes(uid) ? current.filter(u=>u!==uid) : [...current, uid];
+      await fsSetDoc(ref, {...reactions, [emoji]: next}, {merge: true});
+    } catch(e){}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+      {REACTION_TYPES.map(emoji=>{
+        const users = reactions[emoji]||[];
+        const mine = users.includes(uid);
+        return(
+          <button key={emoji} onClick={()=>handle(emoji)} style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",borderRadius:20,border:`1px solid ${mine?"rgba(212,168,67,.5)":"rgba(255,255,255,.1)"}`,background:mine?"rgba(212,168,67,.15)":"rgba(255,255,255,.04)",cursor:"pointer",fontSize:12,color:mine?"#D4A843":"#9CA3AF",transition:"all .1s"}}>
+            <span style={{fontSize:14}}>{emoji}</span>
+            {users.length>0&&<span style={{fontSize:10,fontWeight:600}}>{users.length}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -984,6 +1127,16 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
           <button onClick={onClose} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:12,cursor:"pointer"}}>{t.cancel}</button>
           <button onClick={save} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
+          {tab==="group"&&<button onClick={async()=>{
+            // 저장 후 조별 결과 알림 발송
+            const grpEntries = Object.entries(st.groupResults||{});
+            for(const [grp, teams] of grpEntries){
+              if(teams.length>0){
+                await fetch('/api/notify-group-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminSecret:process.env.NEXT_PUBLIC_NOTIFY_SECRET||'korbiz2026admin',groupKey:grp,advancedTeams:teams})});
+              }
+            }
+            showToast('📢 알림 발송됨!');
+          }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
       </div>
     </div>
@@ -1059,6 +1212,7 @@ export default function Main(){
   const tabs=[
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
     {id:"leaderboard",label:t.standings},
+    {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
     {id:"rules",label:t.howToPlay},
   ];
 
@@ -1089,6 +1243,7 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
+        <NextMatchBanner lang={lang}/>
         {tab==="picks"&&phase==="group"&&(
           <div>
             <PrizeDashboard users={users} lang={lang}/>
@@ -1102,6 +1257,7 @@ export default function Main(){
           </div>
         )}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
+        {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
