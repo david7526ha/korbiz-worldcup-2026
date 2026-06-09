@@ -7,7 +7,6 @@ import {
   subscribeTournamentState, saveTournamentState,
 } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc as fsDoc, setDoc as fsSetDoc, onSnapshot as fsOnSnapshot } from "firebase/firestore";
 import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
 
 
@@ -319,45 +318,6 @@ function Avatar({name,photoURL,size=36}){
 
 
 
-
-
-// ─── SAVE BUTTON ──────────────────────────────────────────────────────────────
-function SaveButton({saving, saved, dirty, total, t, onClick, onEdit}){
-  const baseStyle = {fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",padding:"8px 18px",borderRadius:9,border:"none",transition:"all .2s"};
-
-  if(saving) return(
-    <button disabled style={{...baseStyle,background:"rgba(212,168,67,.4)",color:"#555",cursor:"not-allowed"}}>
-      ⏳ 저장 중...
-    </button>
-  );
-
-  if(saved && !dirty) return(
-    <button onClick={onEdit} style={{...baseStyle,background:"rgba(34,197,94,.15)",border:"2px solid #22C55E",color:"#22C55E",display:"flex",alignItems:"center",gap:6}}>
-      ✓ SAVED <span style={{fontSize:11,opacity:.7}}>({total}/32)</span>
-    </button>
-  );
-
-  const isUpdate = saved && dirty;
-  return(
-    <button onClick={onClick} style={{...baseStyle,background:"linear-gradient(135deg,#D4A843,#8B6914)",border:isUpdate?"2px solid #fff":"2px solid transparent",color:"#000",animation:isUpdate?"savePulse 1.5s infinite":"none"}}>
-      {isUpdate ? "UPDATE PICKS" : t.savePicks} ({total}/32)
-    </button>
-  );
-}
-
-// ─── RESILIENCE UTILS ─────────────────────────────────────────────────────────
-const LS_KEY=(uid)=>"korbiz_picks_"+uid;
-function savePicsLocally(uid,picks){try{localStorage.setItem(LS_KEY(uid),JSON.stringify({picks,ts:Date.now()}));}catch(e){}}
-function loadPicksLocally(uid){try{const r=localStorage.getItem(LS_KEY(uid));if(!r)return null;const d=JSON.parse(r);if(Date.now()-d.ts>86400000)return null;return d.picks;}catch(e){return null;}}
-function sanitizePicks(picks){
-  return Object.entries(picks||{}).reduce(function(o,entry){
-    var g=entry[0],t=entry[1];
-    if(Array.isArray(t)&&t.length>0)o[g]=t.slice(0,3);
-    return o;
-  },{});
-}
-function useOnlineStatus(){const[online,setOnline]=useState(typeof navigator!=="undefined"?navigator.onLine:true);useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);return online;}
-
 // ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
 function PrizeDashboard({users, lang}){
   const approved = Object.values(users).filter(u=>u.approved&&u.paid);
@@ -393,160 +353,6 @@ function PrizeDashboard({users, lang}){
         </div>
       </div>
       {pool===0&&<div style={{fontSize:11,color:"#5A7090",textAlign:"center",marginTop:8}}>{empty}</div>}
-    </div>
-  );
-}
-
-
-
-const REACTION_TYPES = ["🔥","😱","😂","🥶","💀","🎯"];
-// ─── NEXT MATCH COUNTDOWN ─────────────────────────────────────────────────────
-const WC_SCHEDULE = [
-  // Group Stage (June 11 - June 27) - major matches ET
-  {date:"2026-06-11T17:00:00-04:00", teams:"Mexico vs South Africa", group:"A"},
-  {date:"2026-06-11T20:00:00-04:00", teams:"USA vs Panama", group:"D"},
-  {date:"2026-06-12T14:00:00-04:00", teams:"Brazil vs Morocco", group:"C"},
-  {date:"2026-06-12T17:00:00-04:00", teams:"Spain vs Cape Verde", group:"H"},
-  {date:"2026-06-13T14:00:00-04:00", teams:"France vs Senegal", group:"I"},
-  {date:"2026-06-13T17:00:00-04:00", teams:"Argentina vs Algeria", group:"J"},
-  {date:"2026-06-14T14:00:00-04:00", teams:"Germany vs Curaçao", group:"E"},
-  {date:"2026-06-14T17:00:00-04:00", teams:"England vs Croatia", group:"L"},
-  {date:"2026-06-28T12:00:00-04:00", teams:"Round of 32 begins", group:"R32"},
-];
-
-function NextMatchBanner({lang}){
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [nextMatch, setNextMatch] = useState(null);
-
-  useEffect(()=>{
-    const findNext = () => {
-      const now = Date.now();
-      const next = WC_SCHEDULE.find(m => new Date(m.date).getTime() > now);
-      setNextMatch(next || null);
-    };
-    findNext();
-    const iv = setInterval(()=>{
-      if(!nextMatch) return;
-      const ms = new Date(nextMatch.date).getTime() - Date.now();
-      if(ms <= 0){ findNext(); return; }
-      const d = Math.floor(ms/86400000);
-      const h = Math.floor((ms%86400000)/3600000);
-      const m = Math.floor((ms%3600000)/60000);
-      const s = Math.floor((ms%60000)/1000);
-      setTimeLeft(d>0 ? `${d}d ${h}h ${m}m` : h>0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`);
-    }, 1000);
-    return ()=>clearInterval(iv);
-  },[nextMatch?.date]);
-
-  if(!nextMatch || !timeLeft) return null;
-  const label = lang==="ko"?"다음 경기":lang==="es"?"Próximo partido":"Next match";
-  return(
-    <div style={{background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-      <span style={{fontSize:16}}>⚽</span>
-      <div style={{flex:1}}>
-        <div style={{fontSize:10,color:"#5A7090",letterSpacing:".1em"}}>{label} · Group {nextMatch.group}</div>
-        <div style={{fontSize:13,color:"#E0E8F0",fontWeight:600}}>{nextMatch.teams}</div>
-      </div>
-      <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa",lineHeight:1}}>{timeLeft}</div>
-    </div>
-  );
-}
-
-// ─── PICK STATS (마감 후 공개) ──────────────────────────────────────────────
-function PickStats({users, tournament, lang}){
-  const locked = tournament.groupLocked;
-  if(!locked) return(
-    <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
-      <div style={{fontSize:32,marginBottom:8}}>🔒</div>
-      <div style={{fontSize:14}}>{lang==="ko"?"조별 픽 마감 후 통계가 공개됩니다":lang==="es"?"Las estadísticas se revelarán después del cierre":"Stats revealed after group picks deadline"}</div>
-    </div>
-  );
-
-  const approved = Object.values(users).filter(u=>u.approved);
-  const total = approved.length;
-  if(total===0) return null;
-
-  return(
-    <div>
-      <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843",marginBottom:14}}>
-        {lang==="ko"?"픽 통계":lang==="es"?"ESTADÍSTICAS":"PICK STATS"}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
-        {Object.entries(GROUPS).map(([grp,{teams,flags}])=>(
-          <div key={grp} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:14}}>
-            <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".12em",marginBottom:10}}>
-              {lang==="ko"?"조":lang==="es"?"GRUPO":"GROUP"} {grp}
-            </div>
-            {teams.map((team,i)=>{
-              const count = approved.filter(u=>(u.groupPicks?.[grp]||[]).includes(team)).length;
-              const pct = total > 0 ? Math.round(count/total*100) : 0;
-              return(
-                <div key={team} style={{marginBottom:7}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                    <span style={{fontSize:12,color:"#E0E8F0"}}>{flags[i]} {tn(team,lang)}</span>
-                    <span style={{fontSize:11,color:"#D4A843",fontWeight:700}}>{count}/{total} ({pct}%)</span>
-                  </div>
-                  <div style={{height:5,background:"rgba(255,255,255,.07)",borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:pct>=50?"#D4A843":"rgba(212,168,67,.4)",borderRadius:3,transition:"width .3s"}}/>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── REACTION BAR ──────────────────────────────────────────────────────────────
-function ReactionBar({uid, matchKey}){
-  const [reactions, setReactions] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  useEffect(()=>{
-    if(!matchKey) return;
-    const ref = fsDoc(db, "reactions", matchKey);
-    const unsub = fsOnSnapshot(ref, snap=>setReactions(snap.exists()?snap.data():{}));
-    return unsub;
-  },[matchKey]);
-
-  const handle = async(emoji) => {
-    if(loading) return;
-    setLoading(true);
-    try {
-      const ref = fsDoc(db, "reactions", matchKey);
-      const current = reactions[emoji]||[];
-      const next = current.includes(uid) ? current.filter(u=>u!==uid) : [...current, uid];
-      await fsSetDoc(ref, {...reactions, [emoji]: next}, {merge: true});
-    } catch(e){}
-    setLoading(false);
-  };
-
-  return(
-    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-      {REACTION_TYPES.map(emoji=>{
-        const users = reactions[emoji]||[];
-        const mine = users.includes(uid);
-        return(
-          <button key={emoji} onClick={()=>handle(emoji)} style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",borderRadius:20,border:`1px solid ${mine?"rgba(212,168,67,.5)":"rgba(255,255,255,.1)"}`,background:mine?"rgba(212,168,67,.15)":"rgba(255,255,255,.04)",cursor:"pointer",fontSize:12,color:mine?"#D4A843":"#9CA3AF",transition:"all .1s"}}>
-            <span style={{fontSize:14}}>{emoji}</span>
-            {users.length>0&&<span style={{fontSize:10,fontWeight:600}}>{users.length}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-
-// ─── OFFLINE BANNER ──────────────────────────────────────────────────────────
-function OfflineBanner({lang}){
-  const online = useOnlineStatus();
-  if(online) return null;
-  return(
-    <div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600,borderBottom:"1px solid #991b1b"}}>
-      ⚠️ {lang==="ko"?"오프라인 상태입니다. 픽은 로컬에 저장됩니다.":lang==="es"?"Sin conexión. Los picks se guardan localmente.":"Offline — picks saved locally, will sync when reconnected."}
     </div>
   );
 }
@@ -747,23 +553,19 @@ function PendingScreen({user,lang,setLang}){
 
 // ─── GROUP PICKS ──────────────────────────────────────────────────────────────
 function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
-  const [picks,setPicks]=useState(()=>{
-    const remote=sanitizePicks(myPicks||{});
-    const local=loadPicksLocally(uid);
-    const remoteTotal=Object.values(remote).reduce((a,b)=>a+b.length,0);
-    if(remoteTotal===0&&local&&Object.keys(local).length>0)return sanitizePicks(local);
-    return remote;
-  });
+  const [picks,setPicks]=useState(myPicks||{});
   const [saving,setSaving]=useState(false);
-  const [saved,setSaved]=useState(false);      // 마지막 저장 성공 여부
-  const [dirty,setDirty]=useState(false);      // 저장 후 수정 여부
+  const [saved,setSaved]=useState(false);
+  const [dirty,setDirty]=useState(false);
   const locked=tournament.groupLocked;
   const gr=tournament.groupResults||{};
-  useEffect(()=>{setPicks(myPicks||{});},[JSON.stringify(myPicks)]);
+  useEffect(()=>{
+    setPicks(myPicks||{});
+    const hasData=Object.values(myPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)>0;
+    setSaved(hasData); setDirty(false);
+  },[JSON.stringify(myPicks)]);
   const toggle=(grp,team)=>{
     if(locked)return;
-    setDirty(true);  // 픽 변경 → 미저장 상태
-    setSaved(false);
     setPicks(prev=>{
       const cur=prev[grp]||[];
       // 선택 해제
@@ -776,38 +578,7 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
       return{...prev,[grp]:[...cur,team]};
     });
   };
-  const handleSave=async()=>{
-    if(saving) return; // 중복 클릭 방지
-    setSaving(true);
-    // 먼저 localStorage에 백업
-    savePicsLocally(uid, picks);
-    // 오프라인이면 로컬 저장만
-    if(!navigator.onLine) {
-      showToast("오프라인 - 로컬 저장됨 (재연결 시 자동 업로드)");
-      setSaving(false);
-      return;
-    }
-    let retries = 0;
-    const maxRetries = 3;
-    while(retries < maxRetries) {
-      try {
-        await saveGroupPicks(uid, picks);
-        setSaved(true);
-        setDirty(false);
-        showToast(t.savePicks+" ✓");
-        setSaving(false);
-        return;
-      } catch(e) {
-        retries++;
-        if(retries < maxRetries) {
-          await new Promise(r => setTimeout(r, 1000 * retries)); // 1s, 2s 대기
-        }
-      }
-    }
-    // 3번 실패시
-    showToast("저장 실패 - 로컬에 백업됨. 잠시 후 다시 시도하세요.", "error");
-    setSaving(false);
-  };
+  const handleSave=async()=>{setSaving(true);try{await saveGroupPicks(uid,picks);setSaved(true); setDirty(false); showToast(t.savePicks+" ✓");}catch{showToast("Error","error");}setSaving(false);};
   const total=Object.values(picks).reduce((a,b)=>a+b.length,0);
   return(
     <div>
@@ -816,18 +587,25 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
         <div>
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase1Header}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2,flexWrap:"wrap"}}>
+            {saved&&!dirty&&<span style={{fontSize:11,color:"#22C55E"}}>✓ 저장됨</span>}
+            {dirty&&<span style={{fontSize:11,color:"#F59E0B"}}>● 미저장</span>}
             <span style={{color:"#5A7090",fontSize:13}}>{t.phase1Sub}</span>
             <span style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:total>=32?"#EF4444":"#D4A843"}}>{total}/32</span>
             <span style={{color:"#5A7090",fontSize:13}}>· {t.perCorrect}</span>
-            {saved&&!dirty&&<span style={{fontSize:11,color:"#22C55E"}}>✓ 저장됨</span>}
-            {dirty&&total>0&&<span style={{fontSize:11,color:"#F59E0B",animation:"savePulse 1s infinite"}}>● 미저장 변경사항</span>}
           </div>
         </div>
-        {!locked&&<SaveButton
-            saving={saving} saved={saved} dirty={dirty}
-            total={total} t={t}
-            onClick={handleSave} onEdit={()=>{setDirty(true);setSaved(false);}}
-          />}
+        {!locked&&<button
+            onClick={saved&&!dirty ? ()=>{setDirty(true);setSaved(false);} : handleSave}
+            disabled={saving}
+            style={{
+              padding:"8px 18px",borderRadius:9,fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:saving?"not-allowed":"pointer",
+              background: saving?"rgba(212,168,67,.4)": saved&&!dirty?"rgba(34,197,94,.15)":"linear-gradient(135deg,#D4A843,#8B6914)",
+              border: saved&&!dirty?"2px solid #22C55E": dirty&&saved?"2px solid #fff":"none",
+              color: saved&&!dirty?"#22C55E":"#000",
+              opacity:saving?0.7:1
+            }}>
+            {saving ? "저장 중..." : saved&&!dirty ? "✓ SAVED ("+total+"/32)" : dirty&&saved ? "UPDATE PICKS ("+total+"/32)" : t.savePicks+" ("+total+"/32)"}
+          </button>}
       </div>
       {locked&&<div style={{background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:9,padding:"9px 14px",marginBottom:14,color:"#60a5fa",fontSize:13}}>🔒 {t.lockedMsg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
@@ -947,8 +725,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
 function PicksModal({user, tournament, lang, onClose}){
   const gr = tournament.groupResults||{};
   const picks = user.groupPicks||{};
-  const totalPickedRaw = Object.values(picks).reduce((a,b)=>a+b.length,0);
-  const totalPicked = Math.min(totalPickedRaw, 32);
+  const totalPicked = Object.values(picks).reduce((a,b)=>a+b.length,0);
   const correct = Object.entries(picks).reduce((acc,[grp,teams])=>{
     return acc + teams.filter(t=>(gr[grp]||[]).includes(t)).length;
   }, 0);
@@ -975,7 +752,6 @@ function PicksModal({user, tournament, lang, onClose}){
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
           <div style={{background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#9CA3AF"}}>
             {lang==="ko"?"선택팀":lang==="es"?"Equipos":"Picked"}: <span style={{color:"#D4A843",fontWeight:700}}>{totalPicked}/32</span>
-              {totalPickedRaw>32&&<span style={{fontSize:10,color:"#5A7090",marginLeft:4}}>(이전 데이터)</span>}
           </div>
           {hasResults&&<div style={{background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#22C55E"}}>
             {lang==="ko"?"정답":lang==="es"?"Correctos":"Correct"}: <span style={{fontWeight:700}}>{correct}</span> (+{correct*3} {lang==="ko"?"점":"pts"})
@@ -1227,17 +1003,6 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
           <button onClick={onClose} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:12,cursor:"pointer"}}>{t.cancel}</button>
           <button onClick={save} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
-          {tab==="group"&&<button onClick={async()=>{
-            // 저장 후 조별 결과 알림 발송
-            const grpEntries = Object.entries(st.groupResults||{});
-            await Promise.all(grpEntries.map(async function(entry){
-              var grp=entry[0],teams=entry[1];
-              if(teams&&teams.length>0){
-                await fetch('/api/notify-group-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminSecret:'korbiz2026admin',groupKey:grp,advancedTeams:teams})});
-              }
-            }));
-            showToast('📢 알림 발송됨!');
-          }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
       </div>
     </div>
@@ -1267,12 +1032,9 @@ export default function Main(){
 
   useEffect(()=>{
     if(!firebaseUser)return;
-    let u1,u2;
-    try{
-      u1=subscribeUsers(setUsers);
-      u2=subscribeTournamentState((d)=>{setTournament(d);setConnError(false);});
-    }catch(e){console.error("Firestore:",e);setConnError(true);}
-    return()=>{try{if(u1)u1();}catch(e){}try{if(u2)u2();}catch(e){}};
+    const u1=subscribeUsers(setUsers);
+    const u2=subscribeTournamentState(setTournament);
+    return()=>{u1();u2();};
   },[firebaseUser?.uid]);
 
   const showMsg=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
@@ -1316,7 +1078,6 @@ export default function Main(){
   const tabs=[
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
     {id:"leaderboard",label:t.standings},
-    {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
     {id:"rules",label:t.howToPlay},
   ];
 
@@ -1346,11 +1107,7 @@ export default function Main(){
         </div>
       </div>
 
-      <style>{`@keyframes savePulse{0%,100%{opacity:1}50%{opacity:.75}}`}</style>
-      <OfflineBanner lang={lang}/>
-      {connError&&<div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600}}>⚠️ 서버 연결 오류 - 새로고침을 시도하세요</div>}
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
-        <NextMatchBanner lang={lang}/>
         {tab==="picks"&&phase==="group"&&(
           <div>
             <PrizeDashboard users={users} lang={lang}/>
@@ -1364,7 +1121,6 @@ export default function Main(){
           </div>
         )}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
-        {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
