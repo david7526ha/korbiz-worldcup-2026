@@ -763,28 +763,45 @@ function HotPickWidget({users, tournament, lang}){
   const approved = Object.values(users).filter(u=>u.approved);
   const total = approved.length || 1;
   const gr = tournament.groupResults || {};
+  const phase = tournament.phase || "group";
+  const isBracket = phase !== "group";
 
-  // 모든 픽 집계
+  // phase에 따라 groupPicks 또는 bracketPicks 집계
   const counts = {};
   approved.forEach(u => {
-    Object.entries(u.groupPicks||{}).forEach(([grp, teams]) => {
-      (teams||[]).forEach(team => {
-        counts[team] = (counts[team]||0) + 1;
+    if(isBracket) {
+      // 브래킷: 각 라운드별 픽 집계
+      Object.entries(u.bracketPicks||{}).forEach(([round, matches]) => {
+        (matches||[]).forEach(team => {
+          if(team) counts[team] = (counts[team]||0) + 1;
+        });
       });
-    });
+    } else {
+      // 조별: groupPicks 집계
+      Object.entries(u.groupPicks||{}).forEach(([grp, teams]) => {
+        (teams||[]).forEach(team => {
+          counts[team] = (counts[team]||0) + 1;
+        });
+      });
+    }
   });
 
   const top5 = Object.entries(counts)
     .sort((a,b)=>b[1]-a[1])
     .slice(0,5);
 
-  const lbl = lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK";
+  const lbl = isBracket
+    ? (lang==="ko"?"인기 우승 픽":lang==="es"?"FAVORITOS":"TOP PICKS")
+    : (lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK");
+  const sublbl = isBracket
+    ? (lang==="ko"?"브래킷 픽 기준":"by bracket picks")
+    : (lang==="ko"?"픽 횟수 기준":"by pick count");
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>🔥 {lbl}</div>
-        <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"전체 픽 기준":"by pick count"}</div>
+        <div style={{fontSize:10,color:"#5A7090"}}>{sublbl}</div>
       </div>
       {top5.length===0 ? (
         <div style={{fontSize:12,color:"#5A7090",textAlign:"center",padding:"20px 0"}}>
