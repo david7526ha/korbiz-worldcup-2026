@@ -526,6 +526,193 @@ function PicksModal({user,tournament,lang,onClose}){
   );
 }
 
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function Dashboard({users, tournament, currentUid, lang}){
+  const MAX_PTS = 438;
+  const gr = tournament.groupResults || {};
+
+  // 유저별 점수 계산 + 정렬
+  const ranked = Object.values(users)
+    .filter(u => u.approved && u.paid)
+    .map(u => {
+      const s = calcScore({groupPicks: u.groupPicks||{}, bracketPicks: u.bracketPicks||{}}, tournament);
+      return {...u, total: s.total};
+    })
+    .sort((a,b) => b.total - a.total);
+
+  const me = ranked.find(u => u.uid === currentUid);
+  const myRank = ranked.findIndex(u => u.uid === currentUid) + 1;
+  const leader = ranked[0];
+  const pool = ranked.length * 30;
+
+  // 최근 결과 (groupResults에서 추출)
+  const recentResults = Object.entries(gr).slice(0,4);
+
+  const lbl = (ko, es, en) => lang==="ko"?ko:lang==="es"?es:en;
+
+  return (
+    <div style={{paddingBottom:24}}>
+
+      {/* 상단 3카드 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
+
+        {/* Prize Pool */}
+        <div style={{background:"#0C1620",border:"1px solid rgba(212,168,67,.25)",borderRadius:14,padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl("총 상금","PREMIO","PRIZE POOL")}</div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:34,color:"#D4A843",lineHeight:1}}>{"$"+pool}</div>
+          <div style={{fontSize:11,color:"#5A7090",marginBottom:10}}>{ranked.length} {lbl("명 × $30","× $30","paid × $30")}</div>
+          <div style={{display:"flex",gap:6}}>
+            {[["🥇","$"+Math.floor(pool*.5),"50%"],["🥈","$"+Math.floor(pool*.3),"30%"],["🥉","$"+Math.floor(pool*.2),"20%"]].map(([icon,amt,pct])=>(
+              <div key={pct} style={{flex:1,textAlign:"center",background:"rgba(255,255,255,.04)",borderRadius:8,padding:"6px 2px",border:"0.5px solid rgba(255,255,255,.07)"}}>
+                <div style={{fontSize:13,marginBottom:2}}>{icon}</div>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",lineHeight:1}}>{amt}</div>
+                <div style={{fontSize:10,color:"#5A7090"}}>{pct}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 내 순위 */}
+        <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl("내 순위","MI LUGAR","MY RANK")}</div>
+          {me ? (
+            <>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:52,color:"#fff",lineHeight:1}}>{"#"+myRank}</div>
+              <div style={{fontSize:12,color:"#5A7090",marginTop:2}}>{me.total} pts · {me.name?.split(" ")[0]}</div>
+              <div style={{marginTop:8,display:"inline-block",fontSize:11,padding:"2px 10px",borderRadius:20,background:"rgba(255,255,255,.06)",color:"#5A7090"}}>
+                {myRank===1
+                  ? lbl("🏆 선두!","🏆 Líder!","🏆 Leading!")
+                  : lbl("1위와 ","A "+Math.max(0,leader.total - me.total)+" pts del líder","")+(myRank!==1?(leader.total - me.total)+" pts behind":"")}
+              </div>
+            </>
+          ) : (
+            <div style={{fontSize:13,color:"#5A7090",marginTop:8}}>{lbl("승인 대기 중","Pendiente","Pending approval")}</div>
+          )}
+        </div>
+
+        {/* 카운트다운 */}
+        <CountdownBanner lang={lang} phase={tournament.phase||"group"} uid={currentUid} dashMode/>
+      </div>
+
+      {/* 스프린트 레이스 */}
+      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang}/>
+
+      {/* 최근 결과 */}
+      {recentResults.length > 0 && (
+        <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+            {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
+          </div>
+          <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
+            {recentResults.map(([grp, teams])=>(
+              <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:110}}>
+                <div style={{fontSize:10,color:"#5A7090",marginBottom:5,letterSpacing:".08em"}}>GROUP {grp}</div>
+                {(teams||[]).map(team=>(
+                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ─── SPRINT RACE ──────────────────────────────────────────────────────────────
+function SprintRace({ranked, currentUid, maxPts, lang}){
+  const [animated, setAnimated] = useState(false);
+  useEffect(()=>{ const t = setTimeout(()=>setAnimated(true), 100); return ()=>clearTimeout(t); }, []);
+
+  if(ranked.length === 0) return null;
+  const topScore = Math.max(...ranked.map(r=>r.total), 1);
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px 16px 8px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
+          {lang==="ko"?"순위 레이스":lang==="es"?"CARRERA":"LEADERBOARD RACE"}
+        </div>
+        <div style={{fontSize:11,color:"#5A7090"}}>max {maxPts} pts</div>
+      </div>
+
+      {ranked.map((u, i) => {
+        const isMe = u.uid === currentUid;
+        const pct = topScore > 0 ? (u.total / topScore) * 88 : 0;
+        const finalPct = animated ? pct : 0;
+        const medals = ["🥇","🥈","🥉"];
+
+        return(
+          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            {/* 순위 */}
+            <div style={{width:22,textAlign:"right",fontSize:i<3?14:11,color:"#5A7090",flexShrink:0}}>
+              {i<3 ? medals[i] : "#"+(i+1)}
+            </div>
+
+            {/* 트랙 */}
+            <div style={{flex:1,position:"relative",height:36}}>
+              {/* 트랙 배경 */}
+              <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.04)",borderRadius:18,border:"0.5px solid rgba(255,255,255,.06)"}}/>
+
+              {/* 달리는 바 */}
+              <div style={{
+                position:"absolute",top:0,left:0,height:"100%",
+                width: finalPct + "%",
+                minWidth: 36,
+                borderRadius:18,
+                background: isMe
+                  ? "linear-gradient(90deg,rgba(212,168,67,.25),rgba(212,168,67,.1))"
+                  : "rgba(255,255,255,.06)",
+                border: isMe ? "1px solid rgba(212,168,67,.4)" : "0.5px solid rgba(255,255,255,.08)",
+                transition: animated ? "width 1.2s cubic-bezier(.34,1.2,.64,1)" : "none",
+                display:"flex",alignItems:"center",justifyContent:"flex-end",
+                paddingRight:0,
+                overflow:"visible",
+              }}>
+                {/* 프로필 사진 원 */}
+                <div style={{
+                  position:"absolute",right:-18,top:"50%",transform:"translateY(-50%)",
+                  width:36,height:36,borderRadius:"50%",
+                  border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
+                  overflow:"hidden",flexShrink:0,
+                  background:"#1a2840",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  boxShadow: isMe ? "0 0 0 3px rgba(212,168,67,.2)" : "none",
+                  zIndex:2,
+                }}>
+                  {u.photoURL ? (
+                    <img src={u.photoURL} alt={u.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                  ) : (
+                    <span style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>
+                      {(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 이름 (바 안에) */}
+              <div style={{
+                position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",
+                fontSize:11,color:isMe?"#D4A843":"#6b7280",fontWeight:isMe?500:400,
+                pointerEvents:"none",whiteSpace:"nowrap",
+              }}>
+                {u.name?.split(" ")[0]}
+              </div>
+            </div>
+
+            {/* 점수 */}
+            <div style={{width:38,textAlign:"right",fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF",flexShrink:0}}>
+              {u.total}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
   const [groupTime, setGroupTime] = useState(null);
@@ -1120,7 +1307,7 @@ export default function Main(){
   const [userData,setUserData]=useState(null);
   const [users,setUsers]=useState({});
   const [tournament,setTournament]=useState(null);
-  const [tab,setTab]=useState("picks");
+  const [tab,setTab]=useState("dashboard");
   const [showAdmin,setShowAdmin]=useState(false);
   const [lang,setLang]=useState("en");
   const [toast,setToast]=useState(null);
@@ -1180,6 +1367,7 @@ export default function Main(){
   const myScore=calcScore({groupPicks:me.groupPicks||{},bracketPicks:me.bracketPicks||{}},tournament);
   const phase=tournament.phase||"group";
   const tabs=[
+    {id:"dashboard",label:lang==="ko"?"홈":lang==="es"?"INICIO":"HOME"},
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
@@ -1213,6 +1401,7 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
+        {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="picks"&&phase==="group"&&(
           <div>
             <PrizeDashboard users={users} lang={lang}/>
