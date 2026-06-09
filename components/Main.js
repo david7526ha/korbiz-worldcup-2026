@@ -637,10 +637,7 @@ function Dashboard({users, tournament, currentUid, lang}){
           <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
             {recentResults.map(([grp, teams])=>{
               // 해당 조의 팀들 찾기 (GROUPS에서)
-              const grpTeams = GROUPS[grp] ? GROUPS[grp].teams : [];
-              // 조별 하이라이트 검색 쿼리
-              const query = encodeURIComponent("FIFA World Cup 2026 Group "+grp+" highlights");
-              const ytUrl = "https://www.youtube.com/results?search_query="+query;
+              const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights";
 
               return(
                 <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:130}}>
