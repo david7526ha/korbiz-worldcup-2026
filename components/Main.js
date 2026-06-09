@@ -701,8 +701,89 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   );
 }
 
+
+// ─── PICKS MODAL ──────────────────────────────────────────────────────────────
+function PicksModal({user, tournament, lang, onClose}){
+  const gr = tournament.groupResults||{};
+  const picks = user.groupPicks||{};
+  const totalPicked = Object.values(picks).reduce((a,b)=>a+b.length,0);
+  const correct = Object.entries(picks).reduce((acc,[grp,teams])=>{
+    return acc + teams.filter(t=>(gr[grp]||[]).includes(t)).length;
+  }, 0);
+  const hasResults = Object.keys(gr).length > 0;
+
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:998,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)",padding:16}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.12)",borderRadius:18,padding:"20px 18px",maxWidth:560,width:"100%",maxHeight:"85vh",overflowY:"auto"}}>
+        {/* 헤더 */}
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <Avatar name={user.name} photoURL={user.photoURL} size={40}/>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#fff",lineHeight:1}}>{user.name}</div>
+            <div style={{fontSize:11,color:"#5A7090",marginTop:2}}>{user.email}</div>
+          </div>
+          <div style={{textAlign:"center",background:"rgba(212,168,67,.1)",border:"1px solid rgba(212,168,67,.25)",borderRadius:8,padding:"4px 12px"}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843",lineHeight:1}}>{user.totalScore||0}</div>
+            <div style={{fontSize:9,color:"#5A7090"}}>{lang==="ko"?"점":lang==="es"?"PTS":"PTS"}</div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5A7090",fontSize:20,cursor:"pointer",padding:"0 4px"}}>✕</button>
+        </div>
+
+        {/* 픽 요약 */}
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          <div style={{background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#9CA3AF"}}>
+            {lang==="ko"?"선택팀":lang==="es"?"Equipos":"Picked"}: <span style={{color:"#D4A843",fontWeight:700}}>{totalPicked}/32</span>
+          </div>
+          {hasResults&&<div style={{background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#22C55E"}}>
+            {lang==="ko"?"정답":lang==="es"?"Correctos":"Correct"}: <span style={{fontWeight:700}}>{correct}</span> (+{correct*3} {lang==="ko"?"점":"pts"})
+          </div>}
+        </div>
+
+        {/* 조별 픽 그리드 */}
+        {totalPicked===0 ? (
+          <div style={{textAlign:"center",color:"#5A7090",padding:"40px 0",fontSize:14}}>
+            {lang==="ko"?"아직 픽하지 않았습니다":lang==="es"?"Aún no ha hecho picks":"No picks submitted yet"}
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
+            {Object.entries(GROUPS).map(([grp,{teams,flags}])=>{
+              const myPicks = picks[grp]||[];
+              if(myPicks.length===0) return null;
+              const adv = gr[grp]||[];
+              const hasRes = adv.length>0;
+              return(
+                <div key={grp} style={{background:"#111E2E",borderRadius:11,padding:12,border:"1px solid rgba(255,255,255,.07)"}}>
+                  <div style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843",letterSpacing:".12em",marginBottom:8}}>
+                    {lang==="ko"?"조":lang==="es"?"GRUPO":"GROUP"} {grp}
+                  </div>
+                  {myPicks.map(team=>{
+                    const i = teams.indexOf(team);
+                    const flag = i>=0 ? flags[i] : "🏳";
+                    const correct = hasRes && adv.includes(team);
+                    const wrong = hasRes && !adv.includes(team);
+                    return(
+                      <div key={team} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 8px",borderRadius:7,marginBottom:3,background:correct?"rgba(34,197,94,.1)":wrong?"rgba(239,68,68,.08)":"rgba(255,255,255,.04)",border:`1px solid ${correct?"rgba(34,197,94,.3)":wrong?"rgba(239,68,68,.25)":"rgba(255,255,255,.08)"}`}}>
+                        <span style={{fontSize:14}}>{flag}</span>
+                        <span style={{flex:1,fontSize:12,color:correct?"#22C55E":wrong?"#EF4444":"#E0E8F0"}}>{tn(team,lang)}</span>
+                        {correct&&<span style={{fontSize:11}}>✅ +3</span>}
+                        {wrong&&<span style={{fontSize:11}}>❌</span>}
+                        {!hasRes&&<span style={{fontSize:10,color:"#5A7090"}}>✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── LEADERBOARD ─────────────────────────────────────────────────────────────
 function Leaderboard({users,currentUid,tournament,t,lang}){
+  const [selectedUser,setSelectedUser]=useState(null);
   const ranked=Object.values(users).map(u=>({...u,...calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}},tournament)})).sort((a,b)=>b.total-a.total).filter(u=>u.approved);
   const paid=ranked.filter(u=>u.paid).length;
   const medals=["🥇","🥈","🥉"];
@@ -717,7 +798,7 @@ function Leaderboard({users,currentUid,tournament,t,lang}){
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {ranked.map((u,i)=>(
-          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 13px",borderRadius:10,background:u.uid===currentUid?"rgba(212,168,67,.09)":"#0C1620",border:`1px solid ${u.uid===currentUid?"rgba(212,168,67,.27)":"rgba(255,255,255,.07)"}`}}>
+          <div key={u.uid} onClick={()=>setSelectedUser({...u,totalScore:u.total})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 13px",borderRadius:10,background:u.uid===currentUid?"rgba(212,168,67,.09)":"#0C1620",border:`1px solid ${u.uid===currentUid?"rgba(212,168,67,.27)":"rgba(255,255,255,.07)"}`,cursor:"pointer",transition:"background .15s"}} onMouseEnter={e=>{if(u.uid!==currentUid)e.currentTarget.style.background="#111E2E"}} onMouseLeave={e=>{if(u.uid!==currentUid)e.currentTarget.style.background="#0C1620"}}>
             <div style={{width:26,textAlign:"center",fontSize:i<3?19:12,color:"#5A7090"}}>{i<3?medals[i]:`#${i+1}`}</div>
             <Avatar name={u.name} photoURL={u.photoURL} size={34}/>
             <div style={{flex:1,minWidth:0}}>
