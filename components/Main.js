@@ -93,20 +93,6 @@ const TEAM_NAMES = {
     "Portugal":"Portugal","Congo DR":"Congo R.D.","Uzbekistan":"Uzbekistán","Colombia":"Colombia",
     "England":"Inglaterra","Croatia":"Croacia","Ghana":"Ghana","Panama":"Panamá",
   },
-  mn: {
-    "Mexico":"Мексик","South Africa":"Өмнөд Африк","South Korea":"Өмнөд Солонгос","Czechia":"Чех",
-    "Canada":"Канад","Bosnia-Herzegovina":"Босни-Герцеговин","Qatar":"Катар","Switzerland":"Швейцарь",
-    "Brazil":"Бразил","Morocco":"Марокко","Haiti":"Гаити","Scotland":"Шотланд",
-    "United States":"АНУ","Paraguay":"Парагвай","Australia":"Австрали","Türkiye":"Турк",
-    "Germany":"Герман","Curaçao":"Куракао","Ivory Coast":"Слоны Эргийн Эрэг","Ecuador":"Эквадор",
-    "Netherlands":"Нидерланд","Japan":"Япон","Sweden":"Швед","Tunisia":"Тунис",
-    "Belgium":"Бельги","Egypt":"Египет","Iran":"Иран","New Zealand":"Шинэ Зеланд",
-    "Spain":"Испани","Cape Verde":"Кабо-Верде","Saudi Arabia":"Саудын Арабын","Uruguay":"Уругвай",
-    "France":"Франц","Senegal":"Сенегал","Iraq":"Ирак","Norway":"Норвег",
-    "Argentina":"Аргентин","Algeria":"Алжир","Austria":"Австри","Jordan":"Иордан",
-    "Portugal":"Португал","Congo DR":"Конго","Uzbekistan":"Узбекистан","Colombia":"Колумби",
-    "England":"Англи","Croatia":"Хорват","Ghana":"Гана","Panama":"Панама",
-  },
   ko: {
     "Mexico":"멕시코","South Africa":"남아프리카공화국","South Korea":"대한민국","Czechia":"체코",
     "Canada":"캐나다","Bosnia-Herzegovina":"보스니아 헤르체고비나","Qatar":"카타르","Switzerland":"스위스",
@@ -252,55 +238,6 @@ const T = {
     advanced:"clasificó",match:"Partido",
     you:"tú",
   },
-  mn:{
-    title:"ДЭЛХИЙН ЦОМ 2026",subtitle:"BRACKET ТОГЛООМ",org:"KORBIZ ДОТООД",
-    loginBtn:"GOOGLE-ЭЭР НЭВТРЭХ",signOut:"Гарах",
-    groupPicks:"БҮЛЭГ",bracket:"BRACKET",standings:"БАЙДАЛ",howToPlay:"ХЭРХЭН ТОГЛОХ",
-    savePicks:"ХАДГАЛАХ",saving:"Хадгалж байна...",
-    pts:"ОНО",paid:"ТӨЛСӨН",unpaid:"ТӨЛӨӨГҮЙ",admin:"АДМИН",
-    groupStage:"БҮЛГИЙН ШАТ",knockout:"KNOCKOUT",prizePool:"ШАГНАЛЫН САН",
-    awaiting:"ЗӨВШӨӨРЛИЙГ ХҮЛЭЭЖ БАЙНА",
-    awaitingMsg:"Бүртгэл хүлээн авлаа. Dave $30 авсны дараа хандалт нээнэ.",
-    bracketWait:"BRACKET БҮЛГИЙН ШАТ ДУУСМАГЦ НЭЭГДЭНЭ",
-    bracketWaitSub:"32 тэмцэгч бүлгийн шат дуусмагц жагсаагдана",
-    entryFee:"ХУРААМЖ",teams:"БАГ",matches:"ТОГЛОЛТ",prizes:"ШАГНАЛ",
-    entryPrizes:"ХУРААМЖ & ШАГНАЛ",
-    entryDesc:"Хураамж: Dave Ha-д $30 бэлнээр. Төлсний дараа Dave хандалт нээнэ.",
-    prizeDesc:"Шагнал: 1-р 50% · 2-р 30% · 3-р 20%",
-    phase1Title:"1-Р ҮЕ ШАТ — БҮЛЭГ",
-    phase1Desc:"Бүлэг тус бүрээс 3 хүртэлх баг сонго. Зөв баг тутамд +3 оноо.",
-    phase1Max:"Дээд: 12×3×3 = 108 оноо",
-    phase1Note:"2026 формат: 48 баг · 12 бүлэг · Дээд 2 + 8 шилдэг 3-р = 32 дэвшинэ",
-    phase2Title:"2-Р ҮЕ ШАТ — BRACKET",
-    phase2Desc:"March Madness загвар — тоглолт бүрийн ялагчийг сонго. Шат ахих тусам оноо нэмэгдэнэ.",
-    phase2Max:"Дээд 2-р үе: 330 оноо",
-    keyDates:"ГОЛ ОГНООНУУД",
-    groupLock:"Сонголт хаагдах: 2026.06.12",
-    bracketLock:"Bracket хаагдах: 2026.06.27 шөнө дунд ET",
-    finalDate:"Финал: 2026.07.19 — MetLife Stadium",
-    phase1Header:"1-Р ҮЕ ШАТ — БҮЛГИЙН СОНГОЛТ",
-    phase1Sub:"Бүлэг тус бүрээс 3 хүртэлх баг сонго",
-    perCorrect:"Зөв баг тутамд +3 оноо",
-    lockedMsg:"Бүлгийн шат эхэлсэн — сонголт хаагдсан",
-    phase2Header:"2-Р ҮЕ ШАТ — KNOCKOUT BRACKET",
-    phase2Sub:"Ялагчийг сонгохын тулд багаа дарна уу",
-    pointSystem:"ОНОО ТООЦООЛОЛ",
-    group:"Бүлэг",
-    adminTitle:"АДМИН САМБАР",
-    approvals:"ЗӨВШӨӨРӨЛ",payments:"ТӨЛБӨР",phase:"ҮЕ ШАТ",
-    group_tab:"БҮЛГИЙН ДҮН",teams_tab:"BRACKET БАГ",bracket_tab:"BRACKET ДҮН",
-    pendingUsers:"ХҮЛЭЭГДЭЖ БУЙ",approvedUsers:"ЗӨВШӨӨРСӨН",
-    approveBtn:"✓ ЗӨВШӨӨРӨХ + ТӨЛСӨН",revokeBtn:"Цуцлах",
-    markPaid:"Төлсөн гэж тэмдэглэх",unmarkPaid:"Цуцлах",
-    lockGroup:"🔒 Бүлгийн Сонголт Хаах",lockBracket:"🔒 Bracket Сонголт Хаах",
-    saveAll:"БҮГДИЙГ ХАДГАЛАХ",cancel:"Болих",
-    noRegistrations:"Бүртгэл байхгүй",noApproved:"Зөвшөөрсөн хэрэглэгч байхгүй",
-    approveDesc:"$30 авсны дараа оролцогчдыг зөвшөөр.",
-    bracketTeamDesc:"32 тэмцэгчийг bracket-ийн дарааллаар оруул.",
-    bracketResultDesc:"Тоглолт бүрийн бодит ялагчийг дарж оруул.",
-    advanced:"дэвшсэн",match:"Тоглолт",
-    you:"та",
-  },
   ko:{
     title:"2026 월드컵",subtitle:"브래킷 챌린지",org:"KORBIZ 내부",
     loginBtn:"구글로 로그인",signOut:"로그아웃",
@@ -380,6 +317,46 @@ function Avatar({name,photoURL,size=36}){
 }
 
 
+
+// ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
+function PrizeDashboard({users, lang}){
+  const approved = Object.values(users).filter(u=>u.approved&&u.paid);
+  const pool = approved.length * 30;
+  const prizes = [
+    {place:"🥇", label:{en:"1st Place",es:"1er Lugar",ko:"1위"}, pct:50, color:"#D4A843"},
+    {place:"🥈", label:{en:"2nd Place",es:"2do Lugar",ko:"2위"}, pct:30, color:"#9CA3AF"},
+    {place:"🥉", label:{en:"3rd Place",es:"3er Lugar",ko:"3위"}, pct:20, color:"#CD7C2F"},
+  ];
+  return(
+    <div style={{background:"linear-gradient(135deg,rgba(212,168,67,.1),rgba(212,168,67,.04))",border:"1px solid rgba(212,168,67,.3)",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:10,color:"#5A7090",letterSpacing:".18em",marginBottom:1}}>
+            {lang==="ko"?"총 상금 풀":lang==="es"?"PREMIO TOTAL":"PRIZE POOL"}
+          </div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:40,color:"#D4A843",lineHeight:1}}>${pool}</div>
+          <div style={{fontSize:11,color:"#5A7090",marginTop:1}}>
+            {approved.length} {lang==="ko"?"명 납부 × $30":lang==="es"?"pagados × $30":"paid × $30"}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {prizes.map(({place,label,pct,color})=>(
+            <div key={pct} style={{textAlign:"center",background:"rgba(0,0,0,.25)",borderRadius:10,padding:"10px 14px",minWidth:76,border:`1px solid ${color}44`}}>
+              <div style={{fontSize:20,marginBottom:3}}>{place}</div>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color,lineHeight:1}}>${Math.floor(pool*pct/100)}</div>
+              <div style={{fontSize:10,color:"#5A7090",marginTop:1}}>{pct}%</div>
+              <div style={{fontSize:10,color:"#9CA3AF"}}>{label[lang]||label.en}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {pool===0&&<div style={{fontSize:11,color:"#5A7090",textAlign:"center",marginTop:8}}>
+        {lang==="ko"?"참가비 납부 후 상금 풀이 업데이트됩니다":lang==="es"?"El premio se actualizará con los pagos":"Updates as participants pay entry fee"}
+      </div>}
+    </div>
+  );
+}
+
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
   const [groupTime, setGroupTime] = useState(null);
@@ -411,10 +388,7 @@ function CountdownBanner({ lang, phase, uid }) {
 
   const NOTIF_LABELS = {
     en: { allow: "🔔 Get Reminders", enabled: "🔔 Reminders On", loading: "Setting up..." },
-    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." },
-    mn: { allow: "🔔 Мэдэгдэл", enabled: "🔔 Идэвхтэй", loading: "Тохируулж байна..." },
-    ko: { allow: "🔔 알림 받기", enabled: "🔔 알림 켜짐", loading: "설정 중..." },
-  };
+    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." };
   const nl = NOTIF_LABELS[lang] || NOTIF_LABELS.en;
 
   // 표시할 마감: 조별 안 지났으면 조별, 지났으면 브래킷
@@ -462,7 +436,7 @@ function CountdownBanner({ lang, phase, uid }) {
 }
 
 function LangSwitcher({lang,setLang}){
-  return <div style={{display:"flex",gap:4}}>{[["en","EN"],["es","ES"],["mn","MN"],["ko","KO"]].map(([k,l])=><button key={k} onClick={()=>setLang(k)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${lang===k?"#D4A843":"rgba(255,255,255,.14)"}`,background:lang===k?"rgba(212,168,67,.15)":"transparent",color:lang===k?"#D4A843":"#6b7280",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}</div>;
+  return <div style={{display:"flex",gap:4}}>{[["en","EN"],["es","ES"],["ko","KO"]].map(([k,l])=><button key={k} onClick={()=>setLang(k)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${lang===k?"#D4A843":"rgba(255,255,255,.14)"}`,background:lang===k?"rgba(212,168,67,.15)":"transparent",color:lang===k?"#D4A843":"#6b7280",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}</div>;
 }
 
 // ─── HOW TO PLAY ───────────────────────────────────────────────────────────────
@@ -1031,8 +1005,8 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
-        {tab==="picks"&&phase==="group"&&<GroupPicks uid={firebaseUser.uid} myPicks={me.groupPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>}
-        {tab==="picks"&&phase==="bracket"&&<BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>}
+        {tab==="picks"&&phase==="group"&&<><PrizeDashboard users={users} lang={lang}/><GroupPicks uid={firebaseUser.uid} myPicks={me.groupPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/></>
+        {tab==="picks"&&phase==="bracket"&&<><PrizeDashboard users={users} lang={lang}/><BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/></>
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
