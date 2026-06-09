@@ -849,7 +849,8 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
 function PicksModal({user, tournament, lang, onClose}){
   const gr = tournament.groupResults||{};
   const picks = user.groupPicks||{};
-  const totalPicked = Object.values(picks).reduce((a,b)=>a+b.length,0);
+  const totalPickedRaw = Object.values(picks).reduce((a,b)=>a+b.length,0);
+  const totalPicked = Math.min(totalPickedRaw, 32);
   const correct = Object.entries(picks).reduce((acc,[grp,teams])=>{
     return acc + teams.filter(t=>(gr[grp]||[]).includes(t)).length;
   }, 0);
@@ -876,6 +877,7 @@ function PicksModal({user, tournament, lang, onClose}){
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
           <div style={{background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#9CA3AF"}}>
             {lang==="ko"?"선택팀":lang==="es"?"Equipos":"Picked"}: <span style={{color:"#D4A843",fontWeight:700}}>{totalPicked}/32</span>
+              {totalPickedRaw>32&&<span style={{fontSize:10,color:"#5A7090",marginLeft:4}}>(이전 데이터)</span>}
           </div>
           {hasResults&&<div style={{background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#22C55E"}}>
             {lang==="ko"?"정답":lang==="es"?"Correctos":"Correct"}: <span style={{fontWeight:700}}>{correct}</span> (+{correct*3} {lang==="ko"?"점":"pts"})
