@@ -322,37 +322,37 @@ function Avatar({name,photoURL,size=36}){
 function PrizeDashboard({users, lang}){
   const approved = Object.values(users).filter(u=>u.approved&&u.paid);
   const pool = approved.length * 30;
-  const prizes = [
-    {place:"🥇", label:{en:"1st Place",es:"1er Lugar",ko:"1위"}, pct:50, color:"#D4A843"},
-    {place:"🥈", label:{en:"2nd Place",es:"2do Lugar",ko:"2위"}, pct:30, color:"#9CA3AF"},
-    {place:"🥉", label:{en:"3rd Place",es:"3er Lugar",ko:"3위"}, pct:20, color:"#CD7C2F"},
+  const p1 = Math.floor(pool*0.5);
+  const p2 = Math.floor(pool*0.3);
+  const p3 = Math.floor(pool*0.2);
+  const label = lang==="ko" ? "총 상금 풀" : lang==="es" ? "PREMIO TOTAL" : "PRIZE POOL";
+  const sub = lang==="ko" ? "명 납부 × $30" : lang==="es" ? "pagados × $30" : "paid × $30";
+  const empty = lang==="ko" ? "참가비 납부 후 업데이트됩니다" : lang==="es" ? "Se actualiza con los pagos" : "Updates as participants pay";
+  const places = [
+    {icon:"🥇", lbl: lang==="ko"?"1위":lang==="es"?"1er":"1st", amt:p1, pct:"50%", color:"#D4A843"},
+    {icon:"🥈", lbl: lang==="ko"?"2위":lang==="es"?"2do":"2nd", amt:p2, pct:"30%", color:"#9CA3AF"},
+    {icon:"🥉", lbl: lang==="ko"?"3위":lang==="es"?"3ro":"3rd", amt:p3, pct:"20%", color:"#CD7C2F"},
   ];
   return(
     <div style={{background:"linear-gradient(135deg,rgba(212,168,67,.1),rgba(212,168,67,.04))",border:"1px solid rgba(212,168,67,.3)",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:10,color:"#5A7090",letterSpacing:".18em",marginBottom:1}}>
-            {lang==="ko"?"총 상금 풀":lang==="es"?"PREMIO TOTAL":"PRIZE POOL"}
-          </div>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:40,color:"#D4A843",lineHeight:1}}>${pool}</div>
-          <div style={{fontSize:11,color:"#5A7090",marginTop:1}}>
-            {approved.length} {lang==="ko"?"명 납부 × $30":lang==="es"?"pagados × $30":"paid × $30"}
-          </div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:10,color:"#5A7090",letterSpacing:".18em",marginBottom:1}}>{label}</div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:40,color:"#D4A843",lineHeight:1}}>{"$"+pool}</div>
+          <div style={{fontSize:11,color:"#5A7090",marginTop:1}}>{approved.length} {sub}</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {prizes.map(({place,label,pct,color})=>(
-            <div key={pct} style={{textAlign:"center",background:"rgba(0,0,0,.25)",borderRadius:10,padding:"10px 14px",minWidth:76,border:`1px solid ${color}44`}}>
-              <div style={{fontSize:20,marginBottom:3}}>{place}</div>
-              <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color,lineHeight:1}}>${Math.floor(pool*pct/100)}</div>
-              <div style={{fontSize:10,color:"#5A7090",marginTop:1}}>{pct}%</div>
-              <div style={{fontSize:10,color:"#9CA3AF"}}>{label[lang]||label.en}</div>
+          {places.map(({icon,lbl,amt,pct,color})=>(
+            <div key={lbl} style={{textAlign:"center",background:"rgba(0,0,0,.25)",borderRadius:10,padding:"10px 14px",minWidth:76,border:"1px solid "+color+"44"}}>
+              <div style={{fontSize:20,marginBottom:3}}>{icon}</div>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color,lineHeight:1}}>{"$"+amt}</div>
+              <div style={{fontSize:10,color:"#5A7090",marginTop:1}}>{pct}</div>
+              <div style={{fontSize:10,color:"#9CA3AF"}}>{lbl}</div>
             </div>
           ))}
         </div>
       </div>
-      {pool===0&&<div style={{fontSize:11,color:"#5A7090",textAlign:"center",marginTop:8}}>
-        {lang==="ko"?"참가비 납부 후 상금 풀이 업데이트됩니다":lang==="es"?"El premio se actualizará con los pagos":"Updates as participants pay entry fee"}
-      </div>}
+      {pool===0&&<div style={{fontSize:11,color:"#5A7090",textAlign:"center",marginTop:8}}>{empty}</div>}
     </div>
   );
 }
@@ -388,7 +388,9 @@ function CountdownBanner({ lang, phase, uid }) {
 
   const NOTIF_LABELS = {
     en: { allow: "🔔 Get Reminders", enabled: "🔔 Reminders On", loading: "Setting up..." },
-    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." };
+    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." },
+    ko: { allow: "🔔 알림 받기", enabled: "🔔 알림 켜짐", loading: "설정 중..." },
+  };
   const nl = NOTIF_LABELS[lang] || NOTIF_LABELS.en;
 
   // 표시할 마감: 조별 안 지났으면 조별, 지났으면 브래킷
