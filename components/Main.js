@@ -1449,12 +1449,41 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
               </div>
             </>)}
             {approved.length>0&&(<>
+              {/* 픽 미완료 경고 */}
+              {!tournament.groupLocked&&(()=>{
+                const noPick=approved.filter(u=>Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)===0);
+                if(noPick.length===0)return null;
+                return(
+                  <div style={{background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.3)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                    <div style={{fontSize:11,color:"#F59E0B",fontWeight:700,marginBottom:6}}>⚠️ 픽 미완료 {noPick.length}명</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                      {noPick.map(u=>(
+                        <div key={u.uid} style={{display:"flex",alignItems:"center",gap:4,background:"rgba(245,158,11,.12)",borderRadius:20,padding:"2px 8px"}}>
+                          <Avatar name={u.name} photoURL={u.photoURL} size={16}/>
+                          <span style={{fontSize:11,color:"#fbbf24"}}>{u.name?.split(" ")[0]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{fontFamily:"'Teko',sans-serif",color:"#22C55E",fontSize:12,marginBottom:6}}>✓ {t.approvedUsers} ({approved.length})</div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {approved.map(u=>(
+                {approved.map(u=>{
+                  const pickTotal=Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0);
+                  return(
                   <div key={u.uid} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.14)"}}>
                     <Avatar name={u.name} photoURL={u.photoURL} size={28}/>
-                    <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{u.name}</div><div style={{fontSize:10,color:"#5A7090"}}>{u.email}</div></div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{u.name}</div>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:1}}>
+                        <span style={{fontSize:10,color:"#5A7090"}}>{u.email}</span>
+                        {!tournament.groupLocked&&(pickTotal>0
+                          ?<span style={{fontSize:10,color:"#22C55E"}}>✓ {pickTotal}/32</span>
+                          :<span style={{fontSize:10,color:"#F59E0B"}}>⚠️ 픽 없음</span>
+                        )}
+                      </div>
+                    </div>
                     <button onClick={async()=>{await setApproved(u.uid,false);showToast(`${u.name} revoked`);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid rgba(239,68,68,.3)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>{t.revokeBtn}</button>
                   </div>
                 ))}
