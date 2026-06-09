@@ -1627,6 +1627,22 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
     </div>
   )}
   </div>
+  {confirmSave&&(
+    <div onClick={()=>setConfirmSave(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#111E2E",border:"1px solid rgba(255,255,255,.15)",borderRadius:16,padding:"24px",maxWidth:340,width:"100%"}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#fff",marginBottom:8}}>결과 저장 확인</div>
+        <div style={{fontSize:13,color:"#9CA3AF",lineHeight:1.6,marginBottom:20}}>
+          입력한 결과를 저장하면 <span style={{color:"#D4A843",fontWeight:600}}>즉시 점수가 반영</span>됩니다. 계속할까요?
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={()=>setConfirmSave(false)} style={{padding:"7px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"transparent",color:"#9CA3AF",fontSize:12,cursor:"pointer"}}>취소</button>
+          <button onClick={save} disabled={saving} style={{padding:"7px 18px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {saving?"저장 중...":"✓ 저장하기"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
   );
 }
 
