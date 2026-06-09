@@ -320,6 +320,31 @@ function Avatar({name,photoURL,size=36}){
 
 
 
+
+// ─── SAVE BUTTON ──────────────────────────────────────────────────────────────
+function SaveButton({saving, saved, dirty, total, t, onClick, onEdit}){
+  const baseStyle = {fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",padding:"8px 18px",borderRadius:9,border:"none",transition:"all .2s"};
+
+  if(saving) return(
+    <button disabled style={{...baseStyle,background:"rgba(212,168,67,.4)",color:"#555",cursor:"not-allowed"}}>
+      ⏳ 저장 중...
+    </button>
+  );
+
+  if(saved && !dirty) return(
+    <button onClick={onEdit} style={{...baseStyle,background:"rgba(34,197,94,.15)",border:"2px solid #22C55E",color:"#22C55E",display:"flex",alignItems:"center",gap:6}}>
+      ✓ SAVED <span style={{fontSize:11,opacity:.7}}>({total}/32)</span>
+    </button>
+  );
+
+  const isUpdate = saved && dirty;
+  return(
+    <button onClick={onClick} style={{...baseStyle,background:"linear-gradient(135deg,#D4A843,#8B6914)",border:isUpdate?"2px solid #fff":"2px solid transparent",color:"#000",animation:isUpdate?"savePulse 1.5s infinite":"none"}}>
+      {isUpdate ? "UPDATE PICKS" : t.savePicks} ({total}/32)
+    </button>
+  );
+}
+
 // ─── RESILIENCE UTILS ─────────────────────────────────────────────────────────
 const LS_KEY=(uid)=>"korbiz_picks_"+uid;
 function savePicsLocally(uid,picks){try{localStorage.setItem(LS_KEY(uid),JSON.stringify({picks,ts:Date.now()}));}catch(e){}}
@@ -789,15 +814,14 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
             <span style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:total>=32?"#EF4444":"#D4A843"}}>{total}/32</span>
             <span style={{color:"#5A7090",fontSize:13}}>· {t.perCorrect}</span>
             {saved&&!dirty&&<span style={{fontSize:11,color:"#22C55E"}}>✓ 저장됨</span>}
-            {dirty&&total>0&&<span style={{fontSize:11,color:"#F59E0B",animation:"pulse 1s infinite"}}>● 미저장 변경사항</span>}
+            {dirty&&total>0&&<span style={{fontSize:11,color:"#F59E0B",animation:"savePulse 1s infinite"}}>● 미저장 변경사항</span>}
           </div>
         </div>
-        {!locked&&(()=>{
-          if(saving) return <button disabled style={{padding:"8px 18px",borderRadius:9,border:"none",background:"rgba(212,168,67,.4)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"not-allowed"}}>저장 중...</button>;
-          if(saved&&!dirty) return <button onClick={()=>{setDirty(true);}} style={{padding:"8px 18px",borderRadius:9,border:"2px solid #22C55E",background:"rgba(34,197,94,.15)",color:"#22C55E",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>✓ {t.savePicks} <span style={{fontSize:11,opacity:.8}}>({total}/32)</span></button>;
-          if(dirty||(!saved&&total>0)) return <button onClick={handleSave} style={{padding:"8px 18px",borderRadius:9,border:"2px solid #D4A843",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",animation:"pulse 1.5s infinite"}}>{saved?"UPDATE PICKS":"SAVE PICKS"} ({total}/32)</button>;
-          return <button onClick={handleSave} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"rgba(212,168,67,.3)",color:"#9CA3AF",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer"}}>{t.savePicks} ({total}/32)</button>;
-        })()}
+        {!locked&&<SaveButton
+            saving={saving} saved={saved} dirty={dirty}
+            total={total} t={t}
+            onClick={handleSave} onEdit={()=>{setDirty(true);setSaved(false);}}
+          />}
       </div>
       {locked&&<div style={{background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:9,padding:"9px 14px",marginBottom:14,color:"#60a5fa",fontSize:13}}>🔒 {t.lockedMsg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
@@ -1315,7 +1339,7 @@ export default function Main(){
         </div>
       </div>
 
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}`}</style>
+      <style>{`@keyframes savePulse{0%,100%{opacity:1}50%{opacity:.75}}`}</style>
       <OfflineBanner lang={lang}/>
       {connError&&<div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600}}>⚠️ 서버 연결 오류 - 새로고침을 시도하세요</div>}
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
