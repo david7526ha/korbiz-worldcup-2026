@@ -322,6 +322,101 @@ function Avatar({name,photoURL,size=36}){
 
 
 
+
+// ─── LIVE CHAT ────────────────────────────────────────────────────────────────
+function LiveChat({currentUser, lang}){
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(()=>{
+    const q = query(collection(db,"chat"), orderBy("ts","asc"), limit(60));
+    const unsub = onSnapshot(q, snap=>{
+      setMessages(snap.docs.map(d=>({id:d.id,...d.data()})));
+    });
+    return unsub;
+  },[]);
+
+  useEffect(()=>{
+    if(bottomRef.current) bottomRef.current.scrollIntoView({behavior:"smooth"});
+  },[messages]);
+
+  const send = async() => {
+    if(!input.trim()||sending) return;
+    setSending(true);
+    try {
+      await addDoc(collection(db,"chat"),{
+        uid: currentUser.uid,
+        name: (currentUser.displayName||"?").split(" ")[0],
+        photo: currentUser.photoURL||null,
+        text: input.trim().slice(0,200),
+        ts: serverTimestamp(),
+      });
+      setInput("");
+    } catch(e){}
+    setSending(false);
+  };
+
+  const handleKey = (e) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } };
+
+  const fmtTime = (ts) => {
+    if(!ts) return "";
+    try {
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"})+" ET";
+    } catch(e){ return ""; }
+  };
+
+  const lbl = lang==="ko"?"라이브 채팅":lang==="es"?"CHAT EN VIVO":"LIVE CHAT";
+  const ph = lang==="ko"?"메시지 입력... (Enter)":"Type a message... (Enter)";
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden",marginTop:12}}>
+      <div style={{padding:"10px 16px",borderBottom:"0.5px solid rgba(255,255,255,.07)",display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:7,height:7,borderRadius:"50%",background:"#22C55E",flexShrink:0}}/>
+        <span style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>{lbl}</span>
+        <span style={{fontSize:11,color:"#5A7090",marginLeft:"auto"}}>{messages.length} msg</span>
+      </div>
+      <div style={{height:200,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
+        {messages.length===0&&(
+          <div style={{textAlign:"center",color:"#5A7090",fontSize:12,marginTop:56}}>
+            {lang==="ko"?"첫 메시지를 남겨보세요 🎉":"Be the first to say something 🎉"}
+          </div>
+        )}
+        {messages.map(m=>{
+          const isMe = m.uid===currentUser.uid;
+          return(
+            <div key={m.id} style={{display:"flex",gap:7,alignItems:"flex-start",flexDirection:isMe?"row-reverse":"row"}}>
+              <div style={{width:24,height:24,borderRadius:"50%",flexShrink:0,overflow:"hidden",background:"#1a2840",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF"}}>
+                {m.photo
+                  ? <img src={m.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={function(e){e.target.style.display="none";}}/>
+                  : (m.name||"?")[0]}
+              </div>
+              <div style={{maxWidth:"70%"}}>
+                {!isMe&&<div style={{fontSize:10,color:"#5A7090",marginBottom:2}}>{m.name}</div>}
+                <div style={{background:isMe?"rgba(212,168,67,.15)":"rgba(255,255,255,.06)",border:isMe?"1px solid rgba(212,168,67,.3)":"0.5px solid rgba(255,255,255,.08)",borderRadius:isMe?"12px 4px 12px 12px":"4px 12px 12px 12px",padding:"6px 10px",fontSize:12,color:"#E0E8F0",wordBreak:"break-word",lineHeight:1.4}}>
+                  {m.text}
+                </div>
+                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.ts)}</div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef}/>
+      </div>
+      <div style={{padding:"8px 12px",borderTop:"0.5px solid rgba(255,255,255,.07)",display:"flex",gap:8,alignItems:"center"}}>
+        <input value={input} onChange={function(e){setInput(e.target.value);}} onKeyDown={handleKey} placeholder={ph} maxLength={200}
+          style={{flex:1,background:"rgba(255,255,255,.06)",border:"0.5px solid rgba(255,255,255,.1)",borderRadius:20,padding:"7px 14px",fontSize:12,color:"#E0E8F0",outline:"none"}}/>
+        <button onClick={send} disabled={!input.trim()||sending}
+          style={{background:input.trim()?"rgba(212,168,67,.9)":"rgba(255,255,255,.08)",border:"none",borderRadius:"50%",width:32,height:32,cursor:input.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill={input.trim()?"#000":"#5A7090"}><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
 function PrizeDashboard({users, lang}){
   const approved = Object.values(users).filter(u=>u.approved&&u.paid);
