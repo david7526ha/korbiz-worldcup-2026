@@ -617,48 +617,35 @@ function Dashboard({users, tournament, currentUid, lang}){
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang}/>
 
-      {/* 최근 결과 + YouTube 하이라이트 */}
+      {/* 최근 결과 */}
       {recentResults.length > 0 && (
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
-              {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
-            </div>
-            <a
-              href="https://www.youtube.com/@FIFAWorldCup/videos"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.08)"}}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-              FIFA Official
-            </a>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+            {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
           </div>
           <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-            {recentResults.map(([grp, teams])=>{
-              // 해당 조의 팀들 찾기 (GROUPS에서)
-              const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights";
-
-              return(
-                <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:130}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <div style={{fontSize:10,color:"#5A7090",letterSpacing:".08em"}}>GROUP {grp}</div>
-                    <a
-                      href={ytUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 6px",borderRadius:10,background:"rgba(248,113,113,.1)"}}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-                      HL
-                    </a>
-                  </div>
-                  {(teams||[]).map(team=>(
-                    <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
-                  ))}
+            {recentResults.map(([grp, teams])=>(
+              <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:130}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:10,color:"#5A7090",letterSpacing:".08em"}}>GROUP {grp}</div>
+                  <a href={"https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights"} target="_blank" rel="noopener noreferrer"
+                    style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 7px",borderRadius:10,background:"rgba(248,113,113,.1)"}}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                    HL
+                  </a>
                 </div>
-              );
-            })}
+                {(teams||[]).map(team=>(
+                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:10,textAlign:"right"}}>
+            <a href="https://www.youtube.com/@FIFAWorldCup/videos" target="_blank" rel="noopener noreferrer"
+              style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)"}}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+              FIFA Official Channel
+            </a>
           </div>
         </div>
       )}
@@ -1446,60 +1433,15 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
               </div>
             </>)}
             {approved.length>0&&(<>
-              {/* 픽 미완료 경고 */}
-              {!tournament.groupLocked&&(()=>{
-                const noPick=approved.filter(u=>Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)===0);
-                if(noPick.length===0)return null;
-                return(
-                  <div style={{background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.3)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-                    <div style={{fontSize:11,color:"#F59E0B",fontWeight:700,marginBottom:6}}>⚠️ 픽 미완료 {noPick.length}명</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                      {noPick.map(u=>(
-                        <div key={u.uid} style={{display:"flex",alignItems:"center",gap:4,background:"rgba(245,158,11,.12)",borderRadius:20,padding:"2px 8px"}}>
-                          <Avatar name={u.name} photoURL={u.photoURL} size={16}/>
-                          <span style={{fontSize:11,color:"#fbbf24"}}>{u.name?.split(" ")[0]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-              {!tournament.groupLocked&&(()=>{
-                const noPick=approved.filter(u=>Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)===0);
-                if(!noPick.length)return null;
-                return <div style={{background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.3)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-                  <div style={{fontSize:11,color:"#F59E0B",fontWeight:700,marginBottom:6}}>⚠️ 픽 미완료 {noPick.length}명 — 마감 전 독촉 필요</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                    {noPick.map(u=>(
-                      <div key={u.uid} style={{display:"flex",alignItems:"center",gap:4,background:"rgba(245,158,11,.12)",borderRadius:20,padding:"2px 8px"}}>
-                        <Avatar name={u.name} photoURL={u.photoURL} size={16}/>
-                        <span style={{fontSize:11,color:"#fbbf24"}}>{u.name?.split(" ")[0]}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>;
-              })()}
               <div style={{fontFamily:"'Teko',sans-serif",color:"#22C55E",fontSize:12,marginBottom:6}}>✓ {t.approvedUsers} ({approved.length})</div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {approved.map(u=>{
-                  const pickTotal=Object.values(u.groupPicks||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0);
-                  return(
+                {approved.map(u=>(
                   <div key={u.uid} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.14)"}}>
                     <Avatar name={u.name} photoURL={u.photoURL} size={28}/>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{u.name}</div>
-                      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:1}}>
-                        <span style={{fontSize:10,color:"#5A7090"}}>{u.email}</span>
-                        {!tournament.groupLocked&&(pickTotal>0
-                          ?<span style={{fontSize:10,color:"#22C55E"}}>✓ {pickTotal}/32</span>
-                          :<span style={{fontSize:10,color:"#F59E0B"}}>⚠️ 픽 없음</span>
-                        )}
-                      </div>
-                    </div>
+                    <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{u.name}</div><div style={{fontSize:10,color:"#5A7090"}}>{u.email}</div></div>
                     <button onClick={async()=>{await setApproved(u.uid,false);showToast(`${u.name} revoked`);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid rgba(239,68,68,.3)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>{t.revokeBtn}</button>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             </>)}
             {pending.length===0&&approved.length===0&&<div style={{color:"#5A7090",textAlign:"center",padding:"30px 0"}}>{t.noRegistrations}</div>}
@@ -1607,7 +1549,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
 
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
           <button onClick={onClose} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:12,cursor:"pointer"}}>{t.cancel}</button>
-          <button onClick={()=>setConfirmOpen(true)} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
+          <button onClick={save} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
           {tab==="group"&&<button onClick={async()=>{
             const grpRes=st.groupResults||{};
             const entries=Object.entries(grpRes);
@@ -1621,25 +1563,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
           }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
       </div>
-    {confirmOpen&&(
-    <div onClick={()=>setConfirmOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.15)",borderRadius:16,padding:"24px 28px",maxWidth:360,width:"90%"}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#fff",marginBottom:8}}>결과 저장 확인</div>
-        <div style={{fontSize:13,color:"#9CA3AF",marginBottom:20,lineHeight:1.6}}>
-          입력한 조별 결과를 저장하면 <span style={{color:"#D4A843"}}>즉시 점수가 반영</span>되고 모든 참가자에게 보입니다. 계속할까요?
-        </div>
-        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-          <button onClick={()=>setConfirmOpen(false)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"transparent",color:"#9CA3AF",fontSize:13,cursor:"pointer"}}>
-            취소
-          </button>
-          <button onClick={save} disabled={saving} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {saving?"저장 중...":"✓ 저장하기"}
-          </button>
-        </div>
-      </div>
     </div>
-  )}
-  </div>
   );
 }
 
@@ -1655,22 +1579,6 @@ export default function Main(){
   const [lang,setLang]=useState("en");
   const [toast,setToast]=useState(null);
   const t=T[lang];
-  {confirmSave&&(
-    <div onClick={()=>setConfirmSave(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#111E2E",border:"1px solid rgba(255,255,255,.15)",borderRadius:16,padding:"24px",maxWidth:340,width:"100%"}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#fff",marginBottom:8}}>결과 저장 확인</div>
-        <div style={{fontSize:13,color:"#9CA3AF",lineHeight:1.6,marginBottom:20}}>
-          입력한 결과를 저장하면 <span style={{color:"#D4A843",fontWeight:600}}>즉시 점수가 반영</span>됩니다. 계속할까요?
-        </div>
-        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-          <button onClick={()=>setConfirmSave(false)} style={{padding:"7px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"transparent",color:"#9CA3AF",fontSize:12,cursor:"pointer"}}>취소</button>
-          <button onClick={save} disabled={saving} style={{padding:"7px 18px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-            {saving?"저장 중...":"✓ 저장하기"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
 
   useEffect(()=>{
     return onAuthStateChanged(auth,async fu=>{
