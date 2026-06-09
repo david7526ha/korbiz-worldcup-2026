@@ -1641,8 +1641,6 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         </div>
       </div>
     </div>
-  )}
-  </div>
   {confirmSave&&(
     <div onClick={()=>setConfirmSave(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#111E2E",border:"1px solid rgba(255,255,255,.15)",borderRadius:16,padding:"24px",maxWidth:340,width:"100%"}}>
@@ -1659,6 +1657,8 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
       </div>
     </div>
   )}
+  )}
+  </div>
   );
 }
 
