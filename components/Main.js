@@ -1501,7 +1501,8 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                     </div>
                     <button onClick={async()=>{await setApproved(u.uid,false);showToast(`${u.name} revoked`);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid rgba(239,68,68,.3)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>{t.revokeBtn}</button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>)}
             {pending.length===0&&approved.length===0&&<div style={{color:"#5A7090",textAlign:"center",padding:"30px 0"}}>{t.noRegistrations}</div>}
