@@ -675,17 +675,46 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
         {/* 내 순위 */}
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px"}}>
           <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl("내 순위","MI LUGAR","MY RANK")}</div>
-          {me ? (
-            <>
-              <div style={{fontFamily:"'Teko',sans-serif",fontSize:52,color:"#fff",lineHeight:1}}>{"#"+myRank}</div>
-              <div style={{fontSize:12,color:"#5A7090",marginTop:2}}>{me.total} pts · {me.name?.split(" ")[0]}</div>
-              <div style={{marginTop:8,display:"inline-block",fontSize:11,padding:"2px 10px",borderRadius:20,background:"rgba(255,255,255,.06)",color:"#5A7090"}}>
-                {myRank===1
-                  ? lbl("🏆 선두!","🏆 Líder!","🏆 Leading!")
-                  : lbl("1위와 ","A "+Math.max(0,leader.total - me.total)+" pts del líder","")+(myRank!==1?(leader.total - me.total)+" pts behind":"")}
-              </div>
-            </>
-          ) : (
+          {me ? (()=>{
+            // 정확도 계산
+            const grpDone = Object.keys(gr).length;
+            const myGroupPicks = me.groupPicks||{};
+            let myCorrect=0, myTotal=0;
+            Object.entries(myGroupPicks).forEach(([grp,teams])=>{
+              const adv=gr[grp]||[];
+              if(adv.length>0){ myTotal+=teams.length; myCorrect+=teams.filter(t=>adv.includes(t)).length; }
+            });
+            const accuracy = myTotal>0 ? Math.round(myCorrect/myTotal*100) : null;
+            // 전체 평균 정확도
+            const allAccuracies = ranked.map(u=>{
+              let c=0,t=0;
+              Object.entries(u.groupPicks||{}).forEach(([grp,teams])=>{
+                const adv=gr[grp]||[];
+                if(adv.length>0){ t+=teams.length; c+=teams.filter(tm=>adv.includes(tm)).length; }
+              });
+              return t>0?c/t:null;
+            }).filter(v=>v!==null);
+            const avgAcc = allAccuracies.length>0 ? Math.round(allAccuracies.reduce((a,b)=>a+b,0)/allAccuracies.length*100) : null;
+            const accDiff = accuracy!==null&&avgAcc!==null ? accuracy-avgAcc : null;
+            return(
+              <>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:52,color:"#fff",lineHeight:1}}>{"#"+myRank}</div>
+                <div style={{fontSize:12,color:"#5A7090",marginTop:2}}>{me.total} pts · {me.name?.split(" ")[0]}</div>
+                <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  <div style={{fontSize:11,padding:"2px 10px",borderRadius:20,background:"rgba(255,255,255,.06)",color:"#5A7090"}}>
+                    {myRank===1
+                      ? lbl("🏆 선두!","🏆 Líder!","🏆 Leading!")
+                      : (leader.total - me.total)+" pts behind"}
+                  </div>
+                  {accuracy!==null&&(
+                    <div style={{fontSize:11,padding:"2px 10px",borderRadius:20,background:accDiff>0?"rgba(34,197,94,.1)":"rgba(255,255,255,.06)",border:accDiff>0?"0.5px solid rgba(34,197,94,.3)":"none",color:accDiff>0?"#22C55E":"#9CA3AF"}}>
+                      🎯 {accuracy}%{accDiff!==null&&accDiff!==0?(accDiff>0?" ↑"+accDiff+"% avg":" ↓"+Math.abs(accDiff)+"% avg"):""}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })() : (
             <div style={{fontSize:13,color:"#5A7090",marginTop:8}}>{lbl("승인 대기 중","Pendiente","Pending approval")}</div>
           )}
         </div>
@@ -694,18 +723,38 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
         <NextMatchCard lang={lang}/>
       </div>
 
-      {/* 데드라인 배너 */}
-      {!tournament.groupLocked&&(
-        <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":lang==="es"?"CIERRE PICKS":"GROUP PICKS DEADLINE"}</span>
-            <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
+      {/* 데드라인 + 미완료 배너 */}
+      {!tournament.groupLocked&&(()=>{
+        const pickedCount = Object.values(users).filter(u=>u.approved&&u.paid&&Object.values(u.groupPicks||{}).reduce((a,b)=>a+b.length,0)>0).length;
+        const totalPaid = Object.values(users).filter(u=>u.approved&&u.paid).length;
+        const notPicked = totalPaid - pickedCount;
+        return(
+          <div style={{marginBottom:10,display:"flex",flexDirection:"column",gap:6}}>
+            <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":"GROUP PICKS DEADLINE"}</span>
+                <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
+              </div>
+              <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":"Save before kickoff!"}</span>
+            </div>
+            {notPicked>0&&(
+              <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.2)",borderRadius:10,padding:"7px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:11,color:"#F59E0B"}}>
+                  📋 {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":"picks submitted"}
+                </span>
+                <span style={{fontSize:11,color:"#F59E0B",fontWeight:500}}>
+                  {notPicked}{lang==="ko"?"명 아직 안 함 ⚠️":" yet to pick ⚠️"}
+                </span>
+              </div>
+            )}
+            {notPicked===0&&totalPaid>0&&(
+              <div style={{background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.2)",borderRadius:10,padding:"7px 14px",textAlign:"center"}}>
+                <span style={{fontSize:11,color:"#22C55E"}}>✅ {lang==="ko"?"전원 픽 완료!":"All "+totalPaid+" participants have submitted picks!"}</span>
+              </div>
+            )}
           </div>
-          <span style={{fontSize:11,color:"#f87171"}}>
-            {lang==="ko"?"마감 전 저장 필수!":lang==="es"?"¡Guarda antes!":"Save before kickoff!"}
-          </span>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 가젯 2개 */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
@@ -715,6 +764,9 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
 
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
+
+      {/* 32강 대진표 */}
+      <BracketPreview users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
       {/* 라이브 채팅 */}
       <LiveChat currentUser={currentUser} lang={lang}/>
@@ -1122,6 +1174,91 @@ width:28,height:28,borderRadius:"50%",
           </div>
         );
       })}
+    </div>
+  );
+}
+
+
+// ─── R32 BRACKET PREVIEW ──────────────────────────────────────────────────────
+// 2026 월드컵 32강 대진 구조 (조 1위/2위 + 3위 와일드카드)
+const R32_MATCHUPS = [
+  // 각 매치업: [팀A출처, 팀B출처]
+  ["A1","B2"],["C1","D2"],["E1","F2"],["G1","H2"],
+  ["I1","J2"],["K1","L2"],["B1","A2"],["D1","C2"],
+  ["F1","E2"],["H1","G2"],["J1","I2"],["L1","K2"],
+  // 3위 와일드카드 8자리는 조별 결과 확정 후 배정
+  ["WC1","WC2"],["WC3","WC4"],["WC5","WC6"],["WC7","WC8"],
+];
+
+function BracketPreview({users, tournament, currentUid, lang}){
+  const gr = tournament.groupResults||{};
+  const hasResults = Object.keys(gr).length >= 12;
+
+  if(!hasResults) return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginTop:12,textAlign:"center"}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:8}}>
+        🗓 {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO R32":"ROUND OF 32"}
+      </div>
+      <div style={{fontSize:12,color:"#5A7090"}}>
+        {lang==="ko"?"조별 결과 확정 후 대진표가 생성됩니다":"Available after all group results are confirmed"}
+        <div style={{fontSize:11,color:"#5A7090",marginTop:4}}>
+          {Object.keys(gr).length}/12 {lang==="ko"?"조 완료":"groups done"}
+        </div>
+      </div>
+    </div>
+  );
+
+  // 내 픽 팀 목록
+  const me = Object.values(users).find(u=>u.uid===currentUid);
+  const myPicks = new Set();
+  Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
+
+  // 조 1위/2위 결정
+  const standings = {};
+  Object.entries(GROUPS).forEach(([grp,{teams}])=>{
+    const advanced = gr[grp]||[];
+    if(advanced.length>=2){
+      standings[grp+"1"] = advanced[0];
+      standings[grp+"2"] = advanced[1];
+    } else if(advanced.length===1){
+      standings[grp+"1"] = advanced[0];
+    }
+  });
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
+        ⚔️ {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO R32":"ROUND OF 32"}
+        <span style={{fontSize:10,color:"#5A7090",marginLeft:8,fontFamily:"sans-serif",letterSpacing:"normal"}}>
+          {lang==="ko"?"내 픽 팀 하이라이트":"your picks highlighted"}
+        </span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:6}}>
+        {R32_MATCHUPS.map(([srcA,srcB],i)=>{
+          const teamA = standings[srcA];
+          const teamB = standings[srcB];
+          const aIsMe = teamA&&myPicks.has(teamA);
+          const bIsMe = teamB&&myPicks.has(teamB);
+          return(
+            <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid rgba(255,255,255,.07)",borderRadius:8,overflow:"hidden"}}>
+              {[{team:teamA,src:srcA,isMe:aIsMe},{team:teamB,src:srcB,isMe:bIsMe}].map(({team,src,isMe},j)=>(
+                <div key={j} style={{
+                  padding:"5px 10px",
+                  background:isMe?"rgba(212,168,67,.12)":"transparent",
+                  borderBottom:j===0?"0.5px solid rgba(255,255,255,.06)":"none",
+                  display:"flex",alignItems:"center",gap:6,
+                }}>
+                  {isMe&&<span style={{fontSize:10}}>⭐</span>}
+                  <span style={{fontSize:12,color:isMe?"#D4A843":"team?"#E0E8F0":"#5A7090",flex:1}}>
+                    {team||src}
+                  </span>
+                  <span style={{fontSize:9,color:"#3A5070"}}>{src}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1705,6 +1842,26 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 try{await fetch("/api/notify-group-result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({adminSecret:"korbiz2026admin",groupKey:grp,advancedTeams:teams})});}catch(err){}
               }
             }));
+            // 오늘의 예측왕 자동 채팅 메시지
+            try {
+              const allUsers = Object.values(users||{}).filter(function(u){return u.approved&&u.paid;});
+              var bestName="", bestScore=0;
+              allUsers.forEach(function(u){
+                var correct=0;
+                Object.entries(st.groupResults||{}).forEach(function(e2){
+                  var grp2=e2[0],adv=e2[1]||[];
+                  (u.groupPicks?.[grp2]||[]).forEach(function(t){if(adv.includes(t))correct++;});
+                });
+                if(correct>bestScore){bestScore=correct;bestName=u.name?.split(" ")[0]||"?"}
+              });
+              if(bestName&&bestScore>0){
+                await addDoc(collection(db,"chat"),{
+                  uid:"system",name:"Korbiz Bot",photo:null,
+                  text:"🏆 오늘의 예측왕: "+bestName+" ("+bestScore+"팀 적중!) — 현재까지 최고 정확도!",
+                  ts:serverTimestamp(),
+                });
+              }
+            } catch(err){}
             showToast("📢 알림 발송됨!");
           }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
