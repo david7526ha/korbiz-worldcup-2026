@@ -724,11 +724,15 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
     return remote;
   });
   const [saving,setSaving]=useState(false);
+  const [saved,setSaved]=useState(false);      // 마지막 저장 성공 여부
+  const [dirty,setDirty]=useState(false);      // 저장 후 수정 여부
   const locked=tournament.groupLocked;
   const gr=tournament.groupResults||{};
   useEffect(()=>{setPicks(myPicks||{});},[JSON.stringify(myPicks)]);
   const toggle=(grp,team)=>{
     if(locked)return;
+    setDirty(true);  // 픽 변경 → 미저장 상태
+    setSaved(false);
     setPicks(prev=>{
       const cur=prev[grp]||[];
       // 선택 해제
@@ -757,6 +761,8 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
     while(retries < maxRetries) {
       try {
         await saveGroupPicks(uid, picks);
+        setSaved(true);
+        setDirty(false);
         showToast(t.savePicks+" ✓");
         setSaving(false);
         return;
@@ -782,9 +788,16 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
             <span style={{color:"#5A7090",fontSize:13}}>{t.phase1Sub}</span>
             <span style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:total>=32?"#EF4444":"#D4A843"}}>{total}/32</span>
             <span style={{color:"#5A7090",fontSize:13}}>· {t.perCorrect}</span>
+            {saved&&!dirty&&<span style={{fontSize:11,color:"#22C55E"}}>✓ 저장됨</span>}
+            {dirty&&total>0&&<span style={{fontSize:11,color:"#F59E0B",animation:"pulse 1s infinite"}}>● 미저장 변경사항</span>}
           </div>
         </div>
-        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:`${t.savePicks} (${total}/32)`}</button>}
+        {!locked&&(()=>{
+          if(saving) return <button disabled style={{padding:"8px 18px",borderRadius:9,border:"none",background:"rgba(212,168,67,.4)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"not-allowed"}}>저장 중...</button>;
+          if(saved&&!dirty) return <button onClick={()=>{setDirty(true);}} style={{padding:"8px 18px",borderRadius:9,border:"2px solid #22C55E",background:"rgba(34,197,94,.15)",color:"#22C55E",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>✓ {t.savePicks} <span style={{fontSize:11,opacity:.8}}>({total}/32)</span></button>;
+          if(dirty||(!saved&&total>0)) return <button onClick={handleSave} style={{padding:"8px 18px",borderRadius:9,border:"2px solid #D4A843",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",animation:"pulse 1.5s infinite"}}>{saved?"UPDATE PICKS":"SAVE PICKS"} ({total}/32)</button>;
+          return <button onClick={handleSave} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"rgba(212,168,67,.3)",color:"#9CA3AF",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer"}}>{t.savePicks} ({total}/32)</button>;
+        })()}
       </div>
       {locked&&<div style={{background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:9,padding:"9px 14px",marginBottom:14,color:"#60a5fa",fontSize:13}}>🔒 {t.lockedMsg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
@@ -1302,6 +1315,7 @@ export default function Main(){
         </div>
       </div>
 
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}`}</style>
       <OfflineBanner lang={lang}/>
       {connError&&<div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600}}>⚠️ 서버 연결 오류 - 새로고침을 시도하세요</div>}
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
