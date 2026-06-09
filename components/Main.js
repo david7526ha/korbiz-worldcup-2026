@@ -813,8 +813,9 @@ function Leaderboard({users,currentUid,tournament,t,lang}){
           </div>
         ))}
         {ranked.length===0&&<div style={{textAlign:"center",color:"#5A7090",padding:"50px 0",fontSize:14}}>{t.noApproved}</div>}
-      </div>
-      <div style={{marginTop:18,padding:"13px 15px",background:"#111E2E",borderRadius:11,border:"1px solid rgba(255,255,255,.07)"}}>
+    </div>
+    {selectedUser&&<PicksModal user={selectedUser} tournament={tournament} lang={lang} onClose={()=>setSelectedUser(null)}/>}
+    <div style={{marginTop:18,padding:"13px 15px",background:"#111E2E",borderRadius:11,border:"1px solid rgba(255,255,255,.07)"}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:12,color:"#5A7090",letterSpacing:".12em",marginBottom:7}}>{t.pointSystem}</div>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:12,color:"#5A7090"}}>
           <span>{t.group}: <span style={{color:"#D4A843",fontWeight:700}}>+3</span></span>
