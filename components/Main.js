@@ -349,7 +349,13 @@ function SaveButton({saving, saved, dirty, total, t, onClick, onEdit}){
 const LS_KEY=(uid)=>"korbiz_picks_"+uid;
 function savePicsLocally(uid,picks){try{localStorage.setItem(LS_KEY(uid),JSON.stringify({picks,ts:Date.now()}));}catch(e){}}
 function loadPicksLocally(uid){try{const r=localStorage.getItem(LS_KEY(uid));if(!r)return null;const d=JSON.parse(r);if(Date.now()-d.ts>86400000)return null;return d.picks;}catch(e){return null;}}
-function sanitizePicks(picks){const o={};for(const[g,t]of Object.entries(picks||{})){if(Array.isArray(t)&&t.length>0)o[g]=t.slice(0,3);}return o;}
+function sanitizePicks(picks){
+  return Object.entries(picks||{}).reduce(function(o,entry){
+    var g=entry[0],t=entry[1];
+    if(Array.isArray(t)&&t.length>0)o[g]=t.slice(0,3);
+    return o;
+  },{});
+}
 function useOnlineStatus(){const[online,setOnline]=useState(typeof navigator!=="undefined"?navigator.onLine:true);useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);return online;}
 
 // ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
@@ -1224,11 +1230,12 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
           {tab==="group"&&<button onClick={async()=>{
             // 저장 후 조별 결과 알림 발송
             const grpEntries = Object.entries(st.groupResults||{});
-            for(const [grp, teams] of grpEntries){
-              if(teams.length>0){
-                await fetch('/api/notify-group-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminSecret:process.env.NEXT_PUBLIC_NOTIFY_SECRET||'korbiz2026admin',groupKey:grp,advancedTeams:teams})});
+            await Promise.all(grpEntries.map(async function(entry){
+              var grp=entry[0],teams=entry[1];
+              if(teams&&teams.length>0){
+                await fetch('/api/notify-group-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminSecret:'korbiz2026admin',groupKey:grp,advancedTeams:teams})});
               }
-            }
+            }));
             showToast('📢 알림 발송됨!');
           }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
