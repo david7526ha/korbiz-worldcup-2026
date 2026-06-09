@@ -595,6 +595,25 @@ function Dashboard({users, tournament, currentUid, lang}){
         <NextMatchCard lang={lang}/>
       </div>
 
+      {/* 데드라인 배너 */}
+      {!tournament.groupLocked&&(
+        <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":lang==="es"?"CIERRE PICKS":"GROUP PICKS DEADLINE"}</span>
+            <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
+          </div>
+          <span style={{fontSize:11,color:"#f87171"}}>
+            {lang==="ko"?"마감 전 저장 필수!":lang==="es"?"¡Guarda antes!":"Save before kickoff!"}
+          </span>
+        </div>
+      )}
+
+      {/* 가젯 2개 */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        <HotPickWidget users={users} tournament={tournament} lang={lang}/>
+        <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
+      </div>
+
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang}/>
 
@@ -621,6 +640,172 @@ function Dashboard({users, tournament, currentUid, lang}){
   );
 }
 
+
+
+// ─── HOT PICK WIDGET ──────────────────────────────────────────────────────────
+function HotPickWidget({users, tournament, lang}){
+  const approved = Object.values(users).filter(u=>u.approved);
+  const total = approved.length || 1;
+  const gr = tournament.groupResults || {};
+
+  // 모든 픽 집계
+  const counts = {};
+  approved.forEach(u => {
+    Object.entries(u.groupPicks||{}).forEach(([grp, teams]) => {
+      (teams||[]).forEach(team => {
+        counts[team] = (counts[team]||0) + 1;
+      });
+    });
+  });
+
+  const top5 = Object.entries(counts)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,5);
+
+  const lbl = lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK";
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>🔥 {lbl}</div>
+        <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"전체 픽 기준":"by pick count"}</div>
+      </div>
+      {top5.length===0 ? (
+        <div style={{fontSize:12,color:"#5A7090",textAlign:"center",padding:"20px 0"}}>
+          {lang==="ko"?"아직 픽 없음":"No picks yet"}
+        </div>
+      ) : top5.map(([team,cnt], i)=>{
+        const pct = Math.round(cnt/total*100);
+        const adv = Object.values(gr).some(teams=>(teams||[]).includes(team));
+        const colors = ["#D4A843","#9CA3AF","#CD7C2F","#60a5fa","#a78bfa"];
+        const color = colors[i] || "#5A7090";
+        return(
+          <div key={team} style={{marginBottom:i<4?8:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:"#5A7090",width:14}}>{i+1}</span>
+                <span style={{fontSize:12,color:"#E0E8F0",fontWeight:500}}>{team}</span>
+                {adv&&<span style={{fontSize:10,color:"#22C55E"}}>✓</span>}
+              </div>
+              <span style={{fontSize:11,color:color,fontWeight:500}}>{pct}%</span>
+            </div>
+            <div style={{height:4,background:"rgba(255,255,255,.06)",borderRadius:2,overflow:"hidden"}}>
+              <div style={{height:"100%",width:pct+"%",background:color,borderRadius:2,opacity:.7}}/>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
+function WinProbWidget({users, tournament, currentUid, lang}){
+  const [prob, setProb] = useState(null);
+  const [trend, setTrend] = useState(null); // 'up' | 'down' | null
+
+  useEffect(()=>{
+    const approved = Object.values(users).filter(u=>u.approved&&u.paid);
+    if(approved.length < 2){ setProb(100); return; }
+
+    // 현재 점수
+    const scores = approved.map(u=>({
+      uid: u.uid,
+      pts: calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}}, tournament).total,
+    }));
+
+    // 남은 잠재 점수 계산
+    const grpDone = Object.keys(tournament.groupResults||{}).length;
+    const grpLeft = 12 - grpDone;
+    // 평균 그룹당 픽 수 기반 남은 기대점수 범위
+    const grpMax = grpLeft * 3 * 3; // 최대 남은 그룹 점수
+    const bktMax = tournament.groupLocked ? 330 : 0; // 브래킷 점수
+
+    // Monte Carlo 시뮬레이션 (3000회)
+    const SIMS = 3000;
+    let myWins = 0;
+    const me = scores.find(s=>s.uid===currentUid);
+    if(!me){ setProb(0); return; }
+
+    for(let i=0; i<SIMS; i++){
+      // 각 유저에게 랜덤 잔여점수 부여 (0 ~ 각자 최대)
+      const simScores = scores.map(s=>{
+        const remaining = Math.random() * (grpMax + bktMax);
+        return s.pts + remaining;
+      });
+      const myIdx = scores.findIndex(s=>s.uid===currentUid);
+      const myFinal = simScores[myIdx];
+      const iWin = simScores.every((v,i)=> i===myIdx || v<=myFinal);
+      if(iWin) myWins++;
+    }
+
+    const newProb = Math.round(myWins/SIMS*100);
+    setProb(prev => {
+      if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
+      return newProb;
+    });
+  }, [users, tournament]);
+
+  const lbl = lang==="ko"?"우승 확률":lang==="es"?"Mi probabilidad":"Win probability";
+  const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
+
+  // 확률 게이지 아크 계산
+  const r=54, cx=70, cy=70;
+  const startAngle = 180;
+  const endAngle = 180 + (prob||0)*1.8;
+  const toRad = d => d*Math.PI/180;
+  const arcX = (a) => cx + r*Math.cos(toRad(a));
+  const arcY = (a) => cy + r*Math.sin(toRad(a));
+  const largeSweep = (endAngle-startAngle)>180?1:0;
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>🎯 {lbl.toUpperCase()}</div>
+        {trend&&<span style={{fontSize:12,color:trend==="up"?"#22C55E":"#EF4444"}}>{trend==="up"?"↑":"↓"}</span>}
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        {/* 반원 게이지 */}
+        <svg width={140} height={80} viewBox="0 0 140 80">
+          {/* 배경 아크 */}
+          <path
+            d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`}
+            fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={10} strokeLinecap="round"
+          />
+          {/* 값 아크 */}
+          {prob!==null&&prob>0&&<path
+            d={`M ${arcX(startAngle)} ${arcY(startAngle)} A ${r} ${r} 0 ${largeSweep} 1 ${arcX(endAngle)} ${arcY(endAngle)}`}
+            fill="none" stroke={color} strokeWidth={10} strokeLinecap="round"
+          />}
+          {/* 확률 텍스트 */}
+          <text x={cx} y={cy+4} textAnchor="middle" fill={color}
+            style={{fontFamily:"'Teko',sans-serif",fontSize:26,fontWeight:700}}>
+            {prob===null?"...":prob+"%"}
+          </text>
+        </svg>
+
+        {/* 설명 */}
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,color:"#5A7090",lineHeight:1.5,marginBottom:6}}>
+            {lang==="ko"
+              ? "현재 점수 + 남은 경기 시뮬레이션 3,000회 기반"
+              : lang==="es"
+              ? "Basado en 3,000 simulaciones"
+              : "Based on 3,000 simulations of remaining matches"}
+          </div>
+          <div style={{fontSize:11,color:color,fontWeight:500}}>
+            {prob===null?"계산 중...":
+             prob>=70?(lang==="ko"?"🔥 매우 유리!":"🔥 Strong favorite!"):
+             prob>=40?(lang==="ko"?"💪 경쟁 중":"💪 In contention"):
+             prob>=15?(lang==="ko"?"⚡ 역전 가능":"⚡ Still possible"):
+             (lang==="ko"?"😤 기적이 필요해":"😤 Need a miracle")}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── NEXT MATCH CARD (dashboard용) ───────────────────────────────────────────
 function NextMatchCard({lang}){
@@ -713,23 +898,23 @@ function SprintRace({ranked, currentUid, maxPts, lang}){
         const medals = ["🥇","🥈","🥉"];
 
         return(
-          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
             {/* 순위 */}
             <div style={{width:22,textAlign:"right",fontSize:i<3?14:11,color:"#5A7090",flexShrink:0}}>
               {i<3 ? medals[i] : "#"+(i+1)}
             </div>
 
             {/* 트랙 */}
-            <div style={{flex:1,position:"relative",height:36}}>
+            <div style={{flex:1,position:"relative",height:28}}>
               {/* 트랙 배경 */}
               <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.04)",borderRadius:18,border:"0.5px solid rgba(255,255,255,.06)"}}/>
 
               {/* 달리는 바 */}
               <div style={{
                 position:"absolute",top:0,left:0,height:"100%",
-                width: finalPct + "%",
-                minWidth: 36,
-                borderRadius:18,
+width: finalPct + "%",
+minWidth: 32,
+borderRadius:16,
                 background: isMe
                   ? "linear-gradient(90deg,rgba(212,168,67,.25),rgba(212,168,67,.1))"
                   : "rgba(255,255,255,.06)",
@@ -741,8 +926,8 @@ function SprintRace({ranked, currentUid, maxPts, lang}){
               }}>
                 {/* 프로필 사진 원 */}
                 <div style={{
-                  position:"absolute",right:-18,top:"50%",transform:"translateY(-50%)",
-                  width:36,height:36,borderRadius:"50%",
+                  position:"absolute",right:-14,top:"50%",transform:"translateY(-50%)",
+width:28,height:28,borderRadius:"50%",
                   border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
                   overflow:"hidden",flexShrink:0,
                   background:"#1a2840",
