@@ -1007,8 +1007,18 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
-        {tab==="picks"&&phase==="group"&&<><PrizeDashboard users={users} lang={lang}/><GroupPicks uid={firebaseUser.uid} myPicks={me.groupPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/></>
-        {tab==="picks"&&phase==="bracket"&&<><PrizeDashboard users={users} lang={lang}/><BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/></>
+        {tab==="picks"&&phase==="group"&&(
+          <div>
+            <PrizeDashboard users={users} lang={lang}/>
+            <GroupPicks uid={firebaseUser.uid} myPicks={me.groupPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>
+          </div>
+        )}
+        {tab==="picks"&&phase==="bracket"&&(
+          <div>
+            <PrizeDashboard users={users} lang={lang}/>
+            <BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>
+          </div>
+        )}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
