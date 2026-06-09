@@ -319,6 +319,14 @@ function Avatar({name,photoURL,size=36}){
 
 
 
+
+// ─── RESILIENCE UTILS ─────────────────────────────────────────────────────────
+const LS_KEY=(uid)=>"korbiz_picks_"+uid;
+function savePicsLocally(uid,picks){try{localStorage.setItem(LS_KEY(uid),JSON.stringify({picks,ts:Date.now()}));}catch(e){}}
+function loadPicksLocally(uid){try{const r=localStorage.getItem(LS_KEY(uid));if(!r)return null;const d=JSON.parse(r);if(Date.now()-d.ts>86400000)return null;return d.picks;}catch(e){return null;}}
+function sanitizePicks(picks){const o={};for(const[g,t]of Object.entries(picks||{})){if(Array.isArray(t)&&t.length>0)o[g]=t.slice(0,3);}return o;}
+function useOnlineStatus(){const[online,setOnline]=useState(typeof navigator!=="undefined"?navigator.onLine:true);useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);return online;}
+
 // ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
 function PrizeDashboard({users, lang}){
   const approved = Object.values(users).filter(u=>u.approved&&u.paid);
@@ -708,7 +716,13 @@ function PendingScreen({user,lang,setLang}){
 
 // ─── GROUP PICKS ──────────────────────────────────────────────────────────────
 function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
-  const [picks,setPicks]=useState(myPicks||{});
+  const [picks,setPicks]=useState(()=>{
+    const remote=sanitizePicks(myPicks||{});
+    const local=loadPicksLocally(uid);
+    const remoteTotal=Object.values(remote).reduce((a,b)=>a+b.length,0);
+    if(remoteTotal===0&&local&&Object.keys(local).length>0)return sanitizePicks(local);
+    return remote;
+  });
   const [saving,setSaving]=useState(false);
   const locked=tournament.groupLocked;
   const gr=tournament.groupResults||{};
@@ -1209,9 +1223,12 @@ export default function Main(){
 
   useEffect(()=>{
     if(!firebaseUser)return;
-    const u1=subscribeUsers(setUsers);
-    const u2=subscribeTournamentState(setTournament);
-    return()=>{u1();u2();};
+    let u1,u2;
+    try{
+      u1=subscribeUsers(setUsers);
+      u2=subscribeTournamentState((d)=>{setTournament(d);setConnError(false);});
+    }catch(e){console.error("Firestore:",e);setConnError(true);}
+    return()=>{try{if(u1)u1();}catch(e){}try{if(u2)u2();}catch(e){}};
   },[firebaseUser?.uid]);
 
   const showMsg=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
