@@ -500,6 +500,18 @@ function ReactionBar({uid, matchKey}){
   );
 }
 
+
+// ─── OFFLINE BANNER ──────────────────────────────────────────────────────────
+function OfflineBanner({lang}){
+  const online = useOnlineStatus();
+  if(online) return null;
+  return(
+    <div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600,borderBottom:"1px solid #991b1b"}}>
+      ⚠️ {lang==="ko"?"오프라인 상태입니다. 픽은 로컬에 저장됩니다.":lang==="es"?"Sin conexión. Los picks se guardan localmente.":"Offline — picks saved locally, will sync when reconnected."}
+    </div>
+  );
+}
+
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
   const [groupTime, setGroupTime] = useState(null);
@@ -715,7 +727,36 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
       return{...prev,[grp]:[...cur,team]};
     });
   };
-  const handleSave=async()=>{setSaving(true);try{await saveGroupPicks(uid,picks);showToast(t.savePicks+" ✓");}catch{showToast("Error","error");}setSaving(false);};
+  const handleSave=async()=>{
+    if(saving) return; // 중복 클릭 방지
+    setSaving(true);
+    // 먼저 localStorage에 백업
+    savePicsLocally(uid, picks);
+    // 오프라인이면 로컬 저장만
+    if(!navigator.onLine) {
+      showToast("오프라인 - 로컬 저장됨 (재연결 시 자동 업로드)");
+      setSaving(false);
+      return;
+    }
+    let retries = 0;
+    const maxRetries = 3;
+    while(retries < maxRetries) {
+      try {
+        await saveGroupPicks(uid, picks);
+        showToast(t.savePicks+" ✓");
+        setSaving(false);
+        return;
+      } catch(e) {
+        retries++;
+        if(retries < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * retries)); // 1s, 2s 대기
+        }
+      }
+    }
+    // 3번 실패시
+    showToast("저장 실패 - 로컬에 백업됨. 잠시 후 다시 시도하세요.", "error");
+    setSaving(false);
+  };
   const total=Object.values(picks).reduce((a,b)=>a+b.length,0);
   return(
     <div>
@@ -1244,6 +1285,8 @@ export default function Main(){
         </div>
       </div>
 
+      <OfflineBanner lang={lang}/>
+      {connError&&<div style={{background:"#7f1d1d",color:"#fca5a5",padding:"8px 16px",textAlign:"center",fontSize:13,fontWeight:600}}>⚠️ 서버 연결 오류 - 새로고침을 시도하세요</div>}
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
         <NextMatchBanner lang={lang}/>
         {tab==="picks"&&phase==="group"&&(
