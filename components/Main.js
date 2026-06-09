@@ -617,21 +617,51 @@ function Dashboard({users, tournament, currentUid, lang}){
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang}/>
 
-      {/* 최근 결과 */}
+      {/* 최근 결과 + YouTube 하이라이트 */}
       {recentResults.length > 0 && (
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
-            {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
+              {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
+            </div>
+            <a
+              href="https://www.youtube.com/@FIFAWorldCup/videos"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.08)"}}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+              FIFA Official
+            </a>
           </div>
           <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-            {recentResults.map(([grp, teams])=>(
-              <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:110}}>
-                <div style={{fontSize:10,color:"#5A7090",marginBottom:5,letterSpacing:".08em"}}>GROUP {grp}</div>
-                {(teams||[]).map(team=>(
-                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
-                ))}
-              </div>
-            ))}
+            {recentResults.map(([grp, teams])=>{
+              // 해당 조의 팀들 찾기 (GROUPS에서)
+              const grpTeams = GROUPS[grp] ? GROUPS[grp].teams : [];
+              // 조별 하이라이트 검색 쿼리
+              const query = encodeURIComponent("FIFA World Cup 2026 Group "+grp+" highlights");
+              const ytUrl = "https://www.youtube.com/results?search_query="+query;
+
+              return(
+                <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:130}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:10,color:"#5A7090",letterSpacing:".08em"}}>GROUP {grp}</div>
+                    <a
+                      href={ytUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 6px",borderRadius:10,background:"rgba(248,113,113,.1)"}}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                      HL
+                    </a>
+                  </div>
+                  {(teams||[]).map(team=>(
+                    <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
