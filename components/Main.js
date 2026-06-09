@@ -716,6 +716,9 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
 
+      {/* 라이브 채팅 */}
+      <LiveChat currentUser={currentUser} lang={lang}/>
+
       {/* 최근 결과 */}
       {recentResults.length > 0 && (
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
