@@ -1565,7 +1565,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
 
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
           <button onClick={onClose} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:12,cursor:"pointer"}}>{t.cancel}</button>
-          <button onClick={save} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
+          <button onClick={()=>setConfirmOpen(true)} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
           {tab==="group"&&<button onClick={async()=>{
             const grpRes=st.groupResults||{};
             const entries=Object.entries(grpRes);
@@ -1579,7 +1579,25 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
           }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
       </div>
+    {confirmOpen&&(
+    <div onClick={()=>setConfirmOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.15)",borderRadius:16,padding:"24px 28px",maxWidth:360,width:"90%"}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#fff",marginBottom:8}}>결과 저장 확인</div>
+        <div style={{fontSize:13,color:"#9CA3AF",marginBottom:20,lineHeight:1.6}}>
+          입력한 조별 결과를 저장하면 <span style={{color:"#D4A843"}}>즉시 점수가 반영</span>되고 모든 참가자에게 보입니다. 계속할까요?
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={()=>setConfirmOpen(false)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"transparent",color:"#9CA3AF",fontSize:13,cursor:"pointer"}}>
+            취소
+          </button>
+          <button onClick={save} disabled={saving} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            {saving?"저장 중...":"✓ 저장하기"}
+          </button>
+        </div>
+      </div>
     </div>
+  )}
+  </div>
   );
 }
 
