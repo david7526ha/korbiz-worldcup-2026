@@ -737,19 +737,41 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
               </div>
               <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":"Save before kickoff!"}</span>
             </div>
-            {notPicked>0&&(
-              <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.2)",borderRadius:10,padding:"7px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:11,color:"#F59E0B"}}>
-                  📋 {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":"picks submitted"}
-                </span>
-                <span style={{fontSize:11,color:"#F59E0B",fontWeight:500}}>
-                  {notPicked}{lang==="ko"?"명 아직 안 함 ⚠️":" yet to pick ⚠️"}
-                </span>
-              </div>
-            )}
+            {notPicked>0&&(()=>{
+              const notPickedUsers = Object.values(users).filter(function(u){
+                return u.approved&&u.paid&&Object.values(u.groupPicks||{}).reduce(function(a,b){return a+b.length;},0)===0;
+              });
+              return(
+                <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.25)",borderRadius:10,padding:"10px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:notPickedUsers.length>0?8:0}}>
+                    <span style={{fontSize:11,color:"#F59E0B",fontWeight:500}}>
+                      ⚠️ {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":"picks submitted"} · {notPicked}{lang==="ko"?"명 아직 안 함":" yet to pick"}
+                    </span>
+                    <span style={{fontSize:10,color:"#D97706"}}>{lang==="ko"?"마감: 6/12 킥오프":"Deadline: Jun 12 kickoff"}</span>
+                  </div>
+                  {notPickedUsers.length>0&&(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                      {notPickedUsers.map(function(u){
+                        return(
+                          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(245,158,11,.1)",border:"0.5px solid rgba(245,158,11,.3)",borderRadius:20,padding:"3px 10px"}}>
+                            <div style={{width:18,height:18,borderRadius:"50%",overflow:"hidden",background:"#1a2840",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#F59E0B"}}>
+                              {u.photoURL
+                                ? <img src={u.photoURL} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={function(e){e.target.style.display="none";}}/>
+                                : (u.name||"?")[0]}
+                            </div>
+                            <span style={{fontSize:11,color:"#F59E0B"}}>{(u.name||"?").split(" ")[0]}</span>
+                            <span style={{fontSize:10}}>😴</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {notPicked===0&&totalPaid>0&&(
               <div style={{background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.2)",borderRadius:10,padding:"7px 14px",textAlign:"center"}}>
-                <span style={{fontSize:11,color:"#22C55E"}}>✅ {lang==="ko"?"전원 픽 완료!":"All "+totalPaid+" participants have submitted picks!"}</span>
+                <span style={{fontSize:11,color:"#22C55E"}}>✅ {lang==="ko"?"전원 픽 완료! 🎉":"All "+totalPaid+" participants have submitted picks! 🎉"}</span>
               </div>
             )}
           </div>
