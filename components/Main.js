@@ -893,43 +893,27 @@ function WinProbWidget({users, tournament, currentUid, lang}){
     const approved = Object.values(users).filter(u=>u.approved&&u.paid);
     if(approved.length < 2){ setProb(100); return; }
 
-    // 현재 점수
-    const scores = approved.map(u=>({
+    // ranked 형태로 변환
+    const ranked = approved.map(u=>({
       uid: u.uid,
-      pts: calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}}, tournament).total,
-    }));
+      name: u.name,
+      total: calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}}, tournament).total,
+      groupPicks: u.groupPicks||{},
+      bracketPicks: u.bracketPicks||{},
+    })).sort((a,b)=>b.total-a.total);
 
-    // 남은 잠재 점수 계산
-    const grpDone = Object.keys(tournament.groupResults||{}).length;
-    const grpLeft = 12 - grpDone;
-    // 평균 그룹당 픽 수 기반 남은 기대점수 범위
-    const grpMax = grpLeft * 3 * 3; // 최대 남은 그룹 점수
-    const bktMax = tournament.groupLocked ? 330 : 0; // 브래킷 점수
-
-    // Monte Carlo 시뮬레이션 (3000회)
-    const SIMS = 3000;
-    let myWins = 0;
-    const me = scores.find(s=>s.uid===currentUid);
+    const me = ranked.find(u=>u.uid===currentUid);
     if(!me){ setProb(0); return; }
 
-    for(let i=0; i<SIMS; i++){
-      // 각 유저에게 랜덤 잔여점수 부여 (0 ~ 각자 최대)
-      const simScores = scores.map(s=>{
-        const remaining = Math.random() * (grpMax + bktMax);
-        return s.pts + remaining;
-      });
-      const myIdx = scores.findIndex(s=>s.uid===currentUid);
-      const myFinal = simScores[myIdx];
-      const iWin = simScores.every((v,i)=> i===myIdx || v<=myFinal);
-      if(iWin) myWins++;
-    }
+    const probList = calcWinProbs(ranked, tournament);
+    const myProb = probList.find(p=>p.uid===currentUid);
+    const newProb = myProb ? myProb.prob : 0;
 
-    const newProb = Math.round(myWins/SIMS*100);
     setProb(prev => {
       if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
       return newProb;
     });
-  }, [users, tournament]);
+  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().length:0)).join('|'), Object.keys(tournament.groupResults||{}).length]);
 
   const lbl = lang==="ko"?"우승 확률":lang==="es"?"Mi probabilidad":"Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
@@ -1066,27 +1050,14 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
 
   useEffect(()=>{ const t = setTimeout(()=>setAnimated(true), 100); return ()=>clearTimeout(t); }, []);
 
-  // 전체 우승 확률 계산 (1500회 빠른 시뮬)
+  // 우승 확률 계산 — 살아있는 픽 기반
   useEffect(()=>{
     if(!ranked||ranked.length<2) return;
-    const SIMS=1500;
-    const grpDone=Object.keys(tournament.groupResults||{}).length;
-    const grpLeft=12-grpDone;
-    const remaining=(grpLeft*9)+(tournament.groupLocked?330:0);
-    const probs={};
-    ranked.forEach(u=>{ probs[u.uid]=0; });
-    for(let i=0;i<SIMS;i++){
-      let best=-1, bestUid=null;
-      ranked.forEach(u=>{
-        const sim=u.total+Math.random()*remaining;
-        if(sim>best){ best=sim; bestUid=u.uid; }
-      });
-      if(bestUid) probs[bestUid]=(probs[bestUid]||0)+1;
-    }
-    const result={};
-    ranked.forEach(u=>{ result[u.uid]=Math.round((probs[u.uid]||0)/SIMS*100); });
+    const probList = calcWinProbs(ranked, tournament);
+    const result = {};
+    probList.forEach(p=>{ result[p.uid]=p.prob; });
     setWinProbs(result);
-  },[ranked.map(r=>r.total).join(','), Object.keys(tournament.groupResults||{}).length]);
+  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().length).join('|'), Object.keys(tournament.groupResults||{}).length]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
@@ -1346,6 +1317,68 @@ function BracketPreview({users, tournament, currentUid, lang}){
       )}
     </div>
   );
+}
+
+
+// ─── WIN PROBABILITY CALCULATOR ───────────────────────────────────────────────
+// 포커 토너먼트 방식:
+// 각 유저의 "잠재점수" = 현재점수 + 아직 확정 안 된 픽팀들의 기대점수
+// 살아있는 팀(아직 결과 없는 조의 픽)이 많을수록 잠재점수 높음
+// Monte Carlo: 잠재점수 기반으로 랜덤 변동 부여 후 1등 횟수 집계
+function calcWinProbs(ranked, tournament) {
+  if(!ranked||ranked.length<2) return ranked.map(function(u){return {uid:u.uid,prob:100};});
+
+  var gr = tournament.groupResults||{};
+  var grpDone = Object.keys(gr).length;
+  var grpLeft = 12 - grpDone;
+  var bktLocked = tournament.bracketLocked;
+
+  // 각 유저별 잠재점수 계산
+  var potentials = ranked.map(function(u){
+    var cur = u.total; // 현재 확정 점수
+
+    // 아직 결과 없는 조에서 픽한 팀 수
+    var survivingPicks = 0;
+    Object.entries(u.groupPicks||{}).forEach(function(e){
+      var grp=e[0], teams=e[1]||[];
+      if(!gr[grp]) survivingPicks += teams.length; // 아직 결과 없는 조
+    });
+
+    // 브래킷 픽 살아있는 수
+    var bracketPicks = 0;
+    if(!bktLocked){
+      Object.values(u.bracketPicks||{}).forEach(function(picks){
+        bracketPicks += (picks||[]).filter(function(t){return !!t;}).length;
+      });
+    }
+
+    // 잠재 추가점수:
+    // 조별: 살아있는 픽당 최대 +3점 (실현 가능성 반영)
+    // 브래킷: 살아있는 픽당 평균 +8점 (32강~결승 평균)
+    var potential = cur + (survivingPicks * 3) + (bracketPicks * 8);
+
+    return {uid:u.uid, cur:cur, potential:potential, survivingPicks:survivingPicks};
+  });
+
+  // Monte Carlo 2000회 — 잠재점수 기반 랜덤 실현
+  var SIMS = 2000;
+  var wins = {};
+  ranked.forEach(function(u){ wins[u.uid]=0; });
+
+  for(var i=0;i<SIMS;i++){
+    var best=-1, bestUid=null;
+    potentials.forEach(function(p){
+      // 현재점수 + 잠재점수 범위 내 랜덤 실현 (정규분포 근사)
+      var range = Math.max(0, p.potential - p.cur);
+      var realized = p.cur + (Math.random() * range);
+      if(realized > best){ best=realized; bestUid=p.uid; }
+    });
+    if(bestUid) wins[bestUid]++;
+  }
+
+  return ranked.map(function(u){
+    return {uid:u.uid, prob:Math.round(wins[u.uid]/SIMS*100)};
+  });
 }
 
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
