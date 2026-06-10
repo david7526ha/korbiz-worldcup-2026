@@ -1996,6 +1996,7 @@ export default function Main(){
   const [users,setUsers]=useState({});
   const [tournament,setTournament]=useState(null);
   const [tab,setTab]=useState("dashboard");
+  const setTabAndScroll = (t) => { setTab(t); window.scrollTo({top:0,behavior:"smooth"}); };
   const [showAdmin,setShowAdmin]=useState(false);
   const [lang,setLang]=useState("en");
   const [toast,setToast]=useState(null);
@@ -2008,6 +2009,9 @@ export default function Main(){
       setAuthReady(true);
     });
   },[]);
+
+  // 탭 변경 시 맨 위로
+  useEffect(()=>{ window.scrollTo({top:0,behavior:"instant"}); },[tab]);
 
   useEffect(()=>{
     if(!firebaseUser)return;
