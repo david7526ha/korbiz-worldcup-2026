@@ -1814,7 +1814,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         </div>
         <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
           {TABS.map(([id,label])=>(
-            <button key={id} onClick={()=>setTab(id)} style={{padding:"5px 11px",borderRadius:7,fontSize:11,fontFamily:"'Teko',sans-serif",letterSpacing:".1em",whiteSpace:"nowrap",cursor:"pointer",border:`1px solid ${tab===id?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:tab===id?"rgba(239,68,68,.14)":"transparent",color:tab===id?"#f87171":"#5A7090"}}>{label.toUpperCase()}</button>
+            <button key={id} onClick={()=>setTabAndScroll(id)} style={{padding:"5px 11px",borderRadius:7,fontSize:11,fontFamily:"'Teko',sans-serif",letterSpacing:".1em",whiteSpace:"nowrap",cursor:"pointer",border:`1px solid ${tab===id?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:tab===id?"rgba(239,68,68,.14)":"transparent",color:tab===id?"#f87171":"#5A7090"}}>{label.toUpperCase()}</button>
           ))}
         </div>
 
@@ -2011,7 +2011,7 @@ export default function Main(){
   },[]);
 
   // 탭 변경 시 맨 위로
-  useEffect(()=>{ window.scrollTo({top:0,behavior:"instant"}); },[tab]);
+  useEffect(()=>{ setTimeout(function(){window.scrollTo({top:0,behavior:"instant"});},0); },[tab]);
 
   useEffect(()=>{
     if(!firebaseUser)return;
@@ -2088,7 +2088,7 @@ export default function Main(){
           <button onClick={signOutUser} style={{background:"transparent",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"3px 8px",color:"#5A7090",fontSize:10,cursor:"pointer"}}>{t.signOut}</button>
         </div>
         <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto"}}>
-          {tabs.map(tb=><button key={tb.id} onClick={()=>setTab(tb.id)} style={{padding:"7px 16px",border:"none",background:"transparent",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:12,whiteSpace:"nowrap",cursor:"pointer"}}>{tb.label.toUpperCase()}</button>)}
+          {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"7px 16px",border:"none",background:"transparent",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:12,whiteSpace:"nowrap",cursor:"pointer"}}>{tb.label.toUpperCase()}</button>)}
         </div>
       </div>
 
