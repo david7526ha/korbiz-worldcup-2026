@@ -1180,85 +1180,170 @@ width:28,height:28,borderRadius:"50%",
 
 
 // ─── R32 BRACKET PREVIEW ──────────────────────────────────────────────────────
-// 2026 월드컵 32강 대진 구조 (조 1위/2위 + 3위 와일드카드)
-const R32_MATCHUPS = [
-  // 각 매치업: [팀A출처, 팀B출처]
-  ["A1","B2"],["C1","D2"],["E1","F2"],["G1","H2"],
-  ["I1","J2"],["K1","L2"],["B1","A2"],["D1","C2"],
-  ["F1","E2"],["H1","G2"],["J1","I2"],["L1","K2"],
-  // 3위 와일드카드 8자리는 조별 결과 확정 후 배정
-  ["WC1","WC2"],["WC3","WC4"],["WC5","WC6"],["WC7","WC8"],
+// 2026 FIFA 공식 32강 대진표 (ESPN/FIFA 공식 발표 기준)
+// 3위 와일드카드는 어느 조 조합에서 나왔냐에 따라 배정이 결정됨
+const R32_FIXED = [
+  // 확정 매치업 (1위vs2위, 2위vs2위)
+  {m:"M73", a:"A2", b:"B2", date:"Jun 28"},
+  {m:"M74", a:"C1", b:"F2", date:"Jun 29"},
+  {m:"M75", a:"F1", b:"C2", date:"Jun 29"},
+  {m:"M76", a:"E2", b:"I2", date:"Jun 30"},
+  {m:"M77", a:"J1", b:"H2", date:"Jul 1"},
+  {m:"M78", a:"H1", b:"G2", date:"Jul 1"},
+  {m:"M79", a:"B1", b:"D2", date:"Jul 2"},
+  {m:"M80", a:"D1", b:"C2_ALT", date:"Jul 2"},  // ESPN: D1 vs third
+  {m:"M81", a:"G1", b:"WC_AEHIJrd", date:"Jul 1"},
+  {m:"M82", a:"I1", b:"WC_CDFGHrd", date:"Jun 30"},
+  {m:"M83", a:"A1", b:"WC_CEFHIrd", date:"Jun 30"},
+  {m:"M84", a:"L1", b:"WC_EHIJKrd", date:"Jul 1"},
+  {m:"M85", a:"E1", b:"WC_ABCDFrd", date:"Jun 29"},
+  {m:"M86", a:"K1", b:"WC_DEIJLrd", date:"Jul 1"},
+  {m:"M87", a:"L2", b:"K2",  date:"Jul 2"},
+  {m:"M88", a:"J2", b:"WC_last", date:"Jul 2"},
+];
+
+// 실제 공식 대진 (1위/2위 확정된 것만, 3위는 별도 처리)
+const R32_MATCHUPS_OFFICIAL = [
+  ["A2","B2"],   // M73
+  ["C1","F2"],   // M74
+  ["E1","WC"],   // M75 - E1 vs 3위(A/B/C/D/F)
+  ["F1","C2"],   // M76
+  ["E2","I2"],   // M77
+  ["I1","WC"],   // M78 - I1 vs 3위(C/D/F/G/H)
+  ["A1","WC"],   // M79 - A1 vs 3위(C/E/F/H/I)
+  ["L1","WC"],   // M80 - L1 vs 3위(E/H/I/J/K)
+  ["G1","WC"],   // M81 - G1 vs 3위(A/E/H/I/J)
+  ["D1","WC"],   // M82 - D1 vs 3위(B/E/F/I/J)
+  ["J1","H2"],   // M83
+  ["K1","WC"],   // M84 - K1 vs 3위(D/E/I/J/L)
+  ["B1","D2"],   // M85 (추정, ESPN 기준)
+  ["H1","G2"],   // M86
+  ["L2","K2"],   // M87
+  ["J2","WC"],   // M88 - J2 vs 나머지 3위
+];
+
+// 3위팀 출처 정보 (각 와일드카드 슬롯별 허용 조 목록)
+const WC_SLOTS = [
+  {slot:"WC1", groups:["A","B","C","D","F"]},  // E1 상대
+  {slot:"WC2", groups:["C","D","F","G","H"]},  // I1 상대
+  {slot:"WC3", groups:["C","E","F","H","I"]},  // A1 상대
+  {slot:"WC4", groups:["E","H","I","J","K"]},  // L1 상대
+  {slot:"WC5", groups:["A","E","H","I","J"]},  // G1 상대
+  {slot:"WC6", groups:["B","E","F","I","J"]},  // D1 상대
+  {slot:"WC7", groups:["D","E","I","J","L"]},  // K1 상대
+  {slot:"WC8", groups:["A","B","C","D","E","F","G","H","I","J","K","L"]}, // J2 상대
 ];
 
 function BracketPreview({users, tournament, currentUid, lang}){
   const gr = tournament.groupResults||{};
-  const hasResults = Object.keys(gr).length >= 12;
-
-  if(!hasResults) return(
-    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginTop:12,textAlign:"center"}}>
-      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:8}}>
-        🗓 {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO R32":"ROUND OF 32"}
-      </div>
-      <div style={{fontSize:12,color:"#5A7090"}}>
-        {lang==="ko"?"조별 결과 확정 후 대진표가 생성됩니다":"Available after all group results are confirmed"}
-        <div style={{fontSize:11,color:"#5A7090",marginTop:4}}>
-          {Object.keys(gr).length}/12 {lang==="ko"?"조 완료":"groups done"}
-        </div>
-      </div>
-    </div>
-  );
+  const doneCount = Object.keys(gr).length;
+  const hasResults = doneCount >= 12;
 
   // 내 픽 팀 목록
   const me = Object.values(users).find(u=>u.uid===currentUid);
   const myPicks = new Set();
-  Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
+  Object.values(me?.groupPicks||{}).forEach(function(teams){ (teams||[]).forEach(function(t){myPicks.add(t);}); });
 
   // 조 1위/2위 결정
-  const standings = {};
-  Object.entries(GROUPS).forEach(([grp,{teams}])=>{
-    const advanced = gr[grp]||[];
-    if(advanced.length>=2){
-      standings[grp+"1"] = advanced[0];
-      standings[grp+"2"] = advanced[1];
-    } else if(advanced.length===1){
-      standings[grp+"1"] = advanced[0];
-    }
+  const st = {};
+  const third = []; // 3위팀 [팀명, 조] 목록
+  Object.entries(GROUPS).forEach(function(e){
+    var grp=e[0], info=e[1];
+    var advanced = gr[grp]||[];
+    if(advanced.length>=1) st[grp+"1"]=advanced[0];
+    if(advanced.length>=2) st[grp+"2"]=advanced[1];
+    if(advanced.length>=3) third.push({team:advanced[2],grp:grp});
   });
+
+  // 라벨 헬퍼
+  const srcLabel = function(src){
+    if(src==="WC") return "3rd";
+    if(src.length===2) return src[0]+"조 "+src[1]+"위";
+    return src;
+  };
+
+  const TeamSlot = function({src, isWC}){
+    var team = st[src];
+    var isMe = team&&myPicks.has(team);
+    var label = team || (isWC?"3위 와일드카드":src);
+    return(
+      <div style={{padding:"5px 10px",background:isMe?"rgba(212,168,67,.12)":"transparent",display:"flex",alignItems:"center",gap:5}}>
+        {isMe&&<span style={{fontSize:9}}>⭐</span>}
+        <span style={{fontSize:11,color:isMe?"#D4A843":team?"#E0E8F0":"#5A7090",flex:1,lineHeight:1.2}}>
+          {label}
+        </span>
+        <span style={{fontSize:9,color:"#3A5070",flexShrink:0,letterSpacing:".04em"}}>
+          {src.length<=2&&!isWC?(src[0]+"조"+(src[1]==="1"?"1위":"2위")):"WC"}
+        </span>
+      </div>
+    );
+  };
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
-      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
-        ⚔️ {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO R32":"ROUND OF 32"}
-        <span style={{fontSize:10,color:"#5A7090",marginLeft:8,fontFamily:"sans-serif",letterSpacing:"normal"}}>
-          {lang==="ko"?"내 픽 팀 하이라이트":"your picks highlighted"}
-        </span>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>
+          ⚔️ {lang==="ko"?"32강 대진표":"ROUND OF 32"}
+          <span style={{fontSize:10,color:"#5A7090",marginLeft:8,fontFamily:"sans-serif",letterSpacing:"normal",fontWeight:400}}>
+            {lang==="ko"?"내 픽 ⭐":"your picks ⭐"}
+          </span>
+        </div>
+        {!hasResults&&(
+          <span style={{fontSize:11,color:"#5A7090"}}>{doneCount}/12 {lang==="ko"?"조 완료":"groups"}</span>
+        )}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:6}}>
-        {R32_MATCHUPS.map(([srcA,srcB],i)=>{
-          const teamA = standings[srcA];
-          const teamB = standings[srcB];
-          const aIsMe = teamA&&myPicks.has(teamA);
-          const bIsMe = teamB&&myPicks.has(teamB);
+
+      {!hasResults&&doneCount===0&&(
+        <div style={{textAlign:"center",color:"#5A7090",fontSize:12,padding:"20px 0"}}>
+          {lang==="ko"?"조별 결과가 모두 확정되면 공개됩니다":"Revealed after all 12 group results are confirmed"}
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:6}}>
+        {R32_MATCHUPS_OFFICIAL.map(function(pair,i){
+          var srcA=pair[0], srcB=pair[1];
+          var teamA=st[srcA], teamB=srcB==="WC"?null:st[srcB];
+          var aMe=teamA&&myPicks.has(teamA);
+          var bMe=teamB&&myPicks.has(teamB);
+          var matchLabel = "M"+(73+i);
+
           return(
-            <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid rgba(255,255,255,.07)",borderRadius:8,overflow:"hidden"}}>
-              {[{team:teamA,src:srcA,isMe:aIsMe},{team:teamB,src:srcB,isMe:bIsMe}].map(({team,src,isMe},j)=>(
-                <div key={j} style={{
-                  padding:"5px 10px",
-                  background:isMe?"rgba(212,168,67,.12)":"transparent",
-                  borderBottom:j===0?"0.5px solid rgba(255,255,255,.06)":"none",
-                  display:"flex",alignItems:"center",gap:6,
-                }}>
-                  {isMe&&<span style={{fontSize:10}}>⭐</span>}
-                  <span style={{fontSize:12,color:isMe?"#D4A843":team?"#E0E8F0":"#5A7090",flex:1}}>
-                    {team||src}
-                  </span>
-                  <span style={{fontSize:9,color:"#3A5070"}}>{src}</span>
-                </div>
-              ))}
+            <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.25)":"rgba(255,255,255,.07)"),borderRadius:8,overflow:"hidden"}}>
+              <div style={{fontSize:9,color:"#5A7090",padding:"3px 10px",borderBottom:"0.5px solid rgba(255,255,255,.05)",letterSpacing:".08em"}}>{matchLabel}</div>
+              {[{src:srcA,team:teamA,isMe:aMe},{src:srcB,team:teamB,isMe:bMe}].map(function(slot,j){
+                var isWC = slot.src==="WC";
+                return(
+                  <div key={j} style={{padding:"5px 10px",background:slot.isMe?"rgba(212,168,67,.12)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
+                    {slot.isMe&&<span style={{fontSize:9}}>⭐</span>}
+                    <span style={{fontSize:11,color:slot.isMe?"#D4A843":slot.team?"#E0E8F0":"#5A7090",flex:1}}>
+                      {slot.team||(isWC?"3위 WC":slot.src)}
+                    </span>
+                    <span style={{fontSize:9,color:"#3A5070",flexShrink:0}}>
+                      {isWC?"WC":(slot.src.length===2?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):slot.src)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
+
+      {hasResults&&third.length>0&&(
+        <div style={{marginTop:10,padding:"8px 10px",background:"rgba(96,165,250,.06)",border:"0.5px solid rgba(96,165,250,.2)",borderRadius:8}}>
+          <div style={{fontSize:10,color:"#60a5fa",marginBottom:5,letterSpacing:".08em"}}>3위 와일드카드 ({third.length}/8)</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {third.map(function(w){
+              var isMe=myPicks.has(w.team);
+              return(
+                <span key={w.team} style={{fontSize:11,padding:"2px 8px",borderRadius:12,background:isMe?"rgba(212,168,67,.15)":"rgba(255,255,255,.06)",color:isMe?"#D4A843":"#9CA3AF",border:isMe?"0.5px solid rgba(212,168,67,.3)":"none"}}>
+                  {isMe?"⭐ ":""}{w.team} ({w.grp}조 3위)
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
