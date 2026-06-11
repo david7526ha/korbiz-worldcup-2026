@@ -1942,7 +1942,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         </div>
         <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
           {TABS.map(([id,label])=>(
-            <button key={id} onClick={()=>setTabAndScroll(id)} style={{padding:"5px 11px",borderRadius:7,fontSize:11,fontFamily:"'Teko',sans-serif",letterSpacing:".1em",whiteSpace:"nowrap",cursor:"pointer",border:`1px solid ${tab===id?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:tab===id?"rgba(239,68,68,.14)":"transparent",color:tab===id?"#f87171":"#5A7090"}}>{label.toUpperCase()}</button>
+            <button key={id} onClick={(e)=>{e.stopPropagation();setTab(id);}} style={{padding:"10px 14px",borderRadius:7,fontSize:12,fontFamily:"'Teko',sans-serif",letterSpacing:".1em",whiteSpace:"nowrap",cursor:"pointer",border:`1px solid ${tab===id?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:tab===id?"rgba(239,68,68,.14)":"transparent",color:tab===id?"#f87171":"#5A7090",minHeight:40,touchAction:"manipulation"}}>{label.toUpperCase()}</button>
           ))}
         </div>
 
@@ -1994,7 +1994,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         {tab==="phase"&&(
           <div>
             <div style={{display:"flex",gap:8,marginBottom:14}}>
-              {["group","bracket"].map(p=><button key={p} onClick={()=>setSt(prev=>({...prev,phase:p}))} style={{padding:"7px 16px",borderRadius:8,fontFamily:"'Teko',sans-serif",cursor:"pointer",border:`1px solid ${st.phase===p?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:st.phase===p?"rgba(239,68,68,.14)":"transparent",color:st.phase===p?"#f87171":"#5A7090"}}>{p==="group"?t.groupStage.toUpperCase():t.knockout.toUpperCase()}</button>)}
+              {["group","bracket"].map(p=><button key={p} onClick={()=>setSt(prev=>({...prev,phase:p}))} style={{padding:"12px 20px",borderRadius:8,fontFamily:"'Teko',sans-serif",cursor:"pointer",border:`1px solid ${st.phase===p?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:st.phase===p?"rgba(239,68,68,.14)":"transparent",color:st.phase===p?"#f87171":"#5A7090",touchAction:"manipulation",minHeight:44}}>{p==="group"?t.groupStage.toUpperCase():t.knockout.toUpperCase()}</button>)}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[["groupLocked",t.lockGroup],["bracketLocked",t.lockBracket]].map(([key,label])=>(
@@ -2017,7 +2017,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                   <div key={grp} style={{background:"#111E2E",borderRadius:8,padding:10,border:"1px solid rgba(255,255,255,.07)"}}>
                     <div style={{fontFamily:"'Teko',sans-serif",color:"#f87171",marginBottom:6,fontSize:12}}>{t.group} {grp} <span style={{color:"#5A7090",fontSize:10}}>({adv.length} {t.advanced})</span></div>
                     {teams.map((team,i)=>{const on=adv.includes(team);return(
-                      <div key={team} onClick={()=>toggleGroup(grp,team)} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 7px",borderRadius:5,marginBottom:3,cursor:"pointer",background:on?"rgba(239,68,68,.12)":"transparent",border:`1px solid ${on?"rgba(239,68,68,.4)":"rgba(255,255,255,.07)"}`,color:on?"#f87171":"#5A7090",fontSize:11}}>
+                      <div key={team} onClick={()=>toggleGroup(grp,team)} style={{display:"flex",alignItems:"center",gap:6,padding:"10px 10px",borderRadius:8,marginBottom:4,cursor:"pointer",touchAction:"manipulation",minHeight:40,background:on?"rgba(239,68,68,.12)":"transparent",border:`1px solid ${on?"rgba(239,68,68,.4)":"rgba(255,255,255,.07)"}`,color:on?"#f87171":"#5A7090",fontSize:11}}>
                         <span>{flags[i]}</span><span style={{flex:1}}>{tn(team,lang)}</span>{on&&"✓"}
                       </div>
                     );})}
@@ -2078,7 +2078,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
 
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
           <button onClick={onClose} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:12,cursor:"pointer"}}>{t.cancel}</button>
-          <button onClick={save} disabled={saving} style={{padding:"7px 20px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.saveAll}</button>
+          <button onClick={save} disabled={saving} style={{padding:"12px 24px",borderRadius:8,border:"none",background:"#EF4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1,touchAction:"manipulation",minHeight:44}}>{saving?t.saving:t.saveAll}</button>
           {tab==="group"&&<button onClick={async()=>{
             const grpRes=st.groupResults||{};
             const entries=Object.entries(grpRes);
