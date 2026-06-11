@@ -342,9 +342,11 @@ function LiveChat({currentUser, lang}){
     if(bottomRef.current) bottomRef.current.scrollIntoView({behavior:"smooth"});
   },[messages]);
 
+  const [chatError, setChatError] = useState(null);
   const send = async() => {
     if(!input.trim()||sending) return;
     setSending(true);
+    setChatError(null);
     try {
       await addDoc(collection(db,"chat"),{
         uid: currentUser.uid,
@@ -354,7 +356,10 @@ function LiveChat({currentUser, lang}){
         ts: serverTimestamp(),
       });
       setInput("");
-    } catch(e){}
+    } catch(e){
+      console.error("Chat error:", e);
+      setChatError(e.code||e.message||"전송 실패");
+    }
     setSending(false);
   };
 
@@ -405,6 +410,7 @@ function LiveChat({currentUser, lang}){
         })}
         <div ref={bottomRef}/>
       </div>
+      {chatError&&<div style={{padding:"4px 14px",fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)"}}>❌ {chatError}</div>}
       <div style={{padding:"8px 12px",borderTop:"0.5px solid rgba(255,255,255,.07)",display:"flex",gap:8,alignItems:"center"}}>
         <input value={input} onChange={function(e){setInput(e.target.value);}} onKeyDown={handleKey} placeholder={ph} maxLength={200}
           style={{flex:1,background:"rgba(255,255,255,.06)",border:"0.5px solid rgba(255,255,255,.1)",borderRadius:20,padding:"7px 14px",fontSize:12,color:"#E0E8F0",outline:"none"}}/>
