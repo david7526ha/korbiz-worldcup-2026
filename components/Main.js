@@ -1482,7 +1482,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
 }
 
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
-function ResultsTab({tournament, lang}){
+function ResultsTab({users, tournament, currentUid, lang}){
   const matchResults = tournament.matchResults || {};
   const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]);
   const upcoming = MATCH_SCHEDULE.filter(m => !matchResults[m.id]);
@@ -1547,6 +1547,45 @@ function ResultsTab({tournament, lang}){
                 <div style={{flex:1,textAlign:"left"}}>
                   <div style={{fontSize:13,color:awayWin?"#E0E8F0":"#5A7090",fontWeight:awayWin?600:400}}>{m.away}</div>
                 </div>
+              </div>
+
+              {/* 🎯 예측 적중자 */}
+              {(function(){
+                const prophets = Object.values(users).filter(function(u){
+                  const p = u.scorePredictions?.[m.id];
+                  return u.approved && p && String(p.home)===String(r.home) && String(p.away)===String(r.away);
+                });
+                if(prophets.length===0) return null;
+                return(
+                  <div style={{padding:"0 16px 8px",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}}>
+                    <span style={{fontSize:10,color:"#D4A843"}}>🎯 {lang==="ko"?"예언가":"Prophets"}:</span>
+                    {prophets.map(function(u){
+                      return(
+                        <span key={u.uid} style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"rgba(212,168,67,.15)",border:"0.5px solid rgba(212,168,67,.35)",color:"#D4A843",fontWeight:600}}>
+                          {(u.name||"?").split(" ")[0]}
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* 이모지 리액션 바 */}
+              <div style={{padding:"8px 16px 10px",borderTop:"0.5px solid rgba(255,255,255,.05)",display:"flex",gap:6}}>
+                {["🔥","😱","😂","💀"].map(function(emoji){
+                  const count = Object.values(users).filter(function(u){ return u.reactions?.[m.id]===emoji; }).length;
+                  const mine = Object.values(users).find(function(u){ return u.uid===currentUid; })?.reactions?.[m.id]===emoji;
+                  return(
+                    <button key={emoji}
+                      onClick={async function(){
+                        try{ await saveReaction(currentUid, m.id, mine ? "" : emoji); }catch(e){}
+                      }}
+                      style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:14,cursor:"pointer",touchAction:"manipulation",border:"0.5px solid "+(mine?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"),background:mine?"rgba(212,168,67,.12)":"rgba(255,255,255,.03)"}}>
+                      <span style={{fontSize:13}}>{emoji}</span>
+                      {count>0&&<span style={{fontSize:11,color:mine?"#D4A843":"#5A7090",fontWeight:600}}>{count}</span>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -2356,7 +2395,7 @@ export default function Main(){
             <BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>
           </div>
         )}
-        {tab==="results"&&<ResultsTab tournament={tournament} lang={lang}/>}
+        {tab==="results"&&<ResultsTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
