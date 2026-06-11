@@ -328,50 +328,62 @@ function LiveChat({currentUser, lang}){
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [chatError, setChatError] = useState(null);
   const bottomRef = useRef(null);
 
+  // API Route 방식으로 폴링 (Firestore rules 우회)
+  const fetchMsgs = async() => {
+    try {
+      const r = await fetch("/api/chat");
+      const d = await r.json();
+      setMessages(d.messages||[]);
+    } catch(e){}
+  };
+
   useEffect(()=>{
-    const q = query(collection(db,"chat"), orderBy("ts","asc"), limit(60));
-    const unsub = onSnapshot(q, snap=>{
-      setMessages(snap.docs.map(d=>({id:d.id,...d.data()})));
-    });
-    return unsub;
+    fetchMsgs();
+    const iv = setInterval(fetchMsgs, 3000); // 3초마다 갱신
+    return ()=>clearInterval(iv);
   },[]);
 
   useEffect(()=>{
     if(bottomRef.current) bottomRef.current.scrollIntoView({behavior:"smooth"});
   },[messages]);
 
-  const [chatError, setChatError] = useState(null);
   const send = async() => {
     if(!input.trim()||sending) return;
     setSending(true);
     setChatError(null);
+    const text = input.trim();
+    setInput(""); // 즉시 입력창 비우기
     try {
-      const chatData = {
-        uid: currentUser.uid,
-        name: (currentUser.displayName||"?").split(" ")[0],
-        photo: currentUser.photoURL||null,
-        text: input.trim().slice(0,200),
-        ts: serverTimestamp(),
-        clientTs: Date.now(),
-      };
-      await addDoc(collection(db,"chat"), chatData);
-      setInput("");
+      const r = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          uid: currentUser.uid,
+          name: (currentUser.displayName||"?").split(" ")[0],
+          photo: currentUser.photoURL||null,
+          text: text,
+          clientTs: Date.now(),
+        })
+      });
+      const d = await r.json();
+      if(!d.ok) setChatError(d.error||"전송 실패");
+      else fetchMsgs();
     } catch(e){
-      console.error("Chat error:", e);
-      setChatError(e.code||e.message||"전송 실패");
+      setChatError("네트워크 오류");
+      setInput(text); // 실패시 복원
     }
     setSending(false);
   };
 
   const handleKey = (e) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } };
 
-  const fmtTime = (ts, clientTs) => {
+  const fmtTime = (clientTs) => {
     try {
-      const d = ts?.toDate ? ts.toDate() : clientTs ? new Date(clientTs) : null;
-      if(!d) return "";
-      return d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"})+" ET";
+      if(!clientTs) return "";
+      return new Date(clientTs).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"})+" ET";
     } catch(e){ return ""; }
   };
 
@@ -405,7 +417,7 @@ function LiveChat({currentUser, lang}){
                 <div style={{background:isMe?"rgba(212,168,67,.15)":"rgba(255,255,255,.06)",border:isMe?"1px solid rgba(212,168,67,.3)":"0.5px solid rgba(255,255,255,.08)",borderRadius:isMe?"12px 4px 12px 12px":"4px 12px 12px 12px",padding:"6px 10px",fontSize:12,color:"#E0E8F0",wordBreak:"break-word",lineHeight:1.4}}>
                   {m.text}
                 </div>
-                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.ts,m.clientTs)}</div>
+                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.clientTs)}</div>
               </div>
             </div>
           );
