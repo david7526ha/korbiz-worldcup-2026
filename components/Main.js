@@ -1357,157 +1357,131 @@ function calcWinProbs(ranked, tournament) {
 
 
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
-function ResultsTab({users, tournament, currentUid, lang}){
-  const gr = tournament.groupResults || {};
-  const hasAny = Object.keys(gr).length > 0;
+function ResultsTab({tournament, lang}){
+  const matchResults = tournament.matchResults || {};
+  const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]);
+  const upcoming = MATCH_SCHEDULE.filter(m => !matchResults[m.id]);
 
-  // 내 픽
-  const me = Object.values(users).find(function(u){ return u.uid===currentUid; });
-  const myPicks = {};
-  Object.entries(me?.groupPicks||{}).forEach(function(e){
-    myPicks[e[0]] = e[1]||[];
-  });
-
-  // 경기 스케줄에서 완료된 경기 찾기
-  // groupResults에 있는 조들이 완료된 조
-  const completedGroups = Object.keys(gr).sort();
-
-  const lbl = lang==="ko"?"결과":lang==="es"?"RESULTADOS":"RESULTS";
-
-  if(!hasAny) return(
+  if(played.length === 0) return(
     <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
       <div style={{fontSize:40,marginBottom:12}}>⏳</div>
       <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843",marginBottom:8}}>
-        {lang==="ko"?"아직 결과 없음":lang==="es"?"Sin resultados aún":"No results yet"}
+        {lang==="ko"?"아직 결과 없음":"No results yet"}
       </div>
       <div style={{fontSize:13}}>
-        {lang==="ko"?"경기 후 결과가 여기에 표시됩니다":"Results will appear here after matches"}
+        {lang==="ko"?"경기 후 Admin에서 스코어를 입력하면 표시됩니다":"Scores will appear after Admin enters match results"}
       </div>
     </div>
   );
 
   return(
     <div>
-      {/* 헤더 */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843",letterSpacing:".1em"}}>
-          🏆 {lang==="ko"?"경기 결과 & 하이라이트":lang==="es"?"RESULTADOS & HIGHLIGHTS":"MATCH RESULTS & HIGHLIGHTS"}
-        </div>
+      {/* FIFA Official 링크 */}
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
         <a href="https://www.youtube.com/@FIFAWorldCup/videos" target="_blank" rel="noopener noreferrer"
-          style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"4px 12px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.07)"}}>
+          style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"5px 12px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.07)"}}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
           FIFA Official
         </a>
       </div>
 
-      {/* 완료된 조별 결과 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-        {completedGroups.map(function(grp){
-          const advanced = gr[grp] || [];
-          const grpInfo = GROUPS[grp] || {teams:[],flags:[]};
-          const myGrpPicks = myPicks[grp] || [];
-
-          // 유튜브 검색 URL
-          const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights";
-
-          // 전체 픽 통계
-          const approved = Object.values(users).filter(function(u){return u.approved;});
-          const total = approved.length || 1;
+      {/* 완료된 경기 */}
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+        ✅ {lang==="ko"?"완료된 경기":"COMPLETED"} ({played.length})
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10,marginBottom:20}}>
+        {played.map(function(m){
+          const r = matchResults[m.id];
+          const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+"+m.home.replace(/ /g,"+")+"+"+ m.away.replace(/ /g,"+")+ "+highlights";
+          const homeWin = r.home > r.away;
+          const awayWin = r.away > r.home;
+          const draw = r.home === r.away;
 
           return(
-            <div key={grp} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden"}}>
-              {/* 카드 헤더 */}
-              <div style={{background:"rgba(212,168,67,.08)",borderBottom:"0.5px solid rgba(212,168,67,.2)",padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
-                  {lang==="ko"?"조 ":"GROUP "}{grp}
-                  <span style={{fontSize:11,color:"#5A7090",marginLeft:6,fontFamily:"sans-serif",fontWeight:400,letterSpacing:"normal"}}>
-                    {advanced.length}{lang==="ko"?"팀 진출":" qualified"}
-                  </span>
-                </div>
+            <div key={m.id} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,overflow:"hidden"}}>
+              {/* 헤더 */}
+              <div style={{background:"rgba(255,255,255,.03)",padding:"6px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid rgba(255,255,255,.06)"}}>
+                <span style={{fontSize:10,color:"#5A7090",letterSpacing:".06em"}}>Group {m.group} · {m.date} · {m.time}</span>
                 <a href={ytUrl} target="_blank" rel="noopener noreferrer"
-                  style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:12,background:"rgba(248,113,113,.1)",border:"0.5px solid rgba(248,113,113,.25)"}}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-                  Highlights
+                  style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 7px",borderRadius:10,background:"rgba(248,113,113,.1)"}}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                  HL
                 </a>
               </div>
-
-              {/* 팀 목록 */}
-              <div style={{padding:"10px 14px"}}>
-                {grpInfo.teams.map(function(team, i){
-                  const flag = grpInfo.flags?.[i] || "🏳";
-                  const qualified = advanced.includes(team);
-                  const iMyPick = myGrpPicks.includes(team);
-                  const pickCount = approved.filter(function(u){ return (u.groupPicks?.[grp]||[]).includes(team); }).length;
-                  const pickPct = Math.round(pickCount/total*100);
-
-                  return(
-                    <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"0.5px solid rgba(255,255,255,.05)"}}>
-                      {/* 결과 아이콘 */}
-                      <div style={{width:22,textAlign:"center",flexShrink:0}}>
-                        {qualified
-                          ? <span style={{fontSize:14}}>✅</span>
-                          : <span style={{fontSize:14,opacity:.4}}>❌</span>}
-                      </div>
-                      {/* 국기 + 팀명 */}
-                      <span style={{fontSize:14,flexShrink:0}}>{flag}</span>
-                      <span style={{fontSize:13,flex:1,color:qualified?"#E0E8F0":"#5A7090",fontWeight:qualified?500:400}}>
-                        {team}
-                      </span>
-                      {/* 내 픽 배지 */}
-                      {iMyPick&&(
-                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:10,background:qualified?"rgba(34,197,94,.15)":"rgba(239,68,68,.1)",color:qualified?"#22C55E":"#EF4444",border:"0.5px solid "+(qualified?"rgba(34,197,94,.3)":"rgba(239,68,68,.3)"),flexShrink:0}}>
-                          {qualified?"✓ 내픽":"✗ 내픽"}
-                        </span>
-                      )}
-                      {/* 픽 퍼센트 */}
-                      <span style={{fontSize:10,color:"#5A7090",flexShrink:0,width:28,textAlign:"right"}}>{pickPct}%</span>
-                    </div>
-                  );
-                })}
-
-                {/* 내 정확도 */}
-                {myGrpPicks.length > 0 && (()=>{
-                  const correct = myGrpPicks.filter(function(t){ return advanced.includes(t); }).length;
-                  const accuracy = Math.round(correct/myGrpPicks.length*100);
-                  return(
-                    <div style={{marginTop:8,padding:"6px 8px",borderRadius:8,background:correct>0?"rgba(34,197,94,.06)":"rgba(239,68,68,.05)",border:"0.5px solid "+(correct>0?"rgba(34,197,94,.15)":"rgba(239,68,68,.1)"),fontSize:11,color:correct>0?"#22C55E":"#EF4444",textAlign:"center"}}>
-                      {lang==="ko"
-                        ? "내 픽 "+correct+"/"+myGrpPicks.length+"팀 적중 ("+accuracy+"%)"
-                        : "My picks: "+correct+"/"+myGrpPicks.length+" correct ("+accuracy+"%)"}
-                    </div>
-                  );
-                })()}
+              {/* 스코어 */}
+              <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{flex:1,textAlign:"right"}}>
+                  <div style={{fontSize:13,color:homeWin?"#E0E8F0":"#5A7090",fontWeight:homeWin?600:400}}>{m.home}</div>
+                </div>
+                <div style={{textAlign:"center",minWidth:70}}>
+                  <div style={{fontFamily:"'Teko',sans-serif",fontSize:28,color:"#fff",lineHeight:1}}>
+                    {r.home} – {r.away}
+                  </div>
+                  {draw&&<div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>DRAW</div>}
+                </div>
+                <div style={{flex:1,textAlign:"left"}}>
+                  <div style={{fontSize:13,color:awayWin?"#E0E8F0":"#5A7090",fontWeight:awayWin?600:400}}>{m.away}</div>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 내 전체 성적 요약 */}
-      {completedGroups.length > 0 && (()=>{
-        var totalCorrect=0, totalPicked=0;
-        completedGroups.forEach(function(grp){
-          var picks = myPicks[grp]||[];
-          var adv = gr[grp]||[];
-          totalPicked += picks.length;
-          totalCorrect += picks.filter(function(t){ return adv.includes(t); }).length;
-        });
-        if(totalPicked===0) return null;
-        var acc = Math.round(totalCorrect/totalPicked*100);
-        return(
-          <div style={{marginTop:16,padding:"12px 16px",background:"rgba(212,168,67,.06)",border:"1px solid rgba(212,168,67,.2)",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:13,color:"#9CA3AF"}}>
-              {lang==="ko"?"내 전체 성적":"My overall accuracy"}
-            </div>
-            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:acc>=60?"#22C55E":acc>=40?"#D4A843":"#EF4444"}}>
-              {totalCorrect}/{totalPicked} ({acc}%)
-            </div>
+      {/* 예정된 경기 */}
+      {upcoming.length > 0 && (
+        <div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#5A7090",letterSpacing:".1em",marginBottom:10}}>
+            ⏰ {lang==="ko"?"예정된 경기":"UPCOMING"} ({upcoming.length})
           </div>
-        );
-      })()}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:8}}>
+            {upcoming.map(function(m){
+              return(
+                <div key={m.id} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{flex:1,textAlign:"right",fontSize:12,color:"#9CA3AF"}}>{m.home}</div>
+                  <div style={{textAlign:"center",minWidth:60}}>
+                    <div style={{fontSize:10,color:"#5A7090"}}>{m.date}</div>
+                    <div style={{fontSize:11,color:"#D4A843",fontWeight:500}}>{m.time}</div>
+                  </div>
+                  <div style={{flex:1,textAlign:"left",fontSize:12,color:"#9CA3AF"}}>{m.away}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+// ─── MATCH SCHEDULE (스코어 입력용) ─────────────────────────────────────────
+const MATCH_SCHEDULE = [
+  {id:"A1", date:"Jun 11", time:"3:00 PM ET",  home:"Mexico",              away:"South Africa",      group:"A"},
+  {id:"A2", date:"Jun 11", time:"10:00 PM ET", home:"South Korea",         away:"Czechia",           group:"A"},
+  {id:"B1", date:"Jun 12", time:"3:00 PM ET",  home:"Canada",              away:"Bosnia-Herzegovina", group:"B"},
+  {id:"D1", date:"Jun 12", time:"9:00 PM ET",  home:"USA",                 away:"Paraguay",          group:"D"},
+  {id:"B2", date:"Jun 13", time:"3:00 PM ET",  home:"Qatar",               away:"Switzerland",       group:"B"},
+  {id:"C1", date:"Jun 13", time:"6:00 PM ET",  home:"Brazil",              away:"Morocco",           group:"C"},
+  {id:"C2", date:"Jun 13", time:"9:00 PM ET",  home:"Haiti",               away:"Scotland",          group:"C"},
+  {id:"D2", date:"Jun 14", time:"12:00 AM ET", home:"Australia",           away:"Türkiye",           group:"D"},
+  {id:"E1", date:"Jun 14", time:"1:00 PM ET",  home:"Germany",             away:"Curaçao",           group:"E"},
+  {id:"F1", date:"Jun 14", time:"4:00 PM ET",  home:"Netherlands",         away:"Japan",             group:"F"},
+  {id:"E2", date:"Jun 14", time:"7:00 PM ET",  home:"Ivory Coast",         away:"Ecuador",           group:"E"},
+  {id:"F2", date:"Jun 14", time:"10:00 PM ET", home:"Sweden",              away:"Tunisia",           group:"F"},
+  {id:"H1", date:"Jun 15", time:"12:00 PM ET", home:"Spain",               away:"Cape Verde",        group:"H"},
+  {id:"G1", date:"Jun 15", time:"3:00 PM ET",  home:"Belgium",             away:"Egypt",             group:"G"},
+  {id:"H2", date:"Jun 15", time:"6:00 PM ET",  home:"Saudi Arabia",        away:"Uruguay",           group:"H"},
+  {id:"G2", date:"Jun 15", time:"9:00 PM ET",  home:"Iran",                away:"New Zealand",       group:"G"},
+  {id:"I1", date:"Jun 16", time:"3:00 PM ET",  home:"France",              away:"Senegal",           group:"I"},
+  {id:"I2", date:"Jun 16", time:"6:00 PM ET",  home:"Iraq",                away:"Norway",            group:"I"},
+  {id:"J1", date:"Jun 16", time:"9:00 PM ET",  home:"Argentina",           away:"Algeria",           group:"J"},
+  {id:"J2", date:"Jun 17", time:"12:00 AM ET", home:"Austria",             away:"Jordan",            group:"J"},
+  {id:"K1", date:"Jun 17", time:"1:00 PM ET",  home:"Portugal",            away:"Congo DR",          group:"K"},
+  {id:"L1", date:"Jun 17", time:"4:00 PM ET",  home:"England",             away:"Croatia",           group:"L"},
+  {id:"L2", date:"Jun 17", time:"7:00 PM ET",  home:"Ghana",               away:"Panama",            group:"L"},
+  {id:"K2", date:"Jun 17", time:"10:00 PM ET", home:"Uzbekistan",          away:"Colombia",          group:"K"},
+];
 
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
@@ -1923,7 +1897,7 @@ function Leaderboard({users,currentUid,tournament,t,lang}){
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
 function AdminPanel({tournament,users,onClose,showToast,t,lang}){
-  const [st,setSt]=useState({...tournament,bracketTeams:[...(tournament.bracketTeams||Array(32).fill(""))],groupResults:{...(tournament.groupResults||{})},bracketResults:{...(tournament.bracketResults||{})}});
+  const [st,setSt]=useState({...tournament,bracketTeams:[...(tournament.bracketTeams||Array(32).fill(""))],groupResults:{...(tournament.groupResults||{})},bracketResults:{...(tournament.bracketResults||{})},matchResults:{...(tournament.matchResults||{})}});
   const [tab,setTab]=useState("approvals");
   const [saving,setSaving]=useState(false);
   const pending=Object.values(users).filter(u=>!u.approved);
@@ -1932,7 +1906,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
   const toggleGroup=(grp,team)=>setSt(prev=>{const cur=prev.groupResults?.[grp]||[];const next=cur.includes(team)?cur.filter(x=>x!==team):[...cur,team];return{...prev,groupResults:{...prev.groupResults,[grp]:next}};});
   const setBR=(key,winner)=>setSt(prev=>({...prev,bracketResults:{...prev.bracketResults,[key]:prev.bracketResults?.[key]===winner?"":winner}}));
   const setTeam=(idx,val)=>setSt(prev=>{const arr=[...prev.bracketTeams];arr[idx]=val;return{...prev,bracketTeams:arr};});
-  const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab]];
+  const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["matches",lang==="ko"?"경기결과":"MATCH RESULTS"],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab]];
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#0C1620",border:"1px solid rgba(239,68,68,.22)",borderRadius:18,padding:"20px 18px",maxWidth:860,width:"96vw",maxHeight:"91vh",overflowY:"auto"}}>
@@ -2011,6 +1985,43 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
           </div>
         )}
 
+        {tab==="matches"&&(
+          <div>
+            <p style={{color:"#5A7090",fontSize:12,marginBottom:12}}>
+              {lang==="ko"?"경기 스코어 입력 후 SAVE ALL CHANGES":"Enter match scores then SAVE ALL CHANGES"}
+            </p>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {MATCH_SCHEDULE.map(function(m){
+                const r = st.matchResults?.[m.id] || {home:"",away:""};
+                const done = r.home!==""&&r.away!=="";
+                return(
+                  <div key={m.id} style={{background:done?"rgba(34,197,94,.05)":"#111E2E",border:`0.5px solid ${done?"rgba(34,197,94,.2)":"rgba(255,255,255,.07)"}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    {/* 경기 정보 */}
+                    <div style={{fontSize:10,color:"#5A7090",width:"100%",marginBottom:4}}>
+                      {m.date} · {m.time} · Group {m.group}
+                    </div>
+                    {/* 홈팀 */}
+                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right",minWidth:80}}>{m.home}</span>
+                    {/* 홈 스코어 */}
+                    <input type="number" min="0" max="20" value={r.home}
+                      onChange={function(e){setSt(function(prev){const mr={...(prev.matchResults||{})};mr[m.id]={...(mr[m.id]||{home:"",away:""}),home:e.target.value};return{...prev,matchResults:mr};});}}
+                      style={{width:44,textAlign:"center",background:"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:"#fff",fontSize:16,fontFamily:"'Teko',sans-serif",padding:"4px 0",touchAction:"manipulation"}}
+                    />
+                    <span style={{color:"#5A7090",fontSize:14}}>–</span>
+                    {/* 어웨이 스코어 */}
+                    <input type="number" min="0" max="20" value={r.away}
+                      onChange={function(e){setSt(function(prev){const mr={...(prev.matchResults||{})};mr[m.id]={...(mr[m.id]||{home:"",away:""}),away:e.target.value};return{...prev,matchResults:mr};});}}
+                      style={{width:44,textAlign:"center",background:"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:"#fff",fontSize:16,fontFamily:"'Teko',sans-serif",padding:"4px 0",touchAction:"manipulation"}}
+                    />
+                    {/* 어웨이팀 */}
+                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,minWidth:80}}>{m.away}</span>
+                    {done&&<span style={{fontSize:11,color:"#22C55E"}}>✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {tab==="group"&&(
           <div>
             <p style={{color:"#5A7090",fontSize:13,marginBottom:10}}>{t.bracketResultDesc}</p>
@@ -2220,7 +2231,7 @@ export default function Main(){
             <BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>
           </div>
         )}
-        {tab==="results"&&<ResultsTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="results"&&<ResultsTab tournament={tournament} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
