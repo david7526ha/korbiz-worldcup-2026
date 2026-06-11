@@ -481,17 +481,40 @@ function PrizeDashboard({users, lang}){
 
 // ─── NEXT MATCH COUNTDOWN ─────────────────────────────────────────────────────
 const WC_MATCHES = [
-  {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"5:00 PM ET"},
-  {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D",time:"8:00 PM ET"},
-  {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"2:00 PM ET"},
-  {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"5:00 PM ET"},
-  {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I",time:"2:00 PM ET"},
-  {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"5:00 PM ET"},
-  {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"2:00 PM ET"},
-  {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L",time:"5:00 PM ET"},
-  {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"12:00 PM ET"},
+  // June 11 (Thu)
+  {date:"2026-06-11T15:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"3:00 PM ET"},
+  {date:"2026-06-11T22:00:00-04:00",teams:"South Korea vs Czechia",group:"A",time:"10:00 PM ET"},
+  // June 12 (Fri)
+  {date:"2026-06-12T15:00:00-04:00",teams:"Canada vs Bosnia-Herzegovina",group:"B",time:"3:00 PM ET"},
+  {date:"2026-06-12T21:00:00-04:00",teams:"USA vs Paraguay",group:"D",time:"9:00 PM ET"},
+  // June 13 (Sat)
+  {date:"2026-06-13T15:00:00-04:00",teams:"Qatar vs Switzerland",group:"B",time:"3:00 PM ET"},
+  {date:"2026-06-13T18:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"6:00 PM ET"},
+  {date:"2026-06-13T21:00:00-04:00",teams:"Haiti vs Scotland",group:"C",time:"9:00 PM ET"},
+  {date:"2026-06-14T00:00:00-04:00",teams:"Australia vs Türkiye",group:"D",time:"12:00 AM ET"},
+  // June 14 (Sun)
+  {date:"2026-06-14T13:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"1:00 PM ET"},
+  {date:"2026-06-14T16:00:00-04:00",teams:"Netherlands vs Japan",group:"F",time:"4:00 PM ET"},
+  {date:"2026-06-14T19:00:00-04:00",teams:"Ivory Coast vs Ecuador",group:"E",time:"7:00 PM ET"},
+  {date:"2026-06-14T22:00:00-04:00",teams:"Sweden vs Tunisia",group:"F",time:"10:00 PM ET"},
+  // June 15 (Mon)
+  {date:"2026-06-15T12:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"12:00 PM ET"},
+  {date:"2026-06-15T15:00:00-04:00",teams:"Belgium vs Egypt",group:"G",time:"3:00 PM ET"},
+  {date:"2026-06-15T18:00:00-04:00",teams:"Saudi Arabia vs Uruguay",group:"H",time:"6:00 PM ET"},
+  {date:"2026-06-15T21:00:00-04:00",teams:"Iran vs New Zealand",group:"G",time:"9:00 PM ET"},
+  // June 16 (Tue)
+  {date:"2026-06-16T15:00:00-04:00",teams:"France vs Senegal",group:"I",time:"3:00 PM ET"},
+  {date:"2026-06-16T18:00:00-04:00",teams:"Iraq vs Norway",group:"I",time:"6:00 PM ET"},
+  {date:"2026-06-16T21:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"9:00 PM ET"},
+  {date:"2026-06-17T00:00:00-04:00",teams:"Austria vs Jordan",group:"J",time:"12:00 AM ET"},
+  // June 17 (Wed)
+  {date:"2026-06-17T13:00:00-04:00",teams:"Portugal vs Congo DR",group:"K",time:"1:00 PM ET"},
+  {date:"2026-06-17T16:00:00-04:00",teams:"England vs Croatia",group:"L",time:"4:00 PM ET"},
+  {date:"2026-06-17T19:00:00-04:00",teams:"Ghana vs Panama",group:"L",time:"7:00 PM ET"},
+  {date:"2026-06-17T22:00:00-04:00",teams:"Uzbekistan vs Colombia",group:"K",time:"10:00 PM ET"},
+  // Round of 32 시작
+  {date:"2026-06-28T13:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"1:00 PM ET"},
 ];
-
 function NextMatchBanner({lang}){
   const [timeLeft,setTimeLeft]=useState("");
   const [next,setNext]=useState(null);
@@ -1021,17 +1044,40 @@ function WinProbWidget({users, tournament, currentUid, lang}){
 // ─── NEXT MATCH CARD (dashboard용) ───────────────────────────────────────────
 function NextMatchCard({lang}){
   const WC = [
-    {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"5:00 PM ET"},
-    {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D",time:"8:00 PM ET"},
-    {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"2:00 PM ET"},
-    {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"5:00 PM ET"},
-    {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I",time:"2:00 PM ET"},
-    {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"5:00 PM ET"},
-    {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"2:00 PM ET"},
-    {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L",time:"5:00 PM ET"},
-    {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"12:00 PM ET"},
-  ];
-  const [tl, setTl] = useState({d:0,h:0,m:0,s:0});
+    // June 11 (Thu)
+    {date:"2026-06-11T15:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"3:00 PM ET"},
+    {date:"2026-06-11T22:00:00-04:00",teams:"South Korea vs Czechia",group:"A",time:"10:00 PM ET"},
+    // June 12 (Fri)
+    {date:"2026-06-12T15:00:00-04:00",teams:"Canada vs Bosnia-Herzegovina",group:"B",time:"3:00 PM ET"},
+    {date:"2026-06-12T21:00:00-04:00",teams:"USA vs Paraguay",group:"D",time:"9:00 PM ET"},
+    // June 13 (Sat)
+    {date:"2026-06-13T15:00:00-04:00",teams:"Qatar vs Switzerland",group:"B",time:"3:00 PM ET"},
+    {date:"2026-06-13T18:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"6:00 PM ET"},
+    {date:"2026-06-13T21:00:00-04:00",teams:"Haiti vs Scotland",group:"C",time:"9:00 PM ET"},
+    {date:"2026-06-14T00:00:00-04:00",teams:"Australia vs Türkiye",group:"D",time:"12:00 AM ET"},
+    // June 14 (Sun)
+    {date:"2026-06-14T13:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"1:00 PM ET"},
+    {date:"2026-06-14T16:00:00-04:00",teams:"Netherlands vs Japan",group:"F",time:"4:00 PM ET"},
+    {date:"2026-06-14T19:00:00-04:00",teams:"Ivory Coast vs Ecuador",group:"E",time:"7:00 PM ET"},
+    {date:"2026-06-14T22:00:00-04:00",teams:"Sweden vs Tunisia",group:"F",time:"10:00 PM ET"},
+    // June 15 (Mon)
+    {date:"2026-06-15T12:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"12:00 PM ET"},
+    {date:"2026-06-15T15:00:00-04:00",teams:"Belgium vs Egypt",group:"G",time:"3:00 PM ET"},
+    {date:"2026-06-15T18:00:00-04:00",teams:"Saudi Arabia vs Uruguay",group:"H",time:"6:00 PM ET"},
+    {date:"2026-06-15T21:00:00-04:00",teams:"Iran vs New Zealand",group:"G",time:"9:00 PM ET"},
+    // June 16 (Tue)
+    {date:"2026-06-16T15:00:00-04:00",teams:"France vs Senegal",group:"I",time:"3:00 PM ET"},
+    {date:"2026-06-16T18:00:00-04:00",teams:"Iraq vs Norway",group:"I",time:"6:00 PM ET"},
+    {date:"2026-06-16T21:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"9:00 PM ET"},
+    {date:"2026-06-17T00:00:00-04:00",teams:"Austria vs Jordan",group:"J",time:"12:00 AM ET"},
+    // June 17 (Wed)
+    {date:"2026-06-17T13:00:00-04:00",teams:"Portugal vs Congo DR",group:"K",time:"1:00 PM ET"},
+    {date:"2026-06-17T16:00:00-04:00",teams:"England vs Croatia",group:"L",time:"4:00 PM ET"},
+    {date:"2026-06-17T19:00:00-04:00",teams:"Ghana vs Panama",group:"L",time:"7:00 PM ET"},
+    {date:"2026-06-17T22:00:00-04:00",teams:"Uzbekistan vs Colombia",group:"K",time:"10:00 PM ET"},
+    // Round of 32
+    {date:"2026-06-28T13:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"1:00 PM ET"},
+  ];  const [tl, setTl] = useState({d:0,h:0,m:0,s:0});
   const [next, setNext] = useState(null);
 
   useEffect(()=>{
