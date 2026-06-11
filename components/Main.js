@@ -1,15 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   auth, db, signInWithGoogle, signOutUser, isAdmin,
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
   setApproved, setPaid, subscribeUsers,
   subscribeTournamentState, saveTournamentState,
 } from "../lib/firebase";
-import {
-  collection, addDoc, onSnapshot, query,
-  orderBy, limit, serverTimestamp,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { requestNotificationPermission, onForegroundMessage, getTimeRemaining, DEADLINES } from "../lib/notifications";
 
@@ -323,122 +320,6 @@ function Avatar({name,photoURL,size=36}){
 
 
 
-// ─── LIVE CHAT ────────────────────────────────────────────────────────────────
-function LiveChat({currentUser, lang}){
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [chatError, setChatError] = useState(null);
-  const bottomRef = useRef(null);
-
-  // API Route 방식으로 폴링 (Firestore rules 우회)
-  const fetchMsgs = async() => {
-    try {
-      const r = await fetch("/api/chat");
-      const d = await r.json();
-      setMessages(d.messages||[]);
-    } catch(e){}
-  };
-
-  useEffect(()=>{
-    fetchMsgs();
-    const iv = setInterval(fetchMsgs, 3000); // 3초마다 갱신
-    return ()=>clearInterval(iv);
-  },[]);
-
-  const chatBoxRef = useRef(null);
-  useEffect(()=>{
-    // 채팅 박스 내부에서만 스크롤 (페이지 전체 스크롤 방지)
-    if(chatBoxRef.current){
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
-  },[messages]);
-
-  const send = async() => {
-    if(!input.trim()||sending) return;
-    setSending(true);
-    setChatError(null);
-    const text = input.trim();
-    setInput(""); // 즉시 입력창 비우기
-    try {
-      const r = await fetch("/api/chat", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          uid: currentUser.uid,
-          name: (currentUser.displayName||"?").split(" ")[0],
-          photo: currentUser.photoURL||null,
-          text: text,
-          clientTs: Date.now(),
-        })
-      });
-      const d = await r.json();
-      if(!d.ok) setChatError(d.error||"전송 실패");
-      else fetchMsgs();
-    } catch(e){
-      setChatError("네트워크 오류");
-      setInput(text); // 실패시 복원
-    }
-    setSending(false);
-  };
-
-  const handleKey = (e) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } };
-
-  const fmtTime = (clientTs) => {
-    try {
-      if(!clientTs) return "";
-      return new Date(clientTs).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"})+" ET";
-    } catch(e){ return ""; }
-  };
-
-  const lbl = lang==="ko"?"라이브 채팅":lang==="es"?"CHAT EN VIVO":"LIVE CHAT";
-  const ph = lang==="ko"?"메시지 입력... (Enter)":"Type a message... (Enter)";
-
-  return(
-    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden",marginTop:12}}>
-      <div style={{padding:"10px 16px",borderBottom:"0.5px solid rgba(255,255,255,.07)",display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:7,height:7,borderRadius:"50%",background:"#22C55E",flexShrink:0}}/>
-        <span style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>{lbl}</span>
-        <span style={{fontSize:11,color:"#5A7090",marginLeft:"auto"}}>{messages.length} msg</span>
-      </div>
-      <div ref={chatBoxRef} style={{height:200,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
-        {messages.length===0&&(
-          <div style={{textAlign:"center",color:"#5A7090",fontSize:12,marginTop:56}}>
-            {lang==="ko"?"첫 메시지를 남겨보세요 🎉":"Be the first to say something 🎉"}
-          </div>
-        )}
-        {messages.map(m=>{
-          const isMe = m.uid===currentUser.uid;
-          return(
-            <div key={m.id} style={{display:"flex",gap:7,alignItems:"flex-start",flexDirection:isMe?"row-reverse":"row"}}>
-              <div style={{width:24,height:24,borderRadius:"50%",flexShrink:0,overflow:"hidden",background:"#1a2840",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF"}}>
-                {m.photo
-                  ? <img src={m.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={function(e){e.target.style.display="none";}}/>
-                  : (m.name||"?")[0]}
-              </div>
-              <div style={{maxWidth:"70%"}}>
-                {!isMe&&<div style={{fontSize:10,color:"#5A7090",marginBottom:2}}>{m.name}</div>}
-                <div style={{background:isMe?"rgba(212,168,67,.15)":"rgba(255,255,255,.06)",border:isMe?"1px solid rgba(212,168,67,.3)":"0.5px solid rgba(255,255,255,.08)",borderRadius:isMe?"12px 4px 12px 12px":"4px 12px 12px 12px",padding:"6px 10px",fontSize:12,color:"#E0E8F0",wordBreak:"break-word",lineHeight:1.4}}>
-                  {m.text}
-                </div>
-                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.clientTs)}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {chatError&&<div style={{padding:"4px 14px",fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)"}}>❌ {chatError}</div>}
-      <div style={{padding:"8px 12px",borderTop:"0.5px solid rgba(255,255,255,.07)",display:"flex",gap:8,alignItems:"center"}}>
-        <input value={input} onChange={function(e){setInput(e.target.value);}} onKeyDown={handleKey} placeholder={ph} maxLength={200}
-          style={{flex:1,background:"rgba(255,255,255,.06)",border:"0.5px solid rgba(255,255,255,.1)",borderRadius:20,padding:"7px 14px",fontSize:12,color:"#E0E8F0",outline:"none"}}/>
-        <button onClick={send} disabled={!input.trim()||sending}
-          style={{background:input.trim()?"rgba(212,168,67,.9)":"rgba(255,255,255,.08)",border:"none",borderRadius:"50%",width:32,height:32,cursor:input.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill={input.trim()?"#000":"#5A7090"}><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ─── PRIZE DASHBOARD ──────────────────────────────────────────────────────────
 function PrizeDashboard({users, lang}){
@@ -673,7 +554,7 @@ function PicksModal({user,tournament,lang,onClose}){
 
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({users, tournament, currentUid, currentUser, lang}){
+function Dashboard({users, tournament, currentUid, lang}){
   const MAX_PTS = 438;
   const gr = tournament.groupResults || {};
 
@@ -835,9 +716,6 @@ function Dashboard({users, tournament, currentUid, currentUser, lang}){
 
       {/* 32강 대진표 */}
       <BracketPreview users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
-
-      {/* 라이브 채팅 */}
-      <LiveChat currentUser={currentUser} lang={lang}/>
 
       {/* 최근 결과 */}
       {recentResults.length > 0 && (
@@ -2185,7 +2063,7 @@ export default function Main(){
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
-        {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} currentUser={firebaseUser} lang={lang}/>}
+        {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="picks"&&phase==="group"&&(
           <div>
             <PrizeDashboard users={users} lang={lang}/>
