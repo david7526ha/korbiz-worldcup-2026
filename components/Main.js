@@ -243,7 +243,7 @@ const T = {
     title:"2026 월드컵",subtitle:"브래킷 챌린지",org:"KORBIZ 내부",
     loginBtn:"구글로 로그인",signOut:"로그아웃",
     groupPicks:"조별 픽",bracket:"브래킷",standings:"순위표",howToPlay:"게임 방법",
-    savePicks:"저장하기",saving:lang==="ko"?"저장 중...":lang==="es"?"Guardando...":"Saving...",
+    savePicks:"저장하기",saving:"저장 중...",
     pts:"점",paid:"납부완료",unpaid:"미납",admin:"관리자",
     groupStage:"조별리그",knockout:"녹아웃",prizePool:"상금 풀",
     awaiting:"승인 대기 중",
@@ -601,7 +601,7 @@ function Dashboard({users, tournament, currentUid, lang}){
 
         {/* 내 순위 */}
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px"}}>
-          <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl("내 순위","MI LUGAR","MY RANK")}</div>
+          <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl(lang==="ko"?"내 순위":lang==="es"?"MI LUGAR":"MY RANK")}</div>
           {me ? (()=>{
             // 정확도 계산
             const grpDone = Object.keys(gr).length;
@@ -792,8 +792,8 @@ function HotPickWidget({users, tournament, lang}){
     ? (lang==="ko"?"인기 우승 픽":lang==="es"?"FAVORITOS":"TOP PICKS")
     : (lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK");
   const sublbl = isBracket
-    ? (lang==="ko"?"브래킷 픽 기준":"by bracket picks")
-    : (lang==="ko"?"픽 횟수 기준":"by pick count");
+    ? (lang==="ko"?lang==="ko"?"브래킷 픽 기준":"by bracket picks")
+    : (lang==="ko"?lang==="ko"?"픽 횟수 기준":"by pick count");
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
@@ -803,7 +803,7 @@ function HotPickWidget({users, tournament, lang}){
       </div>
       {top5.length===0 ? (
         <div style={{fontSize:12,color:"#5A7090",textAlign:"center",padding:"20px 0"}}>
-          {lang==="ko"?"아직 픽 없음":"No picks yet"}
+          {lang==="ko"?lang==="ko"?"아직 픽 없음":lang==="es"?"Sin picks":"No picks yet"}
         </div>
       ) : top5.map(([team,cnt], i)=>{
         const pct = Math.round(cnt/total*100);
@@ -1206,7 +1206,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
   const TeamSlot = function({src, isWC}){
     var team = st[src];
     var isMe = team&&myPicks.has(team);
-    var label = team || (isWC?"3위 와일드카드":src);
+    var label = team || (isWC?lang==="ko"?"3위 와일드카드":"3rd Wildcard":src);
     return(
       <div style={{padding:"5px 10px",background:isMe?"rgba(212,168,67,.12)":"transparent",display:"flex",alignItems:"center",gap:5}}>
         {isMe&&<span style={{fontSize:9}}>⭐</span>}
@@ -1257,10 +1257,10 @@ function BracketPreview({users, tournament, currentUid, lang}){
                   <div key={j} style={{padding:"5px 10px",background:slot.isMe?"rgba(212,168,67,.12)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
                     {slot.isMe&&<span style={{fontSize:9}}>⭐</span>}
                     <span style={{fontSize:11,color:slot.isMe?"#D4A843":slot.team?"#E0E8F0":"#5A7090",flex:1}}>
-                      {slot.team||(isWC?"3위 WC":slot.src)}
+                      {slot.team||(isWC?lang==="ko"?"3위 WC":"3rd WC":slot.src)}
                     </span>
                     <span style={{fontSize:9,color:"#3A5070",flexShrink:0}}>
-                      {isWC?"WC":(slot.src.length===2?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):slot.src)}
+                      {isWC?"WC":(slot.src.length===2?(lang==="ko"?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):(slot.src[0]+" Grp "+(slot.src[1]==="1"?"W":"R"))):slot.src)}
                     </span>
                   </div>
                 );
