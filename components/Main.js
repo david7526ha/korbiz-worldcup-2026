@@ -580,8 +580,8 @@ function Dashboard({users, tournament, currentUid, lang}){
   return (
     <div style={{paddingBottom:24}}>
 
-      {/* 상단 3카드 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
+      {/* 상단 3카드 - 모바일: 1열, 데스크탑: 3열 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:10,marginBottom:12}}>
 
         {/* Prize Pool */}
         <div style={{background:"#0C1620",border:"1px solid rgba(212,168,67,.25)",borderRadius:14,padding:"14px 16px"}}>
@@ -590,7 +590,7 @@ function Dashboard({users, tournament, currentUid, lang}){
           <div style={{fontSize:11,color:"#5A7090",marginBottom:10}}>{ranked.length} {lbl("명 × $30","× $30","paid × $30")}</div>
           <div style={{display:"flex",gap:6}}>
             {[["🥇","$"+Math.floor(pool*.5),"50%"],["🥈","$"+Math.floor(pool*.3),"30%"],["🥉","$"+Math.floor(pool*.2),"20%"]].map(([icon,amt,pct])=>(
-              <div key={pct} style={{flex:1,textAlign:"center",background:"rgba(255,255,255,.04)",borderRadius:8,padding:"6px 2px",border:"0.5px solid rgba(255,255,255,.07)"}}>
+              <div key={pct} style={{flex:1,textAlign:"center",background:"rgba(255,255,255,.04)",borderRadius:8,padding:"6px 4px",border:"0.5px solid rgba(255,255,255,.07)"}}>
                 <div style={{fontSize:13,marginBottom:2}}>{icon}</div>
                 <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",lineHeight:1}}>{amt}</div>
                 <div style={{fontSize:10,color:"#5A7090"}}>{pct}</div>
@@ -657,7 +657,7 @@ function Dashboard({users, tournament, currentUid, lang}){
         const notPicked = totalPaid - pickedCount;
         return(
           <div style={{marginBottom:10,display:"flex",flexDirection:"column",gap:6}}>
-            <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
               <div>
                 <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":"GROUP PICKS DEADLINE"}</span>
                 <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
@@ -705,8 +705,8 @@ function Dashboard({users, tournament, currentUid, lang}){
         );
       })()}
 
-      {/* 가젯 2개 */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+      {/* 가젯 2개 - 모바일: 1열, 태블릿+: 2열 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:10,marginBottom:12}}>
         <OddsWidget lang={lang}/>
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
@@ -1015,7 +1015,7 @@ function NextMatchCard({lang}){
           <div style={{display:"flex",gap:6}}>
             {[["d","day"],["h","hr"],["m","min"],["s","sec"]].map(([k,lbl])=>(
               <div key={k} style={{flex:1,textAlign:"center",background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 2px",border:"0.5px solid rgba(255,255,255,.07)"}}>
-                <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#60a5fa",lineHeight:1}}>{tl[k]}</div>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa",lineHeight:1}}>{tl[k]}</div>
                 <div style={{fontSize:10,color:"#5A7090"}}>{lbl}</div>
               </div>
             ))}
@@ -1114,11 +1114,11 @@ width:28,height:28,borderRadius:"50%",
 
               {/* 이름 (바 안에) */}
               <div style={{
-                position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",
-                fontSize:11,color:isMe?"#D4A843":"#6b7280",fontWeight:isMe?500:400,
-                pointerEvents:"none",whiteSpace:"nowrap",
+                position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",
+                fontSize:10,color:isMe?"#D4A843":"#6b7280",fontWeight:isMe?500:400,
+                pointerEvents:"none",whiteSpace:"nowrap",overflow:"hidden",maxWidth:"60%",
               }}>
-                {u.name?.split(" ")[0]}
+                {(u.name||"?").split(" ")[0]}
               </div>
             </div>
 
@@ -2202,7 +2202,7 @@ export default function Main(){
         </div>
       </div>
 
-      <div style={{maxWidth:1280,margin:"0 auto",padding:"18px 12px"}}>
+      <div style={{maxWidth:1280,margin:"0 auto",padding:"12px 10px"}}>
         {tab==="dashboard"&&<Dashboard users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="picks"&&phase==="group"&&(
           <div>
