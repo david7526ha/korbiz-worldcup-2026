@@ -586,7 +586,7 @@ function Dashboard({users, tournament, currentUid, lang}){
         {/* Prize Pool */}
         <div style={{background:"#0C1620",border:"1px solid rgba(212,168,67,.25)",borderRadius:14,padding:"14px 16px"}}>
           <div style={{fontSize:10,color:"#5A7090",letterSpacing:".12em",marginBottom:4}}>{lbl("총 상금","PREMIO","PRIZE POOL")}</div>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:34,color:"#D4A843",lineHeight:1}}>{"$"+pool}</div>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:30,color:"#D4A843",lineHeight:1}}>{"$"+pool}</div>
           <div style={{fontSize:11,color:"#5A7090",marginBottom:10}}>{ranked.length} {lbl("명 × $30","× $30","paid × $30")}</div>
           <div style={{display:"flex",gap:6}}>
             {[["🥇","$"+Math.floor(pool*.5),"50%"],["🥈","$"+Math.floor(pool*.3),"30%"],["🥉","$"+Math.floor(pool*.2),"20%"]].map(([icon,amt,pct])=>(
@@ -625,7 +625,7 @@ function Dashboard({users, tournament, currentUid, lang}){
             const accDiff = accuracy!==null&&avgAcc!==null ? accuracy-avgAcc : null;
             return(
               <>
-                <div style={{fontFamily:"'Teko',sans-serif",fontSize:52,color:"#fff",lineHeight:1}}>{"#"+myRank}</div>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:44,color:"#fff",lineHeight:1}}>{"#"+myRank}</div>
                 <div style={{fontSize:12,color:"#5A7090",marginTop:2}}>{me.total} pts · {me.name?.split(" ")[0]}</div>
                 <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                   <div style={{fontSize:11,padding:"2px 10px",borderRadius:20,background:"rgba(255,255,255,.06)",color:"#5A7090"}}>
@@ -1050,8 +1050,8 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
 
   return(
-    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px 16px 8px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 12px 8px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
           {lang==="ko"?"순위 레이스":lang==="es"?"CARRERA":"LEADERBOARD RACE"}
         </div>
@@ -1651,7 +1651,7 @@ function LoginScreen({lang,setLang}){
       </div>
       <div style={{textAlign:"center",padding:"44px 22px 28px"}}>
         <div style={{fontSize:62,marginBottom:6,filter:"drop-shadow(0 0 20px rgba(212,168,67,.35))"}}>🏆</div>
-        <h1 style={{fontFamily:"'Teko',sans-serif",fontSize:52,color:"#fff",lineHeight:1,marginBottom:3}}>{t.title}</h1>
+        <h1 style={{fontFamily:"'Teko',sans-serif",fontSize:44,color:"#fff",lineHeight:1,marginBottom:3}}>{t.title}</h1>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843",letterSpacing:".18em",marginBottom:20}}>{t.subtitle}</div>
         <div style={{display:"flex",justifyContent:"center",gap:24,marginBottom:24}}>
           {[[`$30`,t.entryFee],["48",t.teams],["104",t.matches],["🥇",t.prizes]].map(([v,l])=>(
@@ -2197,8 +2197,8 @@ export default function Main(){
           <Avatar name={firebaseUser.displayName} photoURL={firebaseUser.photoURL} size={28}/>
           <button onClick={signOutUser} style={{background:"transparent",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"3px 8px",color:"#5A7090",fontSize:10,cursor:"pointer"}}>{t.signOut}</button>
         </div>
-        <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto"}}>
-          {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"7px 16px",border:"none",background:"transparent",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:12,whiteSpace:"nowrap",cursor:"pointer"}}>{tb.label.toUpperCase()}</button>)}
+        <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch",msOverflowStyle:"none",scrollbarWidth:"none"}}>
+          {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"7px 12px",border:"none",background:"transparent",whiteSpace:"nowrap",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:12,whiteSpace:"nowrap",cursor:"pointer"}}>{tb.label.toUpperCase()}</button>)}
         </div>
       </div>
 
