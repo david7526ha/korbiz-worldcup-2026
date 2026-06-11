@@ -662,7 +662,7 @@ function Dashboard({users, tournament, currentUid, lang}){
                 <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":"GROUP PICKS DEADLINE"}</span>
                 <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
               </div>
-              <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":"Save before kickoff!":"Save before kickoff!"}</span>
+              <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":lang==="es"?"¡Guarda antes!":"Save before kickoff!"}</span>
             </div>
             {notPicked>0&&(()=>{
               const notPickedUsers = Object.values(users).filter(function(u){
@@ -674,7 +674,7 @@ function Dashboard({users, tournament, currentUid, lang}){
                     <span style={{fontSize:11,color:"#F59E0B",fontWeight:500}}>
                       ⚠️ {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":"picks submitted"} · {notPicked}{lang==="ko"?"명 아직 안 함":" yet to pick"}
                     </span>
-                    <span style={{fontSize:10,color:"#D97706"}}>{lang==="ko"?"마감: 6/12 킥오프":"Deadline: Jun 12 kickoff":"Deadline: Jun 12 kickoff"}</span>
+                    <span style={{fontSize:10,color:"#D97706"}}>{lang==="ko"?"마감: 6/12 킥오프":lang==="es"?"Límite: 12 Jun":"Deadline: Jun 12 kickoff"}</span>
                   </div>
                   {notPickedUsers.length>0&&(
                     <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
