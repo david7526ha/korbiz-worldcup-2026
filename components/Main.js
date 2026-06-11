@@ -792,8 +792,8 @@ function HotPickWidget({users, tournament, lang}){
     ? (lang==="ko"?"인기 우승 픽":lang==="es"?"FAVORITOS":"TOP PICKS")
     : (lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK");
   const sublbl = isBracket
-    ? (lang==="ko"?lang==="ko"?"브래킷 픽 기준":"by bracket picks")
-    : (lang==="ko"?lang==="ko"?"픽 횟수 기준":"by pick count");
+    ? (lang==="ko"?"브래킷 픽 기준":lang==="es"?"por picks de bracket":"by bracket picks")
+    : (lang==="ko"?"픽 횟수 기준":lang==="es"?"por número de picks":"by pick count");
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
