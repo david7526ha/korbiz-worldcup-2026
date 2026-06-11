@@ -1351,6 +1351,160 @@ function calcWinProbs(ranked, tournament) {
   });
 }
 
+
+// ─── RESULTS TAB ─────────────────────────────────────────────────────────────
+function ResultsTab({users, tournament, currentUid, lang}){
+  const gr = tournament.groupResults || {};
+  const hasAny = Object.keys(gr).length > 0;
+
+  // 내 픽
+  const me = Object.values(users).find(function(u){ return u.uid===currentUid; });
+  const myPicks = {};
+  Object.entries(me?.groupPicks||{}).forEach(function(e){
+    myPicks[e[0]] = e[1]||[];
+  });
+
+  // 경기 스케줄에서 완료된 경기 찾기
+  // groupResults에 있는 조들이 완료된 조
+  const completedGroups = Object.keys(gr).sort();
+
+  const lbl = lang==="ko"?"결과":lang==="es"?"RESULTADOS":"RESULTS";
+
+  if(!hasAny) return(
+    <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
+      <div style={{fontSize:40,marginBottom:12}}>⏳</div>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843",marginBottom:8}}>
+        {lang==="ko"?"아직 결과 없음":lang==="es"?"Sin resultados aún":"No results yet"}
+      </div>
+      <div style={{fontSize:13}}>
+        {lang==="ko"?"경기 후 결과가 여기에 표시됩니다":"Results will appear here after matches"}
+      </div>
+    </div>
+  );
+
+  return(
+    <div>
+      {/* 헤더 */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843",letterSpacing:".1em"}}>
+          🏆 {lang==="ko"?"경기 결과 & 하이라이트":lang==="es"?"RESULTADOS & HIGHLIGHTS":"MATCH RESULTS & HIGHLIGHTS"}
+        </div>
+        <a href="https://www.youtube.com/@FIFAWorldCup/videos" target="_blank" rel="noopener noreferrer"
+          style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"4px 12px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.07)"}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+          FIFA Official
+        </a>
+      </div>
+
+      {/* 완료된 조별 결과 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+        {completedGroups.map(function(grp){
+          const advanced = gr[grp] || [];
+          const grpInfo = GROUPS[grp] || {teams:[],flags:[]};
+          const myGrpPicks = myPicks[grp] || [];
+
+          // 유튜브 검색 URL
+          const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights";
+
+          // 전체 픽 통계
+          const approved = Object.values(users).filter(function(u){return u.approved;});
+          const total = approved.length || 1;
+
+          return(
+            <div key={grp} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden"}}>
+              {/* 카드 헤더 */}
+              <div style={{background:"rgba(212,168,67,.08)",borderBottom:"0.5px solid rgba(212,168,67,.2)",padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
+                  {lang==="ko"?"조 ":"GROUP "}{grp}
+                  <span style={{fontSize:11,color:"#5A7090",marginLeft:6,fontFamily:"sans-serif",fontWeight:400,letterSpacing:"normal"}}>
+                    {advanced.length}{lang==="ko"?"팀 진출":" qualified"}
+                  </span>
+                </div>
+                <a href={ytUrl} target="_blank" rel="noopener noreferrer"
+                  style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:12,background:"rgba(248,113,113,.1)",border:"0.5px solid rgba(248,113,113,.25)"}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                  Highlights
+                </a>
+              </div>
+
+              {/* 팀 목록 */}
+              <div style={{padding:"10px 14px"}}>
+                {grpInfo.teams.map(function(team, i){
+                  const flag = grpInfo.flags?.[i] || "🏳";
+                  const qualified = advanced.includes(team);
+                  const iMyPick = myGrpPicks.includes(team);
+                  const pickCount = approved.filter(function(u){ return (u.groupPicks?.[grp]||[]).includes(team); }).length;
+                  const pickPct = Math.round(pickCount/total*100);
+
+                  return(
+                    <div key={team} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"0.5px solid rgba(255,255,255,.05)"}}>
+                      {/* 결과 아이콘 */}
+                      <div style={{width:22,textAlign:"center",flexShrink:0}}>
+                        {qualified
+                          ? <span style={{fontSize:14}}>✅</span>
+                          : <span style={{fontSize:14,opacity:.4}}>❌</span>}
+                      </div>
+                      {/* 국기 + 팀명 */}
+                      <span style={{fontSize:14,flexShrink:0}}>{flag}</span>
+                      <span style={{fontSize:13,flex:1,color:qualified?"#E0E8F0":"#5A7090",fontWeight:qualified?500:400}}>
+                        {team}
+                      </span>
+                      {/* 내 픽 배지 */}
+                      {iMyPick&&(
+                        <span style={{fontSize:10,padding:"1px 6px",borderRadius:10,background:qualified?"rgba(34,197,94,.15)":"rgba(239,68,68,.1)",color:qualified?"#22C55E":"#EF4444",border:"0.5px solid "+(qualified?"rgba(34,197,94,.3)":"rgba(239,68,68,.3)"),flexShrink:0}}>
+                          {qualified?"✓ 내픽":"✗ 내픽"}
+                        </span>
+                      )}
+                      {/* 픽 퍼센트 */}
+                      <span style={{fontSize:10,color:"#5A7090",flexShrink:0,width:28,textAlign:"right"}}>{pickPct}%</span>
+                    </div>
+                  );
+                })}
+
+                {/* 내 정확도 */}
+                {myGrpPicks.length > 0 && (()=>{
+                  const correct = myGrpPicks.filter(function(t){ return advanced.includes(t); }).length;
+                  const accuracy = Math.round(correct/myGrpPicks.length*100);
+                  return(
+                    <div style={{marginTop:8,padding:"6px 8px",borderRadius:8,background:correct>0?"rgba(34,197,94,.06)":"rgba(239,68,68,.05)",border:"0.5px solid "+(correct>0?"rgba(34,197,94,.15)":"rgba(239,68,68,.1)"),fontSize:11,color:correct>0?"#22C55E":"#EF4444",textAlign:"center"}}>
+                      {lang==="ko"
+                        ? "내 픽 "+correct+"/"+myGrpPicks.length+"팀 적중 ("+accuracy+"%)"
+                        : "My picks: "+correct+"/"+myGrpPicks.length+" correct ("+accuracy+"%)"}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 내 전체 성적 요약 */}
+      {completedGroups.length > 0 && (()=>{
+        var totalCorrect=0, totalPicked=0;
+        completedGroups.forEach(function(grp){
+          var picks = myPicks[grp]||[];
+          var adv = gr[grp]||[];
+          totalPicked += picks.length;
+          totalCorrect += picks.filter(function(t){ return adv.includes(t); }).length;
+        });
+        if(totalPicked===0) return null;
+        var acc = Math.round(totalCorrect/totalPicked*100);
+        return(
+          <div style={{marginTop:16,padding:"12px 16px",background:"rgba(212,168,67,.06)",border:"1px solid rgba(212,168,67,.2)",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:13,color:"#9CA3AF"}}>
+              {lang==="ko"?"내 전체 성적":"My overall accuracy"}
+            </div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:acc>=60?"#22C55E":acc>=40?"#D4A843":"#EF4444"}}>
+              {totalCorrect}/{totalPicked} ({acc}%)
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
   const [groupTime, setGroupTime] = useState(null);
@@ -2012,6 +2166,7 @@ export default function Main(){
   const tabs=[
     {id:"dashboard",label:lang==="ko"?"홈":lang==="es"?"INICIO":"HOME"},
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
+    {id:"results",label:lang==="ko"?"결과":lang==="es"?"RESULTADOS":"RESULTS"},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
     {id:"rules",label:t.howToPlay},
@@ -2057,6 +2212,7 @@ export default function Main(){
             <BracketView uid={firebaseUser.uid} myPicks={me.bracketPicks} tournament={tournament} showToast={showMsg} t={t} lang={lang}/>
           </div>
         )}
+        {tab==="results"&&<ResultsTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
