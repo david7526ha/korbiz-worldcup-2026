@@ -1930,26 +1930,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 try{await fetch("/api/notify-group-result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({adminSecret:"korbiz2026admin",groupKey:grp,advancedTeams:teams})});}catch(err){}
               }
             }));
-            // 오늘의 예측왕 자동 채팅 메시지
-            try {
-              const allUsers = Object.values(users||{}).filter(function(u){return u.approved&&u.paid;});
-              var bestName="", bestScore=0;
-              allUsers.forEach(function(u){
-                var correct=0;
-                Object.entries(st.groupResults||{}).forEach(function(e2){
-                  var grp2=e2[0],adv=e2[1]||[];
-                  (u.groupPicks?.[grp2]||[]).forEach(function(t){if(adv.includes(t))correct++;});
-                });
-                if(correct>bestScore){bestScore=correct;bestName=u.name?.split(" ")[0]||"?"}
-              });
-              if(bestName&&bestScore>0){
-                await addDoc(collection(db,"chat"),{
-                  uid:"system",name:"Korbiz Bot",photo:null,
-                  text:"🏆 오늘의 예측왕: "+bestName+" ("+bestScore+"팀 적중!) — 현재까지 최고 정확도!",
-                  ts:serverTimestamp(),
-                });
-              }
-            } catch(err){}
+
             showToast("📢 알림 발송됨!");
           }} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontSize:11,cursor:"pointer"}}>📢 알림 보내기</button>}
         </div>
