@@ -707,7 +707,7 @@ function Dashboard({users, tournament, currentUid, lang}){
 
       {/* 가젯 2개 */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        <HotPickWidget users={users} tournament={tournament} lang={lang}/>
+        <OddsWidget lang={lang}/>
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
@@ -756,79 +756,96 @@ function Dashboard({users, tournament, currentUid, lang}){
 
 
 
-// ─── HOT PICK WIDGET ──────────────────────────────────────────────────────────
-function HotPickWidget({users, tournament, lang}){
-  const approved = Object.values(users).filter(u=>u.approved);
-  const total = approved.length || 1;
-  const gr = tournament.groupResults || {};
-  const phase = tournament.phase || "group";
-  const isBracket = phase !== "group";
 
-  // phase에 따라 groupPicks 또는 bracketPicks 집계
-  const counts = {};
-  approved.forEach(u => {
-    if(isBracket) {
-      // 브래킷: 각 라운드별 픽 집계
-      Object.entries(u.bracketPicks||{}).forEach(([round, matches]) => {
-        (matches||[]).forEach(team => {
-          if(team) counts[team] = (counts[team]||0) + 1;
-        });
-      });
-    } else {
-      // 조별: groupPicks 집계
-      Object.entries(u.groupPicks||{}).forEach(([grp, teams]) => {
-        (teams||[]).forEach(team => {
-          counts[team] = (counts[team]||0) + 1;
-        });
-      });
-    }
-  });
+// ─── ODDS WIDGET ──────────────────────────────────────────────────────────────
+function OddsWidget({lang}){
+  const [odds, setOdds] = useState([]);
+  const [live, setLive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [matchIdx, setMatchIdx] = useState(0);
 
-  const top5 = Object.entries(counts)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,5);
+  useEffect(()=>{
+    fetch('/api/odds')
+      .then(r=>r.json())
+      .then(d=>{
+        setOdds(d.odds||[]);
+        setLive(d.live||false);
+        setLoading(false);
+      })
+      .catch(()=>setLoading(false));
+  },[]);
 
-  const lbl = isBracket
-    ? (lang==="ko"?"인기 우승 픽":lang==="es"?"FAVORITOS":"TOP PICKS")
-    : (lang==="ko"?"핫픽":lang==="es"?"HOT PICK":"HOT PICK");
-  const sublbl = isBracket
-    ? (lang==="ko"?"브래킷 픽 기준":"by bracket picks")
-    : (lang==="ko"?"픽 횟수 기준":"by pick count");
+  const lbl = lang==="ko"?"도박사 배팅 확률":lang==="es"?"PROBABILIDAD":"BOOKMAKER ODDS";
+  const match = odds[matchIdx];
+
+  if(loading) return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <span style={{fontSize:12,color:"#5A7090"}}>Loading odds...</span>
+    </div>
+  );
+
+  if(!match) return null;
+
+  const bars = [
+    {label:match.home, pct:match.homeWin, color:"#60a5fa"},
+    {label:"Draw", pct:match.draw, color:"#9CA3AF"},
+    {label:match.away, pct:match.awayWin, color:"#f87171"},
+  ];
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>🔥 {lbl}</div>
-        <div style={{fontSize:10,color:"#5A7090"}}>{sublbl}</div>
-      </div>
-      {top5.length===0 ? (
-        <div style={{fontSize:12,color:"#5A7090",textAlign:"center",padding:"20px 0"}}>
-          {lang==="ko"?"아직 픽 없음":"No picks yet"}
+      {/* 헤더 */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>
+          🎲 {lbl}
         </div>
-      ) : top5.map(([team,cnt], i)=>{
-        const pct = Math.round(cnt/total*100);
-        const adv = Object.values(gr).some(teams=>(teams||[]).includes(team));
-        const colors = ["#D4A843","#9CA3AF","#CD7C2F","#60a5fa","#a78bfa"];
-        const color = colors[i] || "#5A7090";
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:live?"#22C55E":"#F59E0B"}}/>
+          <span style={{fontSize:10,color:"#5A7090"}}>{live?"Live":"Pinnacle ref"}</span>
+        </div>
+      </div>
+
+      {/* 경기 선택 탭 */}
+      {odds.length > 1 && (
+        <div style={{display:"flex",gap:4,marginBottom:10,overflowX:"auto",paddingBottom:2}}>
+          {odds.slice(0,6).map((m,i)=>(
+            <button key={i} onClick={()=>setMatchIdx(i)}
+              style={{flexShrink:0,fontSize:9,padding:"2px 7px",borderRadius:10,border:"0.5px solid "+(matchIdx===i?"rgba(212,168,67,.5)":"rgba(255,255,255,.1)"),background:matchIdx===i?"rgba(212,168,67,.12)":"transparent",color:matchIdx===i?"#D4A843":"#5A7090",cursor:"pointer",whiteSpace:"nowrap"}}>
+              {m.home.split(" ")[0]} v {m.away.split(" ")[0]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 팀명 */}
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+        <span style={{fontSize:12,color:"#60a5fa",fontWeight:500}}>{match.home}</span>
+        <span style={{fontSize:10,color:"#5A7090"}}>vs</span>
+        <span style={{fontSize:12,color:"#f87171",fontWeight:500}}>{match.away}</span>
+      </div>
+
+      {/* 바 차트 */}
+      {bars.map(function(b){
         return(
-          <div key={team} style={{marginBottom:i<4?8:0}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontSize:11,color:"#5A7090",width:14}}>{i+1}</span>
-                <span style={{fontSize:12,color:"#E0E8F0",fontWeight:500}}>{team}</span>
-                {adv&&<span style={{fontSize:10,color:"#22C55E"}}>✓</span>}
-              </div>
-              <span style={{fontSize:11,color:color,fontWeight:500}}>{pct}%</span>
+          <div key={b.label} style={{marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+              <span style={{fontSize:11,color:"#E0E8F0"}}>{b.label}</span>
+              <span style={{fontSize:12,fontWeight:700,color:b.color}}>{b.pct}%</span>
             </div>
-            <div style={{height:4,background:"rgba(255,255,255,.06)",borderRadius:2,overflow:"hidden"}}>
-              <div style={{height:"100%",width:pct+"%",background:color,borderRadius:2,opacity:.7}}/>
+            <div style={{height:6,background:"rgba(255,255,255,.06)",borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:b.pct+"%",background:b.color,borderRadius:3,opacity:.8,transition:"width .5s ease"}}/>
             </div>
           </div>
         );
       })}
+
+      <div style={{marginTop:8,fontSize:10,color:"#3A5070",textAlign:"right"}}>
+        {match.source} · vig-removed implied prob.
+      </div>
     </div>
   );
 }
+
 
 // ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
 function WinProbWidget({users, tournament, currentUid, lang}){
