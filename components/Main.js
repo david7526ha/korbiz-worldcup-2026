@@ -348,13 +348,15 @@ function LiveChat({currentUser, lang}){
     setSending(true);
     setChatError(null);
     try {
-      await addDoc(collection(db,"chat"),{
+      const chatData = {
         uid: currentUser.uid,
         name: (currentUser.displayName||"?").split(" ")[0],
         photo: currentUser.photoURL||null,
         text: input.trim().slice(0,200),
         ts: serverTimestamp(),
-      });
+        clientTs: Date.now(),
+      };
+      await addDoc(collection(db,"chat"), chatData);
       setInput("");
     } catch(e){
       console.error("Chat error:", e);
@@ -365,10 +367,10 @@ function LiveChat({currentUser, lang}){
 
   const handleKey = (e) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } };
 
-  const fmtTime = (ts) => {
-    if(!ts) return "";
+  const fmtTime = (ts, clientTs) => {
     try {
-      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      const d = ts?.toDate ? ts.toDate() : clientTs ? new Date(clientTs) : null;
+      if(!d) return "";
       return d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"})+" ET";
     } catch(e){ return ""; }
   };
@@ -403,7 +405,7 @@ function LiveChat({currentUser, lang}){
                 <div style={{background:isMe?"rgba(212,168,67,.15)":"rgba(255,255,255,.06)",border:isMe?"1px solid rgba(212,168,67,.3)":"0.5px solid rgba(255,255,255,.08)",borderRadius:isMe?"12px 4px 12px 12px":"4px 12px 12px 12px",padding:"6px 10px",fontSize:12,color:"#E0E8F0",wordBreak:"break-word",lineHeight:1.4}}>
                   {m.text}
                 </div>
-                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.ts)}</div>
+                <div style={{fontSize:10,color:"#5A7090",marginTop:2,textAlign:isMe?"right":"left"}}>{fmtTime(m.ts,m.clientTs)}</div>
               </div>
             </div>
           );
@@ -467,15 +469,15 @@ function PrizeDashboard({users, lang}){
 
 // ─── NEXT MATCH COUNTDOWN ─────────────────────────────────────────────────────
 const WC_MATCHES = [
-  {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A"},
-  {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D"},
-  {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C"},
-  {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H"},
-  {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I"},
-  {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J"},
-  {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E"},
-  {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L"},
-  {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32"},
+  {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"5:00 PM ET"},
+  {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D",time:"8:00 PM ET"},
+  {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"2:00 PM ET"},
+  {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"5:00 PM ET"},
+  {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I",time:"2:00 PM ET"},
+  {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"5:00 PM ET"},
+  {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"2:00 PM ET"},
+  {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L",time:"5:00 PM ET"},
+  {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"12:00 PM ET"},
 ];
 
 function NextMatchBanner({lang}){
@@ -1007,15 +1009,15 @@ function WinProbWidget({users, tournament, currentUid, lang}){
 // ─── NEXT MATCH CARD (dashboard용) ───────────────────────────────────────────
 function NextMatchCard({lang}){
   const WC = [
-    {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A"},
-    {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D"},
-    {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C"},
-    {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H"},
-    {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I"},
-    {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J"},
-    {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E"},
-    {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L"},
-    {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32"},
+    {date:"2026-06-11T17:00:00-04:00",teams:"Mexico vs South Africa",group:"A",time:"5:00 PM ET"},
+    {date:"2026-06-11T20:00:00-04:00",teams:"USA vs Panama",group:"D",time:"8:00 PM ET"},
+    {date:"2026-06-12T14:00:00-04:00",teams:"Brazil vs Morocco",group:"C",time:"2:00 PM ET"},
+    {date:"2026-06-12T17:00:00-04:00",teams:"Spain vs Cape Verde",group:"H",time:"5:00 PM ET"},
+    {date:"2026-06-13T14:00:00-04:00",teams:"France vs Senegal",group:"I",time:"2:00 PM ET"},
+    {date:"2026-06-13T17:00:00-04:00",teams:"Argentina vs Algeria",group:"J",time:"5:00 PM ET"},
+    {date:"2026-06-14T14:00:00-04:00",teams:"Germany vs Curaçao",group:"E",time:"2:00 PM ET"},
+    {date:"2026-06-14T17:00:00-04:00",teams:"England vs Croatia",group:"L",time:"5:00 PM ET"},
+    {date:"2026-06-28T12:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"12:00 PM ET"},
   ];
   const [tl, setTl] = useState({d:0,h:0,m:0,s:0});
   const [next, setNext] = useState(null);
@@ -1052,6 +1054,7 @@ function NextMatchCard({lang}){
           <div style={{fontSize:13,fontWeight:500,color:"#E0E8F0",marginBottom:10}}>
             ⚽ {next.teams}
             <span style={{fontSize:10,color:"#5A7090",marginLeft:6}}>Group {next.group}</span>
+            {next.time&&<span style={{fontSize:10,color:"#60a5fa",marginLeft:6}}>· {next.time}</span>}
           </div>
           <div style={{display:"flex",gap:6}}>
             {[["d","day"],["h","hr"],["m","min"],["s","sec"]].map(([k,lbl])=>(
