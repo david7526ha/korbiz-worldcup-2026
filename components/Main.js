@@ -346,8 +346,12 @@ function LiveChat({currentUser, lang}){
     return ()=>clearInterval(iv);
   },[]);
 
+  const chatBoxRef = useRef(null);
   useEffect(()=>{
-    if(bottomRef.current) bottomRef.current.scrollIntoView({behavior:"smooth"});
+    // 채팅 박스 내부에서만 스크롤 (페이지 전체 스크롤 방지)
+    if(chatBoxRef.current){
+      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    }
   },[messages]);
 
   const send = async() => {
@@ -397,7 +401,7 @@ function LiveChat({currentUser, lang}){
         <span style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>{lbl}</span>
         <span style={{fontSize:11,color:"#5A7090",marginLeft:"auto"}}>{messages.length} msg</span>
       </div>
-      <div style={{height:200,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
+      <div ref={chatBoxRef} style={{height:200,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
         {messages.length===0&&(
           <div style={{textAlign:"center",color:"#5A7090",fontSize:12,marginTop:56}}>
             {lang==="ko"?"첫 메시지를 남겨보세요 🎉":"Be the first to say something 🎉"}
@@ -422,7 +426,6 @@ function LiveChat({currentUser, lang}){
             </div>
           );
         })}
-        <div ref={bottomRef}/>
       </div>
       {chatError&&<div style={{padding:"4px 14px",fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)"}}>❌ {chatError}</div>}
       <div style={{padding:"8px 12px",borderTop:"0.5px solid rgba(255,255,255,.07)",display:"flex",gap:8,alignItems:"center"}}>
