@@ -5,6 +5,7 @@ import {
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
   setApproved, setPaid, subscribeUsers,
   subscribeTournamentState, saveTournamentState,
+  saveScorePrediction, saveReaction,
 } from "../lib/firebase";
 import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -711,6 +712,9 @@ function Dashboard({users, tournament, currentUid, lang}){
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
+      {/* 오늘의 경기 스코어 예측 */}
+      <TodayMatches users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
+
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
 
@@ -1356,6 +1360,127 @@ function calcWinProbs(ranked, tournament) {
 }
 
 
+
+// ─── TODAY'S MATCHES + SCORE PREDICTION ──────────────────────────────────────
+function TodayMatches({users, tournament, currentUid, lang}){
+  const [drafts, setDrafts] = useState({});   // {matchId:{home,away}}
+  const [savingId, setSavingId] = useState(null);
+  const [savedIds, setSavedIds] = useState({});
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(()=>{
+    const iv = setInterval(()=>setNow(Date.now()), 30000);
+    return ()=>clearInterval(iv);
+  },[]);
+
+  const me = Object.values(users).find(function(u){ return u.uid===currentUid; });
+  const myPreds = me?.scorePredictions || {};
+  const matchResults = tournament.matchResults || {};
+
+  // 오늘(ET 기준) + 아직 결과 없는 다음 경기들 (최대 4개)
+  const upcoming = MATCH_SCHEDULE
+    .filter(function(m){ return !matchResults[m.id]; })
+    .slice(0, 4);
+
+  if(upcoming.length === 0) return null;
+
+  const lbl = lang==="ko"?"스코어 맞히기":lang==="es"?"PREDICE EL MARCADOR":"PREDICT THE SCORE";
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>
+          🎯 {lbl}
+        </div>
+        <span style={{fontSize:10,color:"#5A7090"}}>
+          {lang==="ko"?"킥오프 전까지 · 점수 무관 자랑용":"before kickoff · bragging rights only"}
+        </span>
+      </div>
+      <div style={{fontSize:10,color:"#3A5070",marginBottom:10}}>
+        {lang==="ko"?"정확한 스코어를 맞히면 결과 카드에 🎯 예언가 표시!":"Nail the exact score → 🎯 Prophet badge on the result card!"}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:8}}>
+        {upcoming.map(function(m){
+          const kicked = m.iso ? now >= new Date(m.iso).getTime() : false;
+          const myP = myPreds[m.id];
+          const draft = drafts[m.id] || {home: myP?myP.home:"", away: myP?myP.away:""};
+          const justSaved = savedIds[m.id];
+
+          // 킥오프 후 → 전원 예측 공개
+          const allPreds = kicked
+            ? Object.values(users)
+                .filter(function(u){ return u.approved && u.scorePredictions?.[m.id]; })
+                .map(function(u){ return {name:(u.name||"?").split(" ")[0], p:u.scorePredictions[m.id]}; })
+            : [];
+
+          return(
+            <div key={m.id} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(myP?"rgba(212,168,67,.25)":"rgba(255,255,255,.07)"),borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:10,color:"#5A7090",marginBottom:6}}>
+                {m.date} · {m.time} · Group {m.group}
+                {kicked&&<span style={{color:"#f87171",marginLeft:6}}>🔒 {lang==="ko"?"마감":"locked"}</span>}
+              </div>
+
+              {/* 예측 입력 행 */}
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right"}}>{m.home}</span>
+                <input type="number" min="0" max="20" disabled={kicked}
+                  value={draft.home}
+                  onChange={function(e){ setDrafts(function(prev){ return {...prev,[m.id]:{...draft,home:e.target.value}}; }); }}
+                  style={{width:38,textAlign:"center",background:kicked?"rgba(255,255,255,.03)":"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:kicked?"#5A7090":"#fff",fontSize:15,fontFamily:"'Teko',sans-serif",padding:"3px 0"}}/>
+                <span style={{color:"#5A7090",fontSize:12}}>:</span>
+                <input type="number" min="0" max="20" disabled={kicked}
+                  value={draft.away}
+                  onChange={function(e){ setDrafts(function(prev){ return {...prev,[m.id]:{...draft,away:e.target.value}}; }); }}
+                  style={{width:38,textAlign:"center",background:kicked?"rgba(255,255,255,.03)":"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:kicked?"#5A7090":"#fff",fontSize:15,fontFamily:"'Teko',sans-serif",padding:"3px 0"}}/>
+                <span style={{fontSize:12,color:"#E0E8F0",flex:1}}>{m.away}</span>
+              </div>
+
+              {/* 저장 버튼 / 상태 */}
+              {!kicked&&(
+                <div style={{marginTop:7,display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8}}>
+                  {myP&&!justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {myP.home}:{myP.away} {lang==="ko"?"제출됨":"submitted"}</span>}
+                  {justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {lang==="ko"?"저장!":"saved!"}</span>}
+                  <button
+                    disabled={savingId===m.id||draft.home===""||draft.away===""}
+                    onClick={async function(){
+                      setSavingId(m.id);
+                      try{
+                        await saveScorePrediction(currentUid, m.id, String(draft.home), String(draft.away));
+                        setSavedIds(function(p){ return {...p,[m.id]:true}; });
+                        setTimeout(function(){ setSavedIds(function(p){ var n={...p}; delete n[m.id]; return n; }); }, 2500);
+                      }catch(e){}
+                      setSavingId(null);
+                    }}
+                    style={{padding:"5px 14px",borderRadius:14,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",background:(draft.home!==""&&draft.away!=="")?"rgba(212,168,67,.9)":"rgba(255,255,255,.08)",color:(draft.home!==""&&draft.away!=="")?"#000":"#5A7090",touchAction:"manipulation"}}>
+                    {savingId===m.id?"...":myP?(lang==="ko"?"수정":"UPDATE"):(lang==="ko"?"제출":"SUBMIT")}
+                  </button>
+                </div>
+              )}
+
+              {/* 킥오프 후: 전원 예측 공개 */}
+              {kicked&&allPreds.length>0&&(
+                <div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:4}}>
+                  {allPreds.map(function(ap){
+                    return(
+                      <span key={ap.name} style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:"rgba(255,255,255,.05)",color:"#9CA3AF"}}>
+                        {ap.name} {ap.p.home}:{ap.p.away}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {kicked&&allPreds.length===0&&(
+                <div style={{marginTop:8,fontSize:10,color:"#3A5070"}}>{lang==="ko"?"예측 없음":"no predictions"}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({tournament, lang}){
   const matchResults = tournament.matchResults || {};
@@ -1457,30 +1582,30 @@ function ResultsTab({tournament, lang}){
 
 // ─── MATCH SCHEDULE (스코어 입력용) ─────────────────────────────────────────
 const MATCH_SCHEDULE = [
-  {id:"A1", date:"Jun 11", time:"3:00 PM ET",  home:"Mexico",              away:"South Africa",      group:"A"},
-  {id:"A2", date:"Jun 11", time:"10:00 PM ET", home:"South Korea",         away:"Czechia",           group:"A"},
-  {id:"B1", date:"Jun 12", time:"3:00 PM ET",  home:"Canada",              away:"Bosnia-Herzegovina", group:"B"},
-  {id:"D1", date:"Jun 12", time:"9:00 PM ET",  home:"USA",                 away:"Paraguay",          group:"D"},
-  {id:"B2", date:"Jun 13", time:"3:00 PM ET",  home:"Qatar",               away:"Switzerland",       group:"B"},
-  {id:"C1", date:"Jun 13", time:"6:00 PM ET",  home:"Brazil",              away:"Morocco",           group:"C"},
-  {id:"C2", date:"Jun 13", time:"9:00 PM ET",  home:"Haiti",               away:"Scotland",          group:"C"},
-  {id:"D2", date:"Jun 14", time:"12:00 AM ET", home:"Australia",           away:"Türkiye",           group:"D"},
-  {id:"E1", date:"Jun 14", time:"1:00 PM ET",  home:"Germany",             away:"Curaçao",           group:"E"},
-  {id:"F1", date:"Jun 14", time:"4:00 PM ET",  home:"Netherlands",         away:"Japan",             group:"F"},
-  {id:"E2", date:"Jun 14", time:"7:00 PM ET",  home:"Ivory Coast",         away:"Ecuador",           group:"E"},
-  {id:"F2", date:"Jun 14", time:"10:00 PM ET", home:"Sweden",              away:"Tunisia",           group:"F"},
-  {id:"H1", date:"Jun 15", time:"12:00 PM ET", home:"Spain",               away:"Cape Verde",        group:"H"},
-  {id:"G1", date:"Jun 15", time:"3:00 PM ET",  home:"Belgium",             away:"Egypt",             group:"G"},
-  {id:"H2", date:"Jun 15", time:"6:00 PM ET",  home:"Saudi Arabia",        away:"Uruguay",           group:"H"},
-  {id:"G2", date:"Jun 15", time:"9:00 PM ET",  home:"Iran",                away:"New Zealand",       group:"G"},
-  {id:"I1", date:"Jun 16", time:"3:00 PM ET",  home:"France",              away:"Senegal",           group:"I"},
-  {id:"I2", date:"Jun 16", time:"6:00 PM ET",  home:"Iraq",                away:"Norway",            group:"I"},
-  {id:"J1", date:"Jun 16", time:"9:00 PM ET",  home:"Argentina",           away:"Algeria",           group:"J"},
-  {id:"J2", date:"Jun 17", time:"12:00 AM ET", home:"Austria",             away:"Jordan",            group:"J"},
-  {id:"K1", date:"Jun 17", time:"1:00 PM ET",  home:"Portugal",            away:"Congo DR",          group:"K"},
-  {id:"L1", date:"Jun 17", time:"4:00 PM ET",  home:"England",             away:"Croatia",           group:"L"},
-  {id:"L2", date:"Jun 17", time:"7:00 PM ET",  home:"Ghana",               away:"Panama",            group:"L"},
-  {id:"K2", date:"Jun 17", time:"10:00 PM ET", home:"Uzbekistan",          away:"Colombia",          group:"K"},
+  {id:"A1", iso:"2026-06-11T15:00:00-04:00", date:"Jun 11", time:"3:00 PM ET",  home:"Mexico",              away:"South Africa",      group:"A"},
+  {id:"A2", iso:"2026-06-11T22:00:00-04:00", date:"Jun 11", time:"10:00 PM ET", home:"South Korea",         away:"Czechia",           group:"A"},
+  {id:"B1", iso:"2026-06-12T15:00:00-04:00", date:"Jun 12", time:"3:00 PM ET",  home:"Canada",              away:"Bosnia-Herzegovina", group:"B"},
+  {id:"D1", iso:"2026-06-12T21:00:00-04:00", date:"Jun 12", time:"9:00 PM ET",  home:"USA",                 away:"Paraguay",          group:"D"},
+  {id:"B2", iso:"2026-06-13T15:00:00-04:00", date:"Jun 13", time:"3:00 PM ET",  home:"Qatar",               away:"Switzerland",       group:"B"},
+  {id:"C1", iso:"2026-06-13T18:00:00-04:00", date:"Jun 13", time:"6:00 PM ET",  home:"Brazil",              away:"Morocco",           group:"C"},
+  {id:"C2", iso:"2026-06-13T21:00:00-04:00", date:"Jun 13", time:"9:00 PM ET",  home:"Haiti",               away:"Scotland",          group:"C"},
+  {id:"D2", iso:"2026-06-14T00:00:00-04:00", date:"Jun 14", time:"12:00 AM ET", home:"Australia",           away:"Türkiye",           group:"D"},
+  {id:"E1", iso:"2026-06-14T13:00:00-04:00", date:"Jun 14", time:"1:00 PM ET",  home:"Germany",             away:"Curaçao",           group:"E"},
+  {id:"F1", iso:"2026-06-14T16:00:00-04:00", date:"Jun 14", time:"4:00 PM ET",  home:"Netherlands",         away:"Japan",             group:"F"},
+  {id:"E2", iso:"2026-06-14T19:00:00-04:00", date:"Jun 14", time:"7:00 PM ET",  home:"Ivory Coast",         away:"Ecuador",           group:"E"},
+  {id:"F2", iso:"2026-06-14T22:00:00-04:00", date:"Jun 14", time:"10:00 PM ET", home:"Sweden",              away:"Tunisia",           group:"F"},
+  {id:"H1", iso:"2026-06-15T12:00:00-04:00", date:"Jun 15", time:"12:00 PM ET", home:"Spain",               away:"Cape Verde",        group:"H"},
+  {id:"G1", iso:"2026-06-15T15:00:00-04:00", date:"Jun 15", time:"3:00 PM ET",  home:"Belgium",             away:"Egypt",             group:"G"},
+  {id:"H2", iso:"2026-06-15T18:00:00-04:00", date:"Jun 15", time:"6:00 PM ET",  home:"Saudi Arabia",        away:"Uruguay",           group:"H"},
+  {id:"G2", iso:"2026-06-15T21:00:00-04:00", date:"Jun 15", time:"9:00 PM ET",  home:"Iran",                away:"New Zealand",       group:"G"},
+  {id:"I1", iso:"2026-06-16T15:00:00-04:00", date:"Jun 16", time:"3:00 PM ET",  home:"France",              away:"Senegal",           group:"I"},
+  {id:"I2", iso:"2026-06-16T18:00:00-04:00", date:"Jun 16", time:"6:00 PM ET",  home:"Iraq",                away:"Norway",            group:"I"},
+  {id:"J1", iso:"2026-06-16T21:00:00-04:00", date:"Jun 16", time:"9:00 PM ET",  home:"Argentina",           away:"Algeria",           group:"J"},
+  {id:"J2", iso:"2026-06-17T00:00:00-04:00", date:"Jun 17", time:"12:00 AM ET", home:"Austria",             away:"Jordan",            group:"J"},
+  {id:"K1", iso:"2026-06-17T13:00:00-04:00", date:"Jun 17", time:"1:00 PM ET",  home:"Portugal",            away:"Congo DR",          group:"K"},
+  {id:"L1", iso:"2026-06-17T16:00:00-04:00", date:"Jun 17", time:"4:00 PM ET",  home:"England",             away:"Croatia",           group:"L"},
+  {id:"L2", iso:"2026-06-17T19:00:00-04:00", date:"Jun 17", time:"7:00 PM ET",  home:"Ghana",               away:"Panama",            group:"L"},
+  {id:"K2", iso:"2026-06-17T22:00:00-04:00", date:"Jun 17", time:"10:00 PM ET", home:"Uzbekistan",          away:"Colombia",          group:"K"},
 ];
 
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
