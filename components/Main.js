@@ -907,7 +907,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
               ? "현재 점수 + 남은 경기 시뮬레이션 3,000회 기반"
               : lang==="es"
               ? "Basado en 3,000 simulaciones"
-              : (Object.keys(tournament.groupResults||{}).length===0 ? "Pre-tournament — equal odds" : "Based on current picks & results")}
+              : (prob!==null && Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+(u.total||0);},0)===0 ? "Pre-tournament — equal odds for all" : "Based on current picks & results")}
           </div>
           <div style={{fontSize:11,color:color,fontWeight:500}}>
             {prob===null?"계산 중...":
@@ -1298,30 +1298,32 @@ function BracketPreview({users, tournament, currentUid, lang}){
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
   if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
+
   var gr = tournament.groupResults||{};
   var grpDone = Object.keys(gr).length;
-  // 게임 전 → 모두 동일
-  if(grpDone === 0) {
+
+  // 점수가 모두 0이면 (경기 전) → 무조건 균등
+  var totalScore = ranked.reduce(function(s,u){return s+(u.total||0);},0);
+  if(totalScore === 0) {
     var eq = Math.round(100/N);
     return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
   }
-  // 게임 진행 → 살아남은 픽 기반
+
+  // 경기 진행 중 → 현재점수 + 아직 결과 없는 조의 픽 기반 Monte Carlo
   var SIMS = 2000;
   var wins = {};
   ranked.forEach(function(u){ wins[u.uid]=0; });
+
   var potentials = ranked.map(function(u){
-    var cur = u.total;
+    var cur = u.total||0;
     var alive = 0;
     Object.entries(u.groupPicks||{}).forEach(function(e){
+      // 아직 결과 없는 조의 픽은 살아있음
       if(!gr[e[0]]) alive += (e[1]||[]).length;
     });
     return {uid:u.uid, cur:cur, maxAdd: alive * 3};
   });
-  var hasVariance = potentials.some(function(p){ return p.cur>0||p.maxAdd>0; });
-  if(!hasVariance) {
-    var eq2 = Math.round(100/N);
-    return ranked.map(function(u){ return {uid:u.uid, prob:eq2}; });
-  }
+
   for(var i=0;i<SIMS;i++){
     var best=-1, bestUid=null;
     potentials.forEach(function(p){
@@ -1330,6 +1332,7 @@ function calcWinProbs(ranked, tournament) {
     });
     if(bestUid) wins[bestUid]++;
   }
+
   return ranked.map(function(u){
     return {uid:u.uid, prob:Math.round(wins[u.uid]/SIMS*100)};
   });
