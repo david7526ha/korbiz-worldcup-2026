@@ -1998,10 +1998,14 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[["groupLocked",t.lockGroup],["bracketLocked",t.lockBracket]].map(([key,label])=>(
-                <label key={key} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"#E0E8F0"}}>
-                  <input type="checkbox" checked={!!st[key]} onChange={e=>setSt(prev=>({...prev,[key]:e.target.checked}))} style={{width:14,height:14,accentColor:"#f87171"}}/>
-                  {label}
-                </label>
+                <button key={key} onClick={(e)=>{e.stopPropagation();setSt(prev=>({...prev,[key]:!prev[key]}));}}
+                  style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"12px 16px",marginBottom:8,borderRadius:10,border:`1px solid ${st[key]?"rgba(239,68,68,.5)":"rgba(255,255,255,.1)"}`,background:st[key]?"rgba(239,68,68,.1)":"rgba(255,255,255,.03)",width:"100%",touchAction:"manipulation"}}>
+                  <div style={{width:40,height:22,borderRadius:11,background:st[key]?"#EF4444":"rgba(255,255,255,.15)",position:"relative",flexShrink:0,transition:"background .2s"}}>
+                    <div style={{width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:st[key]?20:2,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.3)"}}/>
+                  </div>
+                  <span style={{fontSize:13,color:st[key]?"#f87171":"#9CA3AF",fontWeight:500,flex:1,textAlign:"left"}}>{label}</span>
+                  <span style={{fontSize:11,color:st[key]?"#f87171":"#5A7090"}}>{st[key]?"🔒 ON":"OFF"}</span>
+                </button>
               ))}
             </div>
           </div>
