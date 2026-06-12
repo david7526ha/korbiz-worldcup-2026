@@ -708,7 +708,7 @@ function Dashboard({users, tournament, currentUid, lang}){
 
       {/* 가젯 2개 - 모바일: 1열, 태블릿+: 2열 */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:10,marginBottom:12}}>
-        <OddsWidget lang={lang}/>
+        <OddsWidget lang={lang} tournament={tournament}/>
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
@@ -765,7 +765,7 @@ function Dashboard({users, tournament, currentUid, lang}){
 
 
 // ─── ODDS WIDGET ──────────────────────────────────────────────────────────────
-function OddsWidget({lang}){
+function OddsWidget({lang, tournament}){
   const [odds, setOdds] = useState([]);
   const [live, setLive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -783,7 +783,18 @@ function OddsWidget({lang}){
   },[]);
 
   const lbl = lang==="ko"?"도박사 배팅 확률":lang==="es"?"PROBABILIDAD":"BOOKMAKER ODDS";
-  const match = odds[matchIdx];
+  // 결과 있는 경기 제외
+  const matchResults = tournament?.matchResults || {};
+  const filteredOdds = odds.filter(function(o){
+    const found = MATCH_SCHEDULE.find(function(m){
+      return (m.home===o.home||m.home.includes(o.home)||o.home.includes(m.home.split(" ")[0])) &&
+             (m.away===o.away||m.away.includes(o.away)||o.away.includes(m.away.split(" ")[0]));
+    });
+    return !found || !matchResults[found.id];
+  });
+  const match = filteredOdds[matchIdx] || filteredOdds[0];
+  // matchIdx가 범위 벗어나면 0으로 리셋
+  if(matchIdx >= filteredOdds.length && filteredOdds.length > 0) setMatchIdx(0);
 
   if(loading) return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -791,6 +802,12 @@ function OddsWidget({lang}){
     </div>
   );
 
+  if(filteredOdds.length === 0) return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"20px 16px",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}>
+      <span style={{fontSize:20}}>✅</span>
+      <span style={{fontSize:12,color:"#5A7090",textAlign:"center"}}>{lang==="ko"?"모든 예정 경기 완료":"All scheduled matches completed"}</span>
+    </div>
+  );
   if(!match) return null;
 
   const bars = [
@@ -815,7 +832,7 @@ function OddsWidget({lang}){
       {/* 경기 선택 탭 */}
       {odds.length > 1 && (
         <div style={{display:"flex",gap:4,marginBottom:10,overflowX:"auto",paddingBottom:2}}>
-          {odds.slice(0,6).map((m,i)=>(
+          {filteredOdds.slice(0,6).map((m,i)=>(
             <button key={i} onClick={()=>setMatchIdx(i)}
               style={{flexShrink:0,fontSize:9,padding:"2px 7px",borderRadius:10,border:"0.5px solid "+(matchIdx===i?"rgba(212,168,67,.5)":"rgba(255,255,255,.1)"),background:matchIdx===i?"rgba(212,168,67,.12)":"transparent",color:matchIdx===i?"#D4A843":"#5A7090",cursor:"pointer",whiteSpace:"nowrap"}}>
               {m.home.split(" ")[0]} v {m.away.split(" ")[0]}
