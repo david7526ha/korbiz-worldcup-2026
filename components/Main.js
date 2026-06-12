@@ -1835,186 +1835,412 @@ function ProphetTab({users, tournament, currentUid, lang}){
   );
 }
 
+// ─── RESULTS TAB ─────────────────────────────────────────────────────────────
+function ResultsTab({users, tournament, currentUid, lang}){
+  const matchResults = tournament.matchResults || {};
+  const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]);
+  const upcoming = MATCH_SCHEDULE.filter(m => !matchResults[m.id]);
 
-// ─── FIFA 랭킹 (June 11, 2026 공식) ──────────────────────────────────────────
-const FIFA_RANK = {
-  "Argentina":1,"Spain":2,"France":3,"England":4,"Portugal":5,
-  "Brazil":6,"Morocco":7,"Netherlands":8,"Belgium":9,"Germany":10,
-  "Croatia":11,"Colombia":13,"Mexico":14,"Senegal":15,"Uruguay":16,
-  "USA":17,"Japan":18,"Switzerland":19,"IR Iran":20,"Iran":20,
-  "Türkiye":22,"Turkey":22,"Ecuador":23,"Austria":24,"South Korea":25,
-  "Korea Republic":25,"Australia":27,"Algeria":28,"Egypt":29,
-  "Canada":30,"Norway":31,"Ivory Coast":33,"Côte d'Ivoire":33,
-  "Panama":34,"Sweden":38,"Czechia":40,"Paraguay":41,"Scotland":42,
-  "Congo DR":46,"Tunisia":45,"South Africa":66,"Scotland":42,
-  "Ghana":56,"Uzbekistan":74,"Haiti":100,"New Zealand":103,
-  "Cape Verde":71,"Bosnia-Herzegovina":65,"Qatar":58,"Jordan":87,
-  "Curaçao":88,
-};
-
-// ─── 우승 후보 오즈 (Pinnacle 기준, 6월 초 데이터) ────────────────────────────
-const TITLE_ODDS = [
-  {team:"Argentina",  flag:"🇦🇷", rank:1,  prob:18, color:"#60a5fa"},
-  {team:"France",     flag:"🇫🇷", rank:3,  prob:14, color:"#60a5fa"},
-  {team:"Spain",      flag:"🇪🇸", rank:2,  prob:13, color:"#f87171"},
-  {team:"England",    flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿", rank:4,  prob:10, color:"#f87171"},
-  {team:"Brazil",     flag:"🇧🇷", rank:6,  prob:9,  color:"#22C55E"},
-  {team:"Germany",    flag:"🇩🇪", rank:10, prob:7,  color:"#D4A843"},
-  {team:"Portugal",   flag:"🇵🇹", rank:5,  prob:6,  color:"#f87171"},
-  {team:"Netherlands",flag:"🇳🇱", rank:8,  prob:5,  color:"#f87171"},
-  {team:"Morocco",    flag:"🇲🇦", rank:7,  prob:4,  color:"#22C55E"},
-  {team:"Colombia",   flag:"🇨🇴", rank:13, prob:3,  color:"#22C55E"},
-  {team:"USA",        flag:"🇺🇸", rank:17, prob:2,  color:"#60a5fa"},
-  {team:"Others",     flag:"🌍",  rank:null,prob:9, color:"#5A7090"},
-];
-
-// ─── INFO TAB (우승 오즈 + FIFA 랭킹) ─────────────────────────────────────────
-function InfoTab({users, tournament, currentUid, lang}){
-  const me = Object.values(users).find(u=>u.uid===currentUid);
-  const myPicks = new Set();
-  Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
-
-  const lbl = (ko,en) => lang==="ko"?ko:en;
+  if(played.length === 0) return(
+    <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
+      <div style={{fontSize:40,marginBottom:12}}>⏳</div>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843",marginBottom:8}}>
+        {lang==="ko"?"아직 결과 없음":"No results yet"}
+      </div>
+      <div style={{fontSize:13}}>
+        {lang==="ko"?"경기 후 Admin에서 스코어를 입력하면 표시됩니다":"Scores will appear after Admin enters match results"}
+      </div>
+    </div>
+  );
 
   return(
     <div>
-      {/* 우승 후보 오즈 */}
-      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginBottom:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em"}}>
-            🏆 {lbl("우승 후보 확률","TITLE ODDS")}
-          </div>
-          <span style={{fontSize:10,color:"#5A7090"}}>Pinnacle ref · Jun 2026</span>
-        </div>
-        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
-          {lbl("북메이커 Pinnacle 기준 내재 확률 (vig 제거)","Pinnacle implied probability (vig-removed)")}
-        </div>
-        {TITLE_ODDS.map(function(t){
-          const isMyPick = myPicks.has(t.team);
+      {/* FIFA Official 링크 */}
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+        <a href="https://www.youtube.com/@FIFAWorldCup/videos" target="_blank" rel="noopener noreferrer"
+          style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"5px 12px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.07)"}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+          FIFA Official
+        </a>
+      </div>
+
+      {/* 완료된 경기 */}
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+        ✅ {lang==="ko"?"완료된 경기":"COMPLETED"} ({played.length})
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10,marginBottom:20}}>
+        {played.map(function(m){
+          const r = matchResults[m.id];
+          const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+"+m.home.replace(/ /g,"+")+"+"+ m.away.replace(/ /g,"+")+ "+highlights";
+          const homeWin = r.home > r.away;
+          const awayWin = r.away > r.home;
+          const draw = r.home === r.away;
+
           return(
-            <div key={t.team} style={{marginBottom:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                <span style={{fontSize:14,flexShrink:0}}>{t.flag}</span>
-                <span style={{fontSize:12,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,flex:1}}>
-                  {isMyPick?"⭐ ":""}{t.team}
-                  {t.rank&&<span style={{fontSize:10,color:"#5A7090",marginLeft:5}}>FIFA #{t.rank}</span>}
-                </span>
-                <span style={{fontSize:13,fontWeight:700,color:t.color}}>{t.prob}%</span>
+            <div key={m.id} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,overflow:"hidden"}}>
+              {/* 헤더 */}
+              <div style={{background:"rgba(255,255,255,.03)",padding:"6px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid rgba(255,255,255,.06)"}}>
+                <span style={{fontSize:10,color:"#5A7090",letterSpacing:".06em"}}>Group {m.group} · {m.date} · {m.time}</span>
+                <a href={ytUrl} target="_blank" rel="noopener noreferrer"
+                  style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 7px",borderRadius:10,background:"rgba(248,113,113,.1)"}}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                  HL
+                </a>
               </div>
-              <div style={{height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
-                <div style={{height:"100%",width:t.prob+"%",maxWidth:"100%",background:t.color,borderRadius:3,opacity:.75}}/>
+              {/* 스코어 */}
+              <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{flex:1,textAlign:"right"}}>
+                  <div style={{fontSize:13,color:homeWin?"#E0E8F0":"#5A7090",fontWeight:homeWin?600:400}}>{m.home}</div>
+                </div>
+                <div style={{textAlign:"center",minWidth:70}}>
+                  <div style={{fontFamily:"'Teko',sans-serif",fontSize:28,color:"#fff",lineHeight:1}}>
+                    {r.home} – {r.away}
+                  </div>
+                  {draw&&<div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>DRAW</div>}
+                </div>
+                <div style={{flex:1,textAlign:"left"}}>
+                  <div style={{fontSize:13,color:awayWin?"#E0E8F0":"#5A7090",fontWeight:awayWin?600:400}}>{m.away}</div>
+                </div>
+              </div>
+
+              {/* 🎯 예측 적중자 */}
+              {(function(){
+                const prophets = Object.values(users).filter(function(u){
+                  const p = u.scorePredictions?.[m.id];
+                  return u.approved && p && String(p.home)===String(r.home) && String(p.away)===String(r.away);
+                });
+                if(prophets.length===0) return null;
+                return(
+                  <div style={{padding:"0 16px 8px",display:"flex",flexWrap:"wrap",gap:5,alignItems:"center"}}>
+                    <span style={{fontSize:10,color:"#D4A843"}}>🎯 {lang==="ko"?"예언가":"Prophets"}:</span>
+                    {prophets.map(function(u){
+                      return(
+                        <span key={u.uid} style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"rgba(212,168,67,.15)",border:"0.5px solid rgba(212,168,67,.35)",color:"#D4A843",fontWeight:600}}>
+                          {(u.name||"?").split(" ")[0]}
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* 이모지 리액션 바 */}
+              <div style={{padding:"8px 16px 10px",borderTop:"0.5px solid rgba(255,255,255,.05)",display:"flex",gap:6}}>
+                {["🔥","😱","😂","💀"].map(function(emoji){
+                  const count = Object.values(users).filter(function(u){ return u.reactions?.[m.id]===emoji; }).length;
+                  const mine = Object.values(users).find(function(u){ return u.uid===currentUid; })?.reactions?.[m.id]===emoji;
+                  return(
+                    <button key={emoji}
+                      onClick={async function(){
+                        try{ await saveReaction(currentUid, m.id, mine ? "" : emoji); }catch(e){}
+                      }}
+                      style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:14,cursor:"pointer",touchAction:"manipulation",border:"0.5px solid "+(mine?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"),background:mine?"rgba(212,168,67,.12)":"rgba(255,255,255,.03)"}}>
+                      <span style={{fontSize:13}}>{emoji}</span>
+                      {count>0&&<span style={{fontSize:11,color:mine?"#D4A843":"#5A7090",fontWeight:600}}>{count}</span>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
-        <div style={{marginTop:10,fontSize:10,color:"#3A5070",textAlign:"right"}}>
-          {lbl("⭐ = 내 픽 팀","⭐ = my picked teams")}
-        </div>
       </div>
 
-      {/* FIFA 랭킹 — 참가 48팀 */}
-      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginBottom:16}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
-          📊 {lbl("FIFA 랭킹 (참가 48개국)","FIFA RANKINGS (48 teams)")}
-        </div>
-        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
-          {lbl("2026년 6월 11일 공식 발표 기준","As of official release June 11, 2026")}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:6}}>
-          {Object.entries(GROUPS).sort((a,b)=>a[0].localeCompare(b[0])).map(function(e){
-            var grp=e[0], info=e[1];
-            var myGrpPicks = me?.groupPicks?.[grp]||[];
-            return(
-              <div key={grp} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:8,overflow:"hidden"}}>
-                <div style={{padding:"4px 10px",background:"rgba(212,168,67,.07)",borderBottom:"0.5px solid rgba(255,255,255,.05)"}}>
-                  <span style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843"}}>GROUP {grp}</span>
-                </div>
-                {info.teams.map(function(team,i){
-                  var rank = FIFA_RANK[team];
-                  var isMyPick = myGrpPicks.includes(team);
-                  var flag = info.flags?.[i]||"🏳";
-                  return(
-                    <div key={team} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",borderBottom:"0.5px solid rgba(255,255,255,.03)",background:isMyPick?"rgba(212,168,67,.05)":"transparent"}}>
-                      <span style={{fontSize:12,flexShrink:0}}>{flag}</span>
-                      <span style={{fontSize:11,flex:1,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400}}>
-                        {isMyPick?"⭐ ":""}{team}
-                      </span>
-                      <span style={{fontSize:11,color:rank?rank<=10?"#22C55E":rank<=20?"#D4A843":"#9CA3AF":"#5A7090",fontWeight:rank&&rank<=10?600:400}}>
-                        {rank?"#"+rank:"–"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* 예정된 경기 — 날짜별 그룹핑 */}
+      {upcoming.length > 0 && (function(){
+        // 날짜별 그룹핑
+        const byDate = {};
+        upcoming.forEach(function(m){
+          if(!byDate[m.date]) byDate[m.date]=[];
+          byDate[m.date].push(m);
+        });
+        const dates = Object.keys(byDate);
 
-      {/* 32강 대진표 - 카드 형태 */}
-      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px"}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
-          ⚔️ {lbl("32강 대진표","ROUND OF 32")}
-        </div>
-        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
-          {lbl("조별 결과 후 팀명이 채워집니다 · ⭐ 내 픽","Fills in after group results · ⭐ your picks")}
-        </div>
-        {(function(){
-          var gr2 = tournament?.groupResults||{};
-          var st2 = {};
-          Object.entries(GROUPS).forEach(function(e){
-            var g=e[0],adv=gr2[g]||[];
-            if(adv[0]) st2[g+"1"]=adv[0];
-            if(adv[1]) st2[g+"2"]=adv[1];
-          });
-          var rSrc = function(src,wc){
-            if(src==="WC") return lang==="ko"?"3위("+wc+")":"3rd("+wc+")";
-            var g=src[0],p=src[1];
-            return lang==="ko"?(g+"조"+(p==="1"?"1위":"2위")):"Grp "+g+" "+(p==="1"?"Win":"R-up");
-          };
-          var matches = [
-            {a:"A2",b:"B2",date:"Jun 28"},
-            {a:"C1",b:"F2",date:"Jun 29"},{a:"E1",b:"WC",wc:"A/B/C/D/F",date:"Jun 29"},{a:"F1",b:"C2",date:"Jun 29"},
-            {a:"E2",b:"I2",date:"Jun 30"},{a:"I1",b:"WC",wc:"C/D/F/G/H",date:"Jun 30"},{a:"A1",b:"WC",wc:"C/E/F/H/I",date:"Jun 30"},
-            {a:"L1",b:"WC",wc:"E/H/I/J/K",date:"Jul 1"},{a:"G1",b:"WC",wc:"A/E/H/I/J",date:"Jul 1"},{a:"D1",b:"WC",wc:"B/E/F/I/J",date:"Jul 1"},{a:"J1",b:"H2",date:"Jul 1"},{a:"K1",b:"WC",wc:"D/E/I/J/L",date:"Jul 1"},
-            {a:"B1",b:"D2",date:"Jul 2"},{a:"H1",b:"G2",date:"Jul 2"},{a:"L2",b:"K2",date:"Jul 2"},{a:"J2",b:"WC",wc:"last",date:"Jul 2"},
-          ];
-          var dates = ["Jun 28","Jun 29","Jun 30","Jul 1","Jul 2"];
-          return dates.map(function(date){
-            var dm = matches.filter(function(m){return m.date===date;});
-            if(!dm.length) return null;
-            return(
-              <div key={date} style={{marginBottom:14}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <span style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#60a5fa",letterSpacing:".06em"}}>{date}</span>
-                  <div style={{flex:1,height:"0.5px",background:"rgba(255,255,255,.06)"}}/>
-                  <span style={{fontSize:10,color:"#5A7090"}}>{dm.length}{lang==="ko"?"경기":" matches"}</span>
+        return(
+          <div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#5A7090",letterSpacing:".1em",marginBottom:12}}>
+              📅 {lang==="ko"?"앞으로의 경기":"UPCOMING MATCHES"} ({upcoming.length})
+            </div>
+            {dates.map(function(date){
+              const matches = byDate[date];
+              return(
+                <div key={date} style={{marginBottom:16}}>
+                  {/* 날짜 헤더 */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".08em"}}>{date}</div>
+                    <div style={{flex:1,height:"0.5px",background:"rgba(255,255,255,.07)"}}/>
+                    <div style={{fontSize:10,color:"#5A7090"}}>{matches.length}{lang==="ko"?"경기":"matches"}</div>
+                  </div>
+                  {/* 경기 목록 */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {matches.map(function(m){
+                      const now = Date.now();
+                      const isNext = m.iso && Math.abs(new Date(m.iso).getTime()-now) < 86400000*2;
+                      return(
+                        <div key={m.id} style={{
+                          background:isNext?"rgba(212,168,67,.06)":"rgba(255,255,255,.02)",
+                          border:"0.5px solid "+(isNext?"rgba(212,168,67,.2)":"rgba(255,255,255,.06)"),
+                          borderRadius:10,
+                          padding:"10px 14px",
+                          display:"flex",
+                          alignItems:"center",
+                          gap:8,
+                        }}>
+                          {/* 시간 */}
+                          <div style={{textAlign:"center",flexShrink:0,width:70}}>
+                            <div style={{fontSize:11,color:isNext?"#D4A843":"#60a5fa",fontWeight:600}}>{m.time}</div>
+                            <div style={{fontSize:9,color:"#3A5070",letterSpacing:".06em"}}>Group {m.group}</div>
+                          </div>
+                          {/* 구분선 */}
+                          <div style={{width:"0.5px",height:28,background:"rgba(255,255,255,.08)",flexShrink:0}}/>
+                          {/* 홈팀 */}
+                          <div style={{flex:1,textAlign:"right",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.home}</div>
+                          {/* vs */}
+                          <div style={{textAlign:"center",flexShrink:0,width:24,fontSize:10,color:"#5A7090"}}>vs</div>
+                          {/* 어웨이팀 */}
+                          <div style={{flex:1,textAlign:"left",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.away}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:5}}>
-                  {dm.map(function(m,i){
-                    var tA=st2[m.a]||null, tB=m.b==="WC"?null:(st2[m.b]||null);
-                    var aMe=tA&&myPicks.has(tA), bMe=tB&&myPicks.has(tB);
-                    return(
-                      <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.3)":"rgba(255,255,255,.06)"),borderRadius:8,overflow:"hidden"}}>
-                        {[{t:tA,s:m.a,w:null,me:aMe},{t:tB,s:m.b,w:m.wc,me:bMe}].map(function(sl,j){
-                          return(
-                            <div key={j} style={{padding:"7px 10px",background:sl.me?"rgba(212,168,67,.08)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
-                              {sl.me&&<span style={{fontSize:9}}>⭐</span>}
-                              <span style={{fontSize:11,color:sl.me?"#D4A843":sl.t?"#E0E8F0":"#3A5070",fontWeight:sl.me?600:400,fontStyle:sl.t?"normal":"italic",flex:1}}>
-                                {sl.t||rSrc(sl.s,sl.w)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          });
-        })()}
+              );
+            })}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+
+// ─── MATCH SCHEDULE (스코어 입력용) ─────────────────────────────────────────
+const MATCH_SCHEDULE = [
+  {id:"A1", iso:"2026-06-11T15:00:00-04:00", date:"Jun 11", time:"3:00 PM ET",  home:"Mexico",              away:"South Africa",      group:"A"},
+  {id:"A2", iso:"2026-06-11T22:00:00-04:00", date:"Jun 11", time:"10:00 PM ET", home:"South Korea",         away:"Czechia",           group:"A"},
+  {id:"B1", iso:"2026-06-12T15:00:00-04:00", date:"Jun 12", time:"3:00 PM ET",  home:"Canada",              away:"Bosnia-Herzegovina", group:"B"},
+  {id:"D1", iso:"2026-06-12T21:00:00-04:00", date:"Jun 12", time:"9:00 PM ET",  home:"USA",                 away:"Paraguay",          group:"D"},
+  {id:"B2", iso:"2026-06-13T15:00:00-04:00", date:"Jun 13", time:"3:00 PM ET",  home:"Qatar",               away:"Switzerland",       group:"B"},
+  {id:"C1", iso:"2026-06-13T18:00:00-04:00", date:"Jun 13", time:"6:00 PM ET",  home:"Brazil",              away:"Morocco",           group:"C"},
+  {id:"C2", iso:"2026-06-13T21:00:00-04:00", date:"Jun 13", time:"9:00 PM ET",  home:"Haiti",               away:"Scotland",          group:"C"},
+  {id:"D2", iso:"2026-06-14T00:00:00-04:00", date:"Jun 14", time:"12:00 AM ET", home:"Australia",           away:"Türkiye",           group:"D"},
+  {id:"E1", iso:"2026-06-14T13:00:00-04:00", date:"Jun 14", time:"1:00 PM ET",  home:"Germany",             away:"Curaçao",           group:"E"},
+  {id:"F1", iso:"2026-06-14T16:00:00-04:00", date:"Jun 14", time:"4:00 PM ET",  home:"Netherlands",         away:"Japan",             group:"F"},
+  {id:"E2", iso:"2026-06-14T19:00:00-04:00", date:"Jun 14", time:"7:00 PM ET",  home:"Ivory Coast",         away:"Ecuador",           group:"E"},
+  {id:"F2", iso:"2026-06-14T22:00:00-04:00", date:"Jun 14", time:"10:00 PM ET", home:"Sweden",              away:"Tunisia",           group:"F"},
+  {id:"H1", iso:"2026-06-15T12:00:00-04:00", date:"Jun 15", time:"12:00 PM ET", home:"Spain",               away:"Cape Verde",        group:"H"},
+  {id:"G1", iso:"2026-06-15T15:00:00-04:00", date:"Jun 15", time:"3:00 PM ET",  home:"Belgium",             away:"Egypt",             group:"G"},
+  {id:"H2", iso:"2026-06-15T18:00:00-04:00", date:"Jun 15", time:"6:00 PM ET",  home:"Saudi Arabia",        away:"Uruguay",           group:"H"},
+  {id:"G2", iso:"2026-06-15T21:00:00-04:00", date:"Jun 15", time:"9:00 PM ET",  home:"Iran",                away:"New Zealand",       group:"G"},
+  {id:"I1", iso:"2026-06-16T15:00:00-04:00", date:"Jun 16", time:"3:00 PM ET",  home:"France",              away:"Senegal",           group:"I"},
+  {id:"I2", iso:"2026-06-16T18:00:00-04:00", date:"Jun 16", time:"6:00 PM ET",  home:"Iraq",                away:"Norway",            group:"I"},
+  {id:"J1", iso:"2026-06-16T21:00:00-04:00", date:"Jun 16", time:"9:00 PM ET",  home:"Argentina",           away:"Algeria",           group:"J"},
+  {id:"J2", iso:"2026-06-17T00:00:00-04:00", date:"Jun 17", time:"12:00 AM ET", home:"Austria",             away:"Jordan",            group:"J"},
+  {id:"K1", iso:"2026-06-17T13:00:00-04:00", date:"Jun 17", time:"1:00 PM ET",  home:"Portugal",            away:"Congo DR",          group:"K"},
+  {id:"L1", iso:"2026-06-17T16:00:00-04:00", date:"Jun 17", time:"4:00 PM ET",  home:"England",             away:"Croatia",           group:"L"},
+  {id:"L2", iso:"2026-06-17T19:00:00-04:00", date:"Jun 17", time:"7:00 PM ET",  home:"Ghana",               away:"Panama",            group:"L"},
+  {id:"K2", iso:"2026-06-17T22:00:00-04:00", date:"Jun 17", time:"10:00 PM ET", home:"Uzbekistan",          away:"Colombia",          group:"K"},
+];
+
+// ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
+function CountdownBanner({ lang, phase, uid }) {
+  const [groupTime, setGroupTime] = useState(null);
+  const [bracketTime, setBracketTime] = useState(null);
+  const [notifGranted, setNotifGranted] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    // 알림 권한 상태 확인
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifGranted(Notification.permission === "granted");
+    }
+    // 카운트다운 업데이트
+    const update = () => {
+      setGroupTime(getTimeRemaining("group", lang));
+      setBracketTime(getTimeRemaining("bracket", lang));
+    };
+    update();
+    const iv = setInterval(update, 60000); // 1분마다 갱신
+    return () => clearInterval(iv);
+  }, [lang]);
+
+  const handleNotif = async () => {
+    setNotifLoading(true);
+    const granted = await requestNotificationPermission(uid, lang);
+    setNotifGranted(granted);
+    setNotifLoading(false);
+  };
+
+  const NOTIF_LABELS = {
+    en: { allow: "🔔 Get Reminders", enabled: "🔔 Reminders On", loading: "Setting up..." },
+    es: { allow: "🔔 Recordatorios", enabled: "🔔 Activados", loading: "Configurando..." },
+    ko: { allow: "🔔 알림 받기", enabled: "🔔 알림 켜짐", loading: "설정 중..." },
+  };
+  const nl = NOTIF_LABELS[lang] || NOTIF_LABELS.en;
+
+  // 표시할 마감: 조별 안 지났으면 조별, 지났으면 브래킷
+  const activeTime = groupTime && !groupTime.expired ? groupTime : bracketTime;
+  const activeKey = groupTime && !groupTime.expired ? "group" : "bracket";
+  const DEADLINE_LABELS = {
+    group: { en: "Group Picks Deadline", es: "Vence Picks de Grupo", mn: "Бүлгийн Сонголт Дуусна", ko: "조별 픽 마감" },
+    bracket: { en: "Bracket Picks Deadline", es: "Vence Picks de Bracket", mn: "Bracket Сонголт Дуусна", ko: "브래킷 픽 마감" },
+  };
+
+  if (!activeTime || activeTime.expired) return null;
+
+  return (
+    <div style={{
+      background: activeTime.urgent ? "rgba(239,68,68,.12)" : "rgba(212,168,67,.08)",
+      border: `1px solid ${activeTime.urgent ? "rgba(239,68,68,.35)" : "rgba(212,168,67,.25)"}`,
+      borderRadius: 10, padding: "10px 14px", marginBottom: 14,
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: activeTime.urgent ? "#f87171" : "#D4A843", fontWeight: 600, marginBottom: 2 }}>
+          {activeTime.urgent ? "🚨" : "⏰"} {DEADLINE_LABELS[activeKey][lang] || DEADLINE_LABELS[activeKey].en}
+        </div>
+        <div style={{
+          fontFamily: "'Teko',sans-serif", fontSize: 20,
+          color: activeTime.urgent ? "#EF4444" : "#D4A843", lineHeight: 1,
+        }}>{activeTime.text}</div>
       </div>
+      {!notifGranted && typeof window !== "undefined" && "Notification" in window && Notification.permission !== "denied" && (
+        <button onClick={handleNotif} disabled={notifLoading} style={{
+          padding: "6px 13px", borderRadius: 8,
+          border: "1px solid rgba(212,168,67,.4)",
+          background: "rgba(212,168,67,.1)", color: "#D4A843",
+          fontSize: 12, fontWeight: 600, cursor: "pointer",
+          opacity: notifLoading ? 0.7 : 1, whiteSpace: "nowrap",
+        }}>
+          {notifLoading ? nl.loading : nl.allow}
+        </button>
+      )}
+      {notifGranted && (
+        <div style={{ fontSize: 11, color: "#22C55E", whiteSpace: "nowrap" }}>{nl.enabled}</div>
+      )}
+    </div>
+  );
+}
+
+function LangSwitcher({lang,setLang}){
+  return <div style={{display:"flex",gap:4}}>{[["en","EN"],["es","ES"],["ko","KO"]].map(([k,l])=><button key={k} onClick={()=>setLang(k)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${lang===k?"#D4A843":"rgba(255,255,255,.14)"}`,background:lang===k?"rgba(212,168,67,.15)":"transparent",color:lang===k?"#D4A843":"#6b7280",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}</div>;
+}
+
+// ─── HOW TO PLAY ───────────────────────────────────────────────────────────────
+function HowToPlay({lang}){
+  const t=T[lang];
+  const S=({icon,title,accent,children})=>(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"15px 17px",marginBottom:10,borderLeft:`3px solid ${accent}`}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#fff",letterSpacing:".1em",marginBottom:8}}>{icon} {title}</div>
+      {children}
+    </div>
+  );
+  return(
+    <div style={{maxWidth:660,margin:"0 auto"}}>
+      <S icon="💵" title={t.entryPrizes} accent="#22C55E">
+        <p style={{fontSize:13,color:"#D1D5DB",lineHeight:1.8}}>{t.entryDesc}</p>
+        <p style={{fontSize:13,color:"#D4A843",marginTop:4}}>{t.prizeDesc}</p>
+      </S>
+      <S icon="📋" title={t.phase1Title} accent="#3B82F6">
+        <p style={{fontSize:13,color:"#D1D5DB",lineHeight:1.8,marginBottom:8}}>{t.phase1Desc}</p>
+        <p style={{fontSize:12,color:"#5A7090",marginBottom:8}}>{t.phase1Max}</p>
+        <div style={{background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#9CA3AF"}}>📌 {t.phase1Note}</div>
+      </S>
+      <S icon="🏆" title={t.phase2Title} accent="#D4A843">
+        <p style={{fontSize:13,color:"#D1D5DB",lineHeight:1.8,marginBottom:10}}>{t.phase2Desc}</p>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+          {Object.entries(ROUND_META).map(([r,{label,pts}])=>(
+            <div key={r} style={{background:"rgba(212,168,67,.1)",border:"1px solid rgba(212,168,67,.25)",borderRadius:8,padding:"6px 10px",textAlign:"center"}}>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:19,color:"#D4A843",lineHeight:1}}>+{pts}</div>
+              <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{label[lang]}</div>
+            </div>
+          ))}
+        </div>
+        <p style={{fontSize:12,color:"#5A7090"}}>{t.phase2Max}</p>
+      </S>
+      <S icon="📅" title={t.keyDates} accent="#8B5CF6">
+        <div style={{fontSize:13,color:"#D1D5DB",lineHeight:2.2}}>
+          <div>🔒 {t.groupLock}</div>
+          <div>🏆 {t.bracketLock}</div>
+          <div>🏆 {t.finalDate}</div>
+        </div>
+      </S>
+
+      {/* Prophet League 가이드 */}
+      <div style={{background:"linear-gradient(135deg,rgba(139,92,246,.12),rgba(212,168,67,.06))",border:"1px solid rgba(139,92,246,.3)",borderRadius:14,padding:"16px 18px",marginBottom:10,borderLeft:"3px solid #a78bfa"}}>
+        {/* 헤더 */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontSize:20}}>🔮</span>
+          <div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#a78bfa",letterSpacing:".1em",lineHeight:1}}>
+              {lang==="ko"?"예언가 리그":"PROPHET LEAGUE"}
+            </div>
+            <div style={{fontSize:10,color:"#7C3AED",letterSpacing:".06em"}}>
+              {lang==="ko"?"사이드 이벤트 · 본 게임과 완전 별개":"SIDE EVENT · COMPLETELY SEPARATE FROM MAIN GAME"}
+            </div>
+          </div>
+        </div>
+
+        {/* 핵심 강조 배너 */}
+        <div style={{background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.35)",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:16}}>⚠️</span>
+          <span style={{fontSize:12,color:"#c4b5fd",fontWeight:600}}>
+            {lang==="ko"
+              ? "상금 없음 · 브래킷 픽과 무관 · 순수 자랑용 사이드 게임"
+              : "No prize · Independent of bracket picks · Bragging rights only"}
+          </span>
+        </div>
+
+        {/* 참여 방법 */}
+        <div style={{fontSize:13,color:"#D1D5DB",marginBottom:12}}>
+          <div style={{fontWeight:600,color:"#a78bfa",marginBottom:6}}>
+            {lang==="ko"?"참여 방법:":"How to play:"}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[
+              {icon:"1️⃣", ko:"홈 대시보드 → 🎯 스코어 맞히기 카드에서 경기별 스코어 예측 입력", en:"Home dashboard → 🎯 Predict The Score card → enter your score prediction per match"},
+              {icon:"2️⃣", ko:"같은 카드에서 홈팀승 / 무승부 / 원정팀승 방향 버튼 클릭", en:"Same card → tap Home Win / Draw / Away Win button"},
+              {icon:"3️⃣", ko:"킥오프 전까지만 가능 · 킥오프 후 자동 잠금 + 전원 예측 공개", en:"Deadline = kickoff · Auto-locked after kickoff · All predictions revealed"},
+              {icon:"4️⃣", ko:"결과 나오면 🔮 PROPHET 탭에서 랭킹 확인", en:"After results → check rankings in 🔮 PROPHET tab"},
+            ].map(function(item,i){
+              return(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <span style={{fontSize:13,flexShrink:0}}>{item.icon}</span>
+                  <span style={{fontSize:12,color:"#D1D5DB",lineHeight:1.5}}>{lang==="ko"?item.ko:item.en}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 점수 체계 */}
+        <div style={{marginBottom:8}}>
+          <div style={{fontWeight:600,color:"#a78bfa",fontSize:13,marginBottom:8}}>
+            {lang==="ko"?"점수 체계:":"Scoring:"}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            {[
+              {icon:"🎯", pts:"+3", label:{ko:"정확한 스코어 적중", en:"Exact score"}},
+              {icon:"✓",  pts:"+1", label:{ko:"승무패 방향 적중",   en:"Correct W/D/L"}},
+            ].map(function(item){
+              return(
+                <div key={item.pts} style={{flex:1,background:"rgba(139,92,246,.1)",border:"1px solid rgba(139,92,246,.25)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+                  <div style={{fontSize:18,marginBottom:2}}>{item.icon}</div>
+                  <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#a78bfa",lineHeight:1}}>{item.pts}</div>
+                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{lang==="ko"?item.label.ko:item.label.en}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{fontSize:11,color:"#6D28D9",marginTop:8,textAlign:"center"}}>
+          {lang==="ko"
+            ? "💡 정확한 스코어를 맞히면 결과 카드에 🎯 예언가 배지 표시!"
+            : "💡 Nail the exact score → 🎯 Prophet badge on the result card!"}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2597,7 +2823,6 @@ export default function Main(){
     {id:"prophet",label:"🔮 PROPHET"},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
-    {id:"info",label:lang==="ko"?"정보":"INFO 🌍"},
     {id:"rules",label:t.howToPlay},
   ];
 
@@ -2645,7 +2870,6 @@ export default function Main(){
         {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
-        {tab==="info"&&<InfoTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
