@@ -2607,3 +2607,99 @@ export default function Main(){
     </div>
   );
 }
+// ─── R32 BRACKET SVG ──────────────────────────────────────────────────────────
+function BracketSVG({tournament, users, currentUid, lang}){
+  const gr = tournament?.groupResults || {};
+  const st = {};
+  Object.entries(GROUPS).forEach(function(e){
+    var grp=e[0], adv=gr[grp]||[];
+    if(adv[0]) st[grp+"1"]=adv[0];
+    if(adv[1]) st[grp+"2"]=adv[1];
+  });
+  const me = Object.values(users).find(function(u){return u.uid===currentUid;});
+  const myPicks = new Set();
+  Object.values(me?.groupPicks||{}).forEach(function(teams){(teams||[]).forEach(function(t){myPicks.add(t);});});
+
+  var readSrc = function(src, wc){
+    if(!src) return "";
+    if(src==="WC") return wc?("3rd ("+wc+")"):"3rd WC";
+    if(src.length===2){ var g=src[0],p=src[1]; return "Grp "+g+" "+(p==="1"?"Winner":"Runner"); }
+    return src;
+  };
+  var getTeam = function(src){ return (src&&src!=="WC")?st[src]:null; };
+
+  var LEFT = [
+    {a:"A2",b:"B2",  date:"Jun 28"},
+    {a:"C1",b:"F2",  date:"Jun 29"},
+    {a:"E1",b:"WC",  date:"Jun 29", wc:"A/B/C/D/F"},
+    {a:"F1",b:"C2",  date:"Jun 29"},
+    {a:"E2",b:"I2",  date:"Jun 30"},
+    {a:"I1",b:"WC",  date:"Jun 30", wc:"C/D/F/G/H"},
+    {a:"A1",b:"WC",  date:"Jun 30", wc:"C/E/F/H/I"},
+    {a:"B1",b:"D2",  date:"Jul 2"},
+  ];
+  var RIGHT = [
+    {a:"L1",b:"WC",  date:"Jul 1",  wc:"E/H/I/J/K"},
+    {a:"G1",b:"WC",  date:"Jul 1",  wc:"A/E/H/I/J"},
+    {a:"D1",b:"WC",  date:"Jul 1",  wc:"B/E/F/I/J"},
+    {a:"J1",b:"H2",  date:"Jul 1"},
+    {a:"K1",b:"WC",  date:"Jul 1",  wc:"D/E/I/J/L"},
+    {a:"H1",b:"G2",  date:"Jul 2"},
+    {a:"L2",b:"K2",  date:"Jul 2"},
+    {a:"J2",b:"WC",  date:"Jul 2",  wc:"remaining"},
+  ];
+
+  var CW=155, CH=36, GAP=10, MT=30, ML=8;
+  var ROW_H = CH+GAP;
+  var svgW = (CW+ML)*2+80;
+  var svgH = 8*ROW_H+MT+ML;
+
+  var Slot = function(m, x, y){
+    var tA=getTeam(m.a), tB=getTeam(m.b);
+    var aMe=tA&&myPicks.has(tA), bMe=tB&&myPicks.has(tB);
+    var lA=tA||(lang==="ko"?(m.a==="WC"?"3위("+m.wc+")":m.a[0]+"조"+(m.a[1]==="1"?"1위":"2위")):readSrc(m.a,m.wc));
+    var lB=tB||(lang==="ko"?(m.b==="WC"?"3위("+m.wc+")":m.b[0]+"조"+(m.b[1]==="1"?"1위":"2위")):readSrc(m.b,m.wc));
+    return(
+      <g key={x+":"+y}>
+        <text x={x} y={y-2} fontSize={7} fill="#3A5070">{m.date}</text>
+        <rect x={x} y={y} width={CW} height={CH/2-1} rx={3}
+          fill={aMe?"rgba(212,168,67,.18)":tA?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)"}
+          stroke={aMe?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"} strokeWidth={0.5}/>
+        <text x={x+5} y={y+CH/4+3} fontSize={aMe?9.5:9}
+          fill={aMe?"#D4A843":tA?"#E0E8F0":"#3A5070"}
+          fontWeight={aMe?700:tA?400:300}>
+          {(lA.length>17?lA.slice(0,16)+"…":lA)}
+        </text>
+        {aMe&&<text x={x+CW-8} y={y+CH/4+3} fontSize={8} fill="#D4A843">⭐</text>}
+        <rect x={x} y={y+CH/2+1} width={CW} height={CH/2-1} rx={3}
+          fill={bMe?"rgba(212,168,67,.18)":tB?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)"}
+          stroke={bMe?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"} strokeWidth={0.5}/>
+        <text x={x+5} y={y+CH/2+1+CH/4+3} fontSize={bMe?9.5:9}
+          fill={bMe?"#D4A843":tB?"#E0E8F0":"#3A5070"}
+          fontWeight={bMe?700:tB?400:300}>
+          {(lB.length>17?lB.slice(0,16)+"…":lB)}
+        </text>
+        {bMe&&<text x={x+CW-8} y={y+CH/2+1+CH/4+3} fontSize={8} fill="#D4A843">⭐</text>}
+      </g>
+    );
+  };
+
+  var xL=ML, xR=svgW-ML-CW;
+
+  return(
+    <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",paddingBottom:4}}>
+      <svg width={svgW} height={svgH} style={{display:"block",minWidth:Math.min(svgW,360)}}>
+        <text x={svgW/2} y={14} textAnchor="middle" fontSize={10} fill="#5A7090" letterSpacing="1">
+          ← Left bracket · Jun 28–30 &amp; Jul 2{"  ·  "}Right bracket · Jul 1–2 →
+        </text>
+        <line x1={svgW/2} y1={MT} x2={svgW/2} y2={svgH-ML}
+          stroke="rgba(255,255,255,.06)" strokeWidth={1} strokeDasharray="4,4"/>
+        <text x={svgW/2} y={svgH/2+4} textAnchor="middle" fontSize={9} fill="#5A7090">R16 →</text>
+        {LEFT.map(function(m,i){ return Slot(m, xL, MT+i*ROW_H); })}
+        {RIGHT.map(function(m,i){ return Slot(m, xR, MT+i*ROW_H); })}
+      </svg>
+    </div>
+  );
+}
+
+
