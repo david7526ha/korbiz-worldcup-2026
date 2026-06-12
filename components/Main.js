@@ -1185,29 +1185,23 @@ const R32_FIXED = [
 ];
 
 // 실제 공식 대진 (1위/2위 확정된 것만, 3위는 별도 처리)
-// R32 공식 대진 (ESPN/FIFA 공식, Jun 28 - Jul 3)
 const R32_MATCHUPS_OFFICIAL = [
-  // Jun 28
-  {a:"A2", b:"B2",  date:"Jun 28"},
-  // Jun 29
-  {a:"C1", b:"F2",  date:"Jun 29"},
-  {a:"E1", b:"WC",  date:"Jun 29", wc:"A/B/C/D/F"},
-  {a:"F1", b:"C2",  date:"Jun 29"},
-  // Jun 30
-  {a:"E2", b:"I2",  date:"Jun 30"},
-  {a:"I1", b:"WC",  date:"Jun 30", wc:"C/D/F/G/H"},
-  {a:"A1", b:"WC",  date:"Jun 30", wc:"C/E/F/H/I"},
-  // Jul 1
-  {a:"L1", b:"WC",  date:"Jul 1",  wc:"E/H/I/J/K"},
-  {a:"G1", b:"WC",  date:"Jul 1",  wc:"A/E/H/I/J"},
-  {a:"D1", b:"WC",  date:"Jul 1",  wc:"B/E/F/I/J"},
-  {a:"J1", b:"H2",  date:"Jul 1"},
-  {a:"K1", b:"WC",  date:"Jul 1",  wc:"D/E/I/J/L"},
-  // Jul 2
-  {a:"B1", b:"D2",  date:"Jul 2"},
-  {a:"H1", b:"G2",  date:"Jul 2"},
-  {a:"L2", b:"K2",  date:"Jul 2"},
-  {a:"J2", b:"WC",  date:"Jul 2",  wc:"remaining"},
+  ["A2","B2"],   // M73
+  ["C1","F2"],   // M74
+  ["E1","WC"],   // M75 - E1 vs 3위(A/B/C/D/F)
+  ["F1","C2"],   // M76
+  ["E2","I2"],   // M77
+  ["I1","WC"],   // M78 - I1 vs 3위(C/D/F/G/H)
+  ["A1","WC"],   // M79 - A1 vs 3위(C/E/F/H/I)
+  ["L1","WC"],   // M80 - L1 vs 3위(E/H/I/J/K)
+  ["G1","WC"],   // M81 - G1 vs 3위(A/E/H/I/J)
+  ["D1","WC"],   // M82 - D1 vs 3위(B/E/F/I/J)
+  ["J1","H2"],   // M83
+  ["K1","WC"],   // M84 - K1 vs 3위(D/E/I/J/L)
+  ["B1","D2"],   // M85 (추정, ESPN 기준)
+  ["H1","G2"],   // M86
+  ["L2","K2"],   // M87
+  ["J2","WC"],   // M88 - J2 vs 나머지 3위
 ];
 
 // 3위팀 출처 정보 (각 와일드카드 슬롯별 허용 조 목록)
@@ -1288,8 +1282,8 @@ function BracketPreview({users, tournament, currentUid, lang}){
       )}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:6}}>
-        {R32_MATCHUPS_OFFICIAL.map(function(m,i){
-          var srcA=m.a, srcB=m.b;
+        {R32_MATCHUPS_OFFICIAL.map(function(pair,i){
+          var srcA=pair[0], srcB=pair[1];
           var teamA=st[srcA], teamB=srcB==="WC"?null:st[srcB];
           var aMe=teamA&&myPicks.has(teamA);
           var bMe=teamB&&myPicks.has(teamB);
@@ -1875,7 +1869,7 @@ const TITLE_ODDS = [
 ];
 
 // ─── INFO TAB (우승 오즈 + FIFA 랭킹) ─────────────────────────────────────────
-function InfoTab({users, tournament, currentUid, lang}){
+function InfoTab({users, currentUid, lang}){
   const me = Object.values(users).find(u=>u.uid===currentUid);
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
@@ -1957,17 +1951,70 @@ function InfoTab({users, tournament, currentUid, lang}){
         </div>
       </div>
 
-      {/* 32강 대진표 */}
+      {/* 32강 대진표 - 카드 형태 */}
       <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px"}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
-          ⚔️ {lbl("32강 대진표","ROUND OF 32 BRACKET")}
+          ⚔️ {lbl("32강 대진표","ROUND OF 32")}
         </div>
-        <div style={{fontSize:11,color:"#3A5070",marginBottom:8}}>
-          {lbl("조별 결과 확정 후 팀명이 채워집니다 · ⭐ 내 픽","Teams fill in after group results · ⭐ your picks")}
+        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
+          {lbl("조별 결과 후 팀명이 채워집니다 · ⭐ 내 픽","Fills in after group results · ⭐ your picks")}
         </div>
-        <BracketSVG tournament={tournament} users={users} currentUid={currentUid} lang={lang}/>
+        {(function(){
+          var gr2 = tournament?.groupResults||{};
+          var st2 = {};
+          Object.entries(GROUPS).forEach(function(e){
+            var g=e[0],adv=gr2[g]||[];
+            if(adv[0]) st2[g+"1"]=adv[0];
+            if(adv[1]) st2[g+"2"]=adv[1];
+          });
+          var rSrc = function(src,wc){
+            if(src==="WC") return lang==="ko"?"3위("+wc+")":"3rd("+wc+")";
+            var g=src[0],p=src[1];
+            return lang==="ko"?(g+"조"+(p==="1"?"1위":"2위")):"Grp "+g+" "+(p==="1"?"Win":"R-up");
+          };
+          var matches = [
+            {a:"A2",b:"B2",date:"Jun 28"},
+            {a:"C1",b:"F2",date:"Jun 29"},{a:"E1",b:"WC",wc:"A/B/C/D/F",date:"Jun 29"},{a:"F1",b:"C2",date:"Jun 29"},
+            {a:"E2",b:"I2",date:"Jun 30"},{a:"I1",b:"WC",wc:"C/D/F/G/H",date:"Jun 30"},{a:"A1",b:"WC",wc:"C/E/F/H/I",date:"Jun 30"},
+            {a:"L1",b:"WC",wc:"E/H/I/J/K",date:"Jul 1"},{a:"G1",b:"WC",wc:"A/E/H/I/J",date:"Jul 1"},{a:"D1",b:"WC",wc:"B/E/F/I/J",date:"Jul 1"},{a:"J1",b:"H2",date:"Jul 1"},{a:"K1",b:"WC",wc:"D/E/I/J/L",date:"Jul 1"},
+            {a:"B1",b:"D2",date:"Jul 2"},{a:"H1",b:"G2",date:"Jul 2"},{a:"L2",b:"K2",date:"Jul 2"},{a:"J2",b:"WC",wc:"last",date:"Jul 2"},
+          ];
+          var dates = ["Jun 28","Jun 29","Jun 30","Jul 1","Jul 2"];
+          return dates.map(function(date){
+            var dm = matches.filter(function(m){return m.date===date;});
+            if(!dm.length) return null;
+            return(
+              <div key={date} style={{marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#60a5fa",letterSpacing:".06em"}}>{date}</span>
+                  <div style={{flex:1,height:"0.5px",background:"rgba(255,255,255,.06)"}}/>
+                  <span style={{fontSize:10,color:"#5A7090"}}>{dm.length}{lang==="ko"?"경기":" matches"}</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:5}}>
+                  {dm.map(function(m,i){
+                    var tA=st2[m.a]||null, tB=m.b==="WC"?null:(st2[m.b]||null);
+                    var aMe=tA&&myPicks.has(tA), bMe=tB&&myPicks.has(tB);
+                    return(
+                      <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.3)":"rgba(255,255,255,.06)"),borderRadius:8,overflow:"hidden"}}>
+                        {[{t:tA,s:m.a,w:null,me:aMe},{t:tB,s:m.b,w:m.wc,me:bMe}].map(function(sl,j){
+                          return(
+                            <div key={j} style={{padding:"7px 10px",background:sl.me?"rgba(212,168,67,.08)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
+                              {sl.me&&<span style={{fontSize:9}}>⭐</span>}
+                              <span style={{fontSize:11,color:sl.me?"#D4A843":sl.t?"#E0E8F0":"#3A5070",fontWeight:sl.me?600:400,fontStyle:sl.t?"normal":"italic",flex:1}}>
+                                {sl.t||rSrc(sl.s,sl.w)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
-    </div>
   );
 }
 
@@ -2598,7 +2645,7 @@ export default function Main(){
         {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
-        {tab==="info"&&<InfoTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="info"&&<InfoTab users={users} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
@@ -2607,99 +2654,3 @@ export default function Main(){
     </div>
   );
 }
-// ─── R32 BRACKET SVG ──────────────────────────────────────────────────────────
-function BracketSVG({tournament, users, currentUid, lang}){
-  const gr = tournament?.groupResults || {};
-  const st = {};
-  Object.entries(GROUPS).forEach(function(e){
-    var grp=e[0], adv=gr[grp]||[];
-    if(adv[0]) st[grp+"1"]=adv[0];
-    if(adv[1]) st[grp+"2"]=adv[1];
-  });
-  const me = Object.values(users).find(function(u){return u.uid===currentUid;});
-  const myPicks = new Set();
-  Object.values(me?.groupPicks||{}).forEach(function(teams){(teams||[]).forEach(function(t){myPicks.add(t);});});
-
-  var readSrc = function(src, wc){
-    if(!src) return "";
-    if(src==="WC") return wc?("3rd ("+wc+")"):"3rd WC";
-    if(src.length===2){ var g=src[0],p=src[1]; return "Grp "+g+" "+(p==="1"?"Winner":"Runner"); }
-    return src;
-  };
-  var getTeam = function(src){ return (src&&src!=="WC")?st[src]:null; };
-
-  var LEFT = [
-    {a:"A2",b:"B2",  date:"Jun 28"},
-    {a:"C1",b:"F2",  date:"Jun 29"},
-    {a:"E1",b:"WC",  date:"Jun 29", wc:"A/B/C/D/F"},
-    {a:"F1",b:"C2",  date:"Jun 29"},
-    {a:"E2",b:"I2",  date:"Jun 30"},
-    {a:"I1",b:"WC",  date:"Jun 30", wc:"C/D/F/G/H"},
-    {a:"A1",b:"WC",  date:"Jun 30", wc:"C/E/F/H/I"},
-    {a:"B1",b:"D2",  date:"Jul 2"},
-  ];
-  var RIGHT = [
-    {a:"L1",b:"WC",  date:"Jul 1",  wc:"E/H/I/J/K"},
-    {a:"G1",b:"WC",  date:"Jul 1",  wc:"A/E/H/I/J"},
-    {a:"D1",b:"WC",  date:"Jul 1",  wc:"B/E/F/I/J"},
-    {a:"J1",b:"H2",  date:"Jul 1"},
-    {a:"K1",b:"WC",  date:"Jul 1",  wc:"D/E/I/J/L"},
-    {a:"H1",b:"G2",  date:"Jul 2"},
-    {a:"L2",b:"K2",  date:"Jul 2"},
-    {a:"J2",b:"WC",  date:"Jul 2",  wc:"remaining"},
-  ];
-
-  var CW=155, CH=36, GAP=10, MT=30, ML=8;
-  var ROW_H = CH+GAP;
-  var svgW = (CW+ML)*2+80;
-  var svgH = 8*ROW_H+MT+ML;
-
-  var Slot = function(m, x, y){
-    var tA=getTeam(m.a), tB=getTeam(m.b);
-    var aMe=tA&&myPicks.has(tA), bMe=tB&&myPicks.has(tB);
-    var lA=tA||(lang==="ko"?(m.a==="WC"?"3위("+m.wc+")":m.a[0]+"조"+(m.a[1]==="1"?"1위":"2위")):readSrc(m.a,m.wc));
-    var lB=tB||(lang==="ko"?(m.b==="WC"?"3위("+m.wc+")":m.b[0]+"조"+(m.b[1]==="1"?"1위":"2위")):readSrc(m.b,m.wc));
-    return(
-      <g key={x+":"+y}>
-        <text x={x} y={y-2} fontSize={7} fill="#3A5070">{m.date}</text>
-        <rect x={x} y={y} width={CW} height={CH/2-1} rx={3}
-          fill={aMe?"rgba(212,168,67,.18)":tA?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)"}
-          stroke={aMe?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"} strokeWidth={0.5}/>
-        <text x={x+5} y={y+CH/4+3} fontSize={aMe?9.5:9}
-          fill={aMe?"#D4A843":tA?"#E0E8F0":"#3A5070"}
-          fontWeight={aMe?700:tA?400:300}>
-          {(lA.length>17?lA.slice(0,16)+"…":lA)}
-        </text>
-        {aMe&&<text x={x+CW-8} y={y+CH/4+3} fontSize={8} fill="#D4A843">⭐</text>}
-        <rect x={x} y={y+CH/2+1} width={CW} height={CH/2-1} rx={3}
-          fill={bMe?"rgba(212,168,67,.18)":tB?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)"}
-          stroke={bMe?"rgba(212,168,67,.5)":"rgba(255,255,255,.08)"} strokeWidth={0.5}/>
-        <text x={x+5} y={y+CH/2+1+CH/4+3} fontSize={bMe?9.5:9}
-          fill={bMe?"#D4A843":tB?"#E0E8F0":"#3A5070"}
-          fontWeight={bMe?700:tB?400:300}>
-          {(lB.length>17?lB.slice(0,16)+"…":lB)}
-        </text>
-        {bMe&&<text x={x+CW-8} y={y+CH/2+1+CH/4+3} fontSize={8} fill="#D4A843">⭐</text>}
-      </g>
-    );
-  };
-
-  var xL=ML, xR=svgW-ML-CW;
-
-  return(
-    <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",paddingBottom:4}}>
-      <svg width={svgW} height={svgH} style={{display:"block",minWidth:Math.min(svgW,360)}}>
-        <text x={svgW/2} y={14} textAnchor="middle" fontSize={10} fill="#5A7090" letterSpacing="1">
-          ← Left bracket · Jun 28–30 &amp; Jul 2{"  ·  "}Right bracket · Jul 1–2 →
-        </text>
-        <line x1={svgW/2} y1={MT} x2={svgW/2} y2={svgH-ML}
-          stroke="rgba(255,255,255,.06)" strokeWidth={1} strokeDasharray="4,4"/>
-        <text x={svgW/2} y={svgH/2+4} textAnchor="middle" fontSize={9} fill="#5A7090">R16 →</text>
-        {LEFT.map(function(m,i){ return Slot(m, xL, MT+i*ROW_H); })}
-        {RIGHT.map(function(m,i){ return Slot(m, xR, MT+i*ROW_H); })}
-      </svg>
-    </div>
-  );
-}
-
-
