@@ -1929,28 +1929,69 @@ function ResultsTab({users, tournament, currentUid, lang}){
         })}
       </div>
 
-      {/* 예정된 경기 */}
-      {upcoming.length > 0 && (
-        <div>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#5A7090",letterSpacing:".1em",marginBottom:10}}>
-            ⏰ {lang==="ko"?"예정된 경기":"UPCOMING"} ({upcoming.length})
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:8}}>
-            {upcoming.map(function(m){
+      {/* 예정된 경기 — 날짜별 그룹핑 */}
+      {upcoming.length > 0 && (function(){
+        // 날짜별 그룹핑
+        const byDate = {};
+        upcoming.forEach(function(m){
+          if(!byDate[m.date]) byDate[m.date]=[];
+          byDate[m.date].push(m);
+        });
+        const dates = Object.keys(byDate);
+
+        return(
+          <div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#5A7090",letterSpacing:".1em",marginBottom:12}}>
+              📅 {lang==="ko"?"앞으로의 경기":"UPCOMING MATCHES"} ({upcoming.length})
+            </div>
+            {dates.map(function(date){
+              const matches = byDate[date];
               return(
-                <div key={m.id} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{flex:1,textAlign:"right",fontSize:12,color:"#9CA3AF"}}>{m.home}</div>
-                  <div style={{textAlign:"center",minWidth:60}}>
-                    <div style={{fontSize:10,color:"#5A7090"}}>{m.date}</div>
-                    <div style={{fontSize:11,color:"#D4A843",fontWeight:500}}>{m.time}</div>
+                <div key={date} style={{marginBottom:16}}>
+                  {/* 날짜 헤더 */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".08em"}}>{date}</div>
+                    <div style={{flex:1,height:"0.5px",background:"rgba(255,255,255,.07)"}}/>
+                    <div style={{fontSize:10,color:"#5A7090"}}>{matches.length}{lang==="ko"?"경기":"matches"}</div>
                   </div>
-                  <div style={{flex:1,textAlign:"left",fontSize:12,color:"#9CA3AF"}}>{m.away}</div>
+                  {/* 경기 목록 */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {matches.map(function(m){
+                      const now = Date.now();
+                      const isNext = m.iso && Math.abs(new Date(m.iso).getTime()-now) < 86400000*2;
+                      return(
+                        <div key={m.id} style={{
+                          background:isNext?"rgba(212,168,67,.06)":"rgba(255,255,255,.02)",
+                          border:"0.5px solid "+(isNext?"rgba(212,168,67,.2)":"rgba(255,255,255,.06)"),
+                          borderRadius:10,
+                          padding:"10px 14px",
+                          display:"flex",
+                          alignItems:"center",
+                          gap:8,
+                        }}>
+                          {/* 시간 */}
+                          <div style={{textAlign:"center",flexShrink:0,width:70}}>
+                            <div style={{fontSize:11,color:isNext?"#D4A843":"#60a5fa",fontWeight:600}}>{m.time}</div>
+                            <div style={{fontSize:9,color:"#3A5070",letterSpacing:".06em"}}>Group {m.group}</div>
+                          </div>
+                          {/* 구분선 */}
+                          <div style={{width:"0.5px",height:28,background:"rgba(255,255,255,.08)",flexShrink:0}}/>
+                          {/* 홈팀 */}
+                          <div style={{flex:1,textAlign:"right",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.home}</div>
+                          {/* vs */}
+                          <div style={{textAlign:"center",flexShrink:0,width:24,fontSize:10,color:"#5A7090"}}>vs</div>
+                          {/* 어웨이팀 */}
+                          <div style={{flex:1,textAlign:"left",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.away}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
