@@ -2165,6 +2165,81 @@ function HowToPlay({lang}){
           <div>🏆 {t.finalDate}</div>
         </div>
       </S>
+
+      {/* Prophet League 가이드 */}
+      <div style={{background:"linear-gradient(135deg,rgba(139,92,246,.12),rgba(212,168,67,.06))",border:"1px solid rgba(139,92,246,.3)",borderRadius:14,padding:"16px 18px",marginBottom:10,borderLeft:"3px solid #a78bfa"}}>
+        {/* 헤더 */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontSize:20}}>🔮</span>
+          <div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#a78bfa",letterSpacing:".1em",lineHeight:1}}>
+              {lang==="ko"?"예언가 리그":"PROPHET LEAGUE"}
+            </div>
+            <div style={{fontSize:10,color:"#7C3AED",letterSpacing:".06em"}}>
+              {lang==="ko"?"사이드 이벤트 · 본 게임과 완전 별개":"SIDE EVENT · COMPLETELY SEPARATE FROM MAIN GAME"}
+            </div>
+          </div>
+        </div>
+
+        {/* 핵심 강조 배너 */}
+        <div style={{background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.35)",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:16}}>⚠️</span>
+          <span style={{fontSize:12,color:"#c4b5fd",fontWeight:600}}>
+            {lang==="ko"
+              ? "상금 없음 · 브래킷 픽과 무관 · 순수 자랑용 사이드 게임"
+              : "No prize · Independent of bracket picks · Bragging rights only"}
+          </span>
+        </div>
+
+        {/* 참여 방법 */}
+        <div style={{fontSize:13,color:"#D1D5DB",marginBottom:12}}>
+          <div style={{fontWeight:600,color:"#a78bfa",marginBottom:6}}>
+            {lang==="ko"?"참여 방법:":"How to play:"}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[
+              {icon:"1️⃣", ko:"홈 대시보드 → 🎯 스코어 맞히기 카드에서 경기별 스코어 예측 입력", en:"Home dashboard → 🎯 Predict The Score card → enter your score prediction per match"},
+              {icon:"2️⃣", ko:"같은 카드에서 홈팀승 / 무승부 / 원정팀승 방향 버튼 클릭", en:"Same card → tap Home Win / Draw / Away Win button"},
+              {icon:"3️⃣", ko:"킥오프 전까지만 가능 · 킥오프 후 자동 잠금 + 전원 예측 공개", en:"Deadline = kickoff · Auto-locked after kickoff · All predictions revealed"},
+              {icon:"4️⃣", ko:"결과 나오면 🔮 PROPHET 탭에서 랭킹 확인", en:"After results → check rankings in 🔮 PROPHET tab"},
+            ].map(function(item,i){
+              return(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <span style={{fontSize:13,flexShrink:0}}>{item.icon}</span>
+                  <span style={{fontSize:12,color:"#D1D5DB",lineHeight:1.5}}>{lang==="ko"?item.ko:item.en}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 점수 체계 */}
+        <div style={{marginBottom:8}}>
+          <div style={{fontWeight:600,color:"#a78bfa",fontSize:13,marginBottom:8}}>
+            {lang==="ko"?"점수 체계:":"Scoring:"}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            {[
+              {icon:"🎯", pts:"+3", label:{ko:"정확한 스코어 적중", en:"Exact score"}},
+              {icon:"✓",  pts:"+1", label:{ko:"승무패 방향 적중",   en:"Correct W/D/L"}},
+            ].map(function(item){
+              return(
+                <div key={item.pts} style={{flex:1,background:"rgba(139,92,246,.1)",border:"1px solid rgba(139,92,246,.25)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+                  <div style={{fontSize:18,marginBottom:2}}>{item.icon}</div>
+                  <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#a78bfa",lineHeight:1}}>{item.pts}</div>
+                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{lang==="ko"?item.label.ko:item.label.en}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{fontSize:11,color:"#6D28D9",marginTop:8,textAlign:"center"}}>
+          {lang==="ko"
+            ? "💡 정확한 스코어를 맞히면 결과 카드에 🎯 예언가 배지 표시!"
+            : "💡 Nail the exact score → 🎯 Prophet badge on the result card!"}
+        </div>
+      </div>
     </div>
   );
 }
