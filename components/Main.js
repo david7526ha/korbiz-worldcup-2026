@@ -1869,7 +1869,7 @@ const TITLE_ODDS = [
 ];
 
 // ─── INFO TAB (우승 오즈 + FIFA 랭킹) ─────────────────────────────────────────
-function InfoTab({users, currentUid, lang}){
+function InfoTab({users, tournament, currentUid, lang}){
   const me = Object.values(users).find(u=>u.uid===currentUid);
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
@@ -1951,37 +1951,56 @@ function InfoTab({users, currentUid, lang}){
         </div>
       </div>
 
-      {/* 개최 도시 */}
+      {/* 32강 대진표 */}
       <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px"}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
-          🏟️ {lbl("개최 도시","HOST CITIES")}
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
+          ⚔️ {lbl("32강 대진표","ROUND OF 32 BRACKET")}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:6}}>
-          {[
-            {city:"New York",country:"🇺🇸",games:8},
-            {city:"Los Angeles",country:"🇺🇸",games:8},
-            {city:"Dallas",country:"🇺🇸",games:7},
-            {city:"San Francisco",country:"🇺🇸",games:6},
-            {city:"Miami",country:"🇺🇸",games:6},
-            {city:"Seattle",country:"🇺🇸",games:6},
-            {city:"Boston",country:"🇺🇸",games:6},
-            {city:"Atlanta",country:"🇺🇸",games:6},
-            {city:"Houston",country:"🇺🇸",games:6},
-            {city:"Philadelphia",country:"🇺🇸",games:6},
-            {city:"Kansas City",country:"🇺🇸",games:6},
-            {city:"Toronto",country:"🇨🇦",games:6},
-            {city:"Vancouver",country:"🇨🇦",games:6},
-            {city:"Guadalajara",country:"🇲🇽",games:5},
-            {city:"Mexico City",country:"🇲🇽",games:5},
-            {city:"Monterrey",country:"🇲🇽",games:5},
-          ].map(function(h){
+        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
+          {lbl("조별 결과 확정 후 팀명이 채워집니다 · 내 픽 팀 ⭐","Teams fill in after group results · your picks ⭐")}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6}}>
+          {R32_MATCHUPS_OFFICIAL.map(function(pair,i){
+            var srcA=pair[0], srcB=pair[1];
+            var st2 = {};
+            Object.entries(GROUPS).forEach(function(e){
+              var grp=e[0], info=e[1];
+              var adv = tournament?.groupResults?.[grp]||[];
+              if(adv.length>=1) st2[grp+"1"]=adv[0];
+              if(adv.length>=2) st2[grp+"2"]=adv[1];
+            });
+            var teamA = st2[srcA];
+            var teamB = srcB==="WC" ? null : st2[srcB];
+            var aMe = teamA && myPicks.has(teamA);
+            var bMe = teamB && myPicks.has(teamB);
+            var mLabel = "M"+(73+i);
+
+            // srcA/srcB 를 읽기 쉽게 변환
+            var readSrc = function(src){
+              if(src==="WC") return lbl("3위 와일드카드","3rd WC");
+              if(src.length===2){
+                var g=src[0], pos=src[1];
+                return lbl(g+"조 "+(pos==="1"?"1위":"2위"), "Group "+g+" "+(pos==="1"?"Winner":"Runner-up"));
+              }
+              return src;
+            };
+
             return(
-              <div key={h.city} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:8,padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontSize:14}}>{h.country}</span>
-                <div>
-                  <div style={{fontSize:11,color:"#E0E8F0",fontWeight:500}}>{h.city}</div>
-                  <div style={{fontSize:10,color:"#5A7090"}}>{h.games} {lbl("경기","matches")}</div>
-                </div>
+              <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.3)":"rgba(255,255,255,.07)"),borderRadius:8,overflow:"hidden"}}>
+                <div style={{fontSize:9,color:"#5A7090",padding:"3px 8px",background:"rgba(255,255,255,.02)",borderBottom:"0.5px solid rgba(255,255,255,.05)",letterSpacing:".06em"}}>{mLabel}</div>
+                {[{src:srcA,team:teamA,isMe:aMe},{src:srcB,team:teamB,isMe:bMe}].map(function(slot,j){
+                  return(
+                    <div key={j} style={{padding:"6px 10px",background:slot.isMe?"rgba(212,168,67,.1)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
+                      {slot.isMe&&<span style={{fontSize:9,flexShrink:0}}>⭐</span>}
+                      <div style={{flex:1}}>
+                        {slot.team
+                          ? <span style={{fontSize:11,color:slot.isMe?"#D4A843":"#E0E8F0",fontWeight:slot.isMe?600:400}}>{slot.team}</span>
+                          : <span style={{fontSize:10,color:"#3A5070",fontStyle:"italic"}}>{readSrc(slot.src)}</span>
+                        }
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -3027,7 +3046,7 @@ export default function Main(){
         {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
-        {tab==="info"&&<InfoTab users={users} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="info"&&<InfoTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
