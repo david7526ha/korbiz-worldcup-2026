@@ -1835,6 +1835,162 @@ function ProphetTab({users, tournament, currentUid, lang}){
   );
 }
 
+
+// ─── FIFA 랭킹 (June 11, 2026 공식) ──────────────────────────────────────────
+const FIFA_RANK = {
+  "Argentina":1,"Spain":2,"France":3,"England":4,"Portugal":5,
+  "Brazil":6,"Morocco":7,"Netherlands":8,"Belgium":9,"Germany":10,
+  "Croatia":11,"Colombia":13,"Mexico":14,"Senegal":15,"Uruguay":16,
+  "USA":17,"Japan":18,"Switzerland":19,"IR Iran":20,"Iran":20,
+  "Türkiye":22,"Turkey":22,"Ecuador":23,"Austria":24,"South Korea":25,
+  "Korea Republic":25,"Australia":27,"Algeria":28,"Egypt":29,
+  "Canada":30,"Norway":31,"Ivory Coast":33,"Côte d'Ivoire":33,
+  "Panama":34,"Sweden":38,"Czechia":40,"Paraguay":41,"Scotland":42,
+  "Congo DR":46,"Tunisia":45,"South Africa":66,"Scotland":42,
+  "Ghana":56,"Uzbekistan":74,"Haiti":100,"New Zealand":103,
+  "Cape Verde":71,"Bosnia-Herzegovina":65,"Qatar":58,"Jordan":87,
+  "Curaçao":88,
+};
+
+// ─── 우승 후보 오즈 (Pinnacle 기준, 6월 초 데이터) ────────────────────────────
+const TITLE_ODDS = [
+  {team:"Argentina",  flag:"🇦🇷", rank:1,  prob:18, color:"#60a5fa"},
+  {team:"France",     flag:"🇫🇷", rank:3,  prob:14, color:"#60a5fa"},
+  {team:"Spain",      flag:"🇪🇸", rank:2,  prob:13, color:"#f87171"},
+  {team:"England",    flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿", rank:4,  prob:10, color:"#f87171"},
+  {team:"Brazil",     flag:"🇧🇷", rank:6,  prob:9,  color:"#22C55E"},
+  {team:"Germany",    flag:"🇩🇪", rank:10, prob:7,  color:"#D4A843"},
+  {team:"Portugal",   flag:"🇵🇹", rank:5,  prob:6,  color:"#f87171"},
+  {team:"Netherlands",flag:"🇳🇱", rank:8,  prob:5,  color:"#f87171"},
+  {team:"Morocco",    flag:"🇲🇦", rank:7,  prob:4,  color:"#22C55E"},
+  {team:"Colombia",   flag:"🇨🇴", rank:13, prob:3,  color:"#22C55E"},
+  {team:"USA",        flag:"🇺🇸", rank:17, prob:2,  color:"#60a5fa"},
+  {team:"Others",     flag:"🌍",  rank:null,prob:9, color:"#5A7090"},
+];
+
+// ─── INFO TAB (우승 오즈 + FIFA 랭킹) ─────────────────────────────────────────
+function InfoTab({users, currentUid, lang}){
+  const me = Object.values(users).find(u=>u.uid===currentUid);
+  const myPicks = new Set();
+  Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
+
+  const lbl = (ko,en) => lang==="ko"?ko:en;
+
+  return(
+    <div>
+      {/* 우승 후보 오즈 */}
+      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em"}}>
+            🏆 {lbl("우승 후보 확률","TITLE ODDS")}
+          </div>
+          <span style={{fontSize:10,color:"#5A7090"}}>Pinnacle ref · Jun 2026</span>
+        </div>
+        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
+          {lbl("북메이커 Pinnacle 기준 내재 확률 (vig 제거)","Pinnacle implied probability (vig-removed)")}
+        </div>
+        {TITLE_ODDS.map(function(t){
+          const isMyPick = myPicks.has(t.team);
+          return(
+            <div key={t.team} style={{marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{fontSize:14,flexShrink:0}}>{t.flag}</span>
+                <span style={{fontSize:12,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,flex:1}}>
+                  {isMyPick?"⭐ ":""}{t.team}
+                  {t.rank&&<span style={{fontSize:10,color:"#5A7090",marginLeft:5}}>FIFA #{t.rank}</span>}
+                </span>
+                <span style={{fontSize:13,fontWeight:700,color:t.color}}>{t.prob}%</span>
+              </div>
+              <div style={{height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:t.prob+"%",maxWidth:"100%",background:t.color,borderRadius:3,opacity:.75}}/>
+              </div>
+            </div>
+          );
+        })}
+        <div style={{marginTop:10,fontSize:10,color:"#3A5070",textAlign:"right"}}>
+          {lbl("⭐ = 내 픽 팀","⭐ = my picked teams")}
+        </div>
+      </div>
+
+      {/* FIFA 랭킹 — 참가 48팀 */}
+      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px",marginBottom:16}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
+          📊 {lbl("FIFA 랭킹 (참가 48개국)","FIFA RANKINGS (48 teams)")}
+        </div>
+        <div style={{fontSize:11,color:"#3A5070",marginBottom:12}}>
+          {lbl("2026년 6월 11일 공식 발표 기준","As of official release June 11, 2026")}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:6}}>
+          {Object.entries(GROUPS).sort((a,b)=>a[0].localeCompare(b[0])).map(function(e){
+            var grp=e[0], info=e[1];
+            var myGrpPicks = me?.groupPicks?.[grp]||[];
+            return(
+              <div key={grp} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:8,overflow:"hidden"}}>
+                <div style={{padding:"4px 10px",background:"rgba(212,168,67,.07)",borderBottom:"0.5px solid rgba(255,255,255,.05)"}}>
+                  <span style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843"}}>GROUP {grp}</span>
+                </div>
+                {info.teams.map(function(team,i){
+                  var rank = FIFA_RANK[team];
+                  var isMyPick = myGrpPicks.includes(team);
+                  var flag = info.flags?.[i]||"🏳";
+                  return(
+                    <div key={team} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",borderBottom:"0.5px solid rgba(255,255,255,.03)",background:isMyPick?"rgba(212,168,67,.05)":"transparent"}}>
+                      <span style={{fontSize:12,flexShrink:0}}>{flag}</span>
+                      <span style={{fontSize:11,flex:1,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400}}>
+                        {isMyPick?"⭐ ":""}{team}
+                      </span>
+                      <span style={{fontSize:11,color:rank?rank<=10?"#22C55E":rank<=20?"#D4A843":"#9CA3AF":"#5A7090",fontWeight:rank&&rank<=10?600:400}}>
+                        {rank?"#"+rank:"–"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 개최 도시 */}
+      <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px"}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
+          🏟️ {lbl("개최 도시","HOST CITIES")}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:6}}>
+          {[
+            {city:"New York",country:"🇺🇸",games:8},
+            {city:"Los Angeles",country:"🇺🇸",games:8},
+            {city:"Dallas",country:"🇺🇸",games:7},
+            {city:"San Francisco",country:"🇺🇸",games:6},
+            {city:"Miami",country:"🇺🇸",games:6},
+            {city:"Seattle",country:"🇺🇸",games:6},
+            {city:"Boston",country:"🇺🇸",games:6},
+            {city:"Atlanta",country:"🇺🇸",games:6},
+            {city:"Houston",country:"🇺🇸",games:6},
+            {city:"Philadelphia",country:"🇺🇸",games:6},
+            {city:"Kansas City",country:"🇺🇸",games:6},
+            {city:"Toronto",country:"🇨🇦",games:6},
+            {city:"Vancouver",country:"🇨🇦",games:6},
+            {city:"Guadalajara",country:"🇲🇽",games:5},
+            {city:"Mexico City",country:"🇲🇽",games:5},
+            {city:"Monterrey",country:"🇲🇽",games:5},
+          ].map(function(h){
+            return(
+              <div key={h.city} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.06)",borderRadius:8,padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:14}}>{h.country}</span>
+                <div>
+                  <div style={{fontSize:11,color:"#E0E8F0",fontWeight:500}}>{h.city}</div>
+                  <div style={{fontSize:10,color:"#5A7090"}}>{h.games} {lbl("경기","matches")}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
   const matchResults = tournament.matchResults || {};
@@ -2823,6 +2979,7 @@ export default function Main(){
     {id:"prophet",label:"🔮 PROPHET"},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
+    {id:"info",label:lang==="ko"?"정보":"INFO 🌍"},
     {id:"rules",label:t.howToPlay},
   ];
 
@@ -2870,6 +3027,7 @@ export default function Main(){
         {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
+        {tab==="info"&&<InfoTab users={users} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
