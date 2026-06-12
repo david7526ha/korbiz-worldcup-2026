@@ -1869,7 +1869,7 @@ const TITLE_ODDS = [
 ];
 
 // ─── INFO TAB (우승 오즈 + FIFA 랭킹) ─────────────────────────────────────────
-function InfoTab({users, currentUid, lang}){
+function InfoTab({users, tournament, currentUid, lang}){
   const me = Object.values(users).find(u=>u.uid===currentUid);
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(teams=>(teams||[]).forEach(t=>myPicks.add(t)));
@@ -2645,7 +2645,7 @@ export default function Main(){
         {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
-        {tab==="info"&&<InfoTab users={users} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="info"&&<InfoTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
       </div>
 
