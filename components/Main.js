@@ -712,9 +712,6 @@ function Dashboard({users, tournament, currentUid, lang}){
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
-      {/* 예언가 랭킹 */}
-      <ProphetLeaderboard users={users} tournament={tournament} lang={lang}/>
-
       {/* 조별 순위 */}
       <GroupStandings users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
@@ -1665,6 +1662,162 @@ function GroupStandings({users, tournament, currentUid, lang}){
 // ─── 3. 승/무/패 방향 예측 (TodayMatches에 통합) ─────────────────────────────
 // → TodayMatches 컴포넌트를 교체해서 스코어 + 방향 예측 합체
 
+
+// ─── PROPHET TAB ─────────────────────────────────────────────────────────────
+function ProphetTab({users, tournament, currentUid, lang}){
+  const matchResults = tournament.matchResults || {};
+  const playedIds = Object.keys(matchResults);
+  const approved = Object.values(users).filter(u=>u.approved&&u.paid);
+
+  // 예언가 점수 계산
+  const ranked = approved.map(u=>{
+    let exactScore=0, dirScore=0, exactCount=0, dirCount=0;
+    playedIds.forEach(mid=>{
+      const r = matchResults[mid];
+      if(!r||r.home===""||r.away==="") return;
+      const p = u.scorePredictions?.[mid];
+      const d = u.directionPicks?.[mid];
+      const actualDir = parseInt(r.home)>parseInt(r.away)?"home":parseInt(r.home)<parseInt(r.away)?"away":"draw";
+      if(p && String(p.home)===String(r.home) && String(p.away)===String(r.away)){
+        exactCount++; exactScore+=3;
+      }
+      if(d && d===actualDir){ dirCount++; dirScore+=1; }
+    });
+    return {
+      uid:u.uid,
+      name:(u.name||"?").split(" ")[0],
+      photo:u.photoURL,
+      exactCount, dirCount,
+      total: exactScore+dirScore,
+      exactScore, dirScore,
+      isMe: u.uid===currentUid,
+    };
+  }).sort((a,b)=>b.total-a.total||b.exactCount-a.exactCount||b.dirCount-a.dirCount);
+
+  const medals = ["🥇","🥈","🥉"];
+
+  return(
+    <div>
+      {/* 헤더 */}
+      <div style={{background:"linear-gradient(135deg,rgba(139,92,246,.15),rgba(212,168,67,.1))",border:"1px solid rgba(139,92,246,.25)",borderRadius:14,padding:"16px",marginBottom:16,textAlign:"center"}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:28,color:"#a78bfa",letterSpacing:".15em",marginBottom:4}}>
+          🔮 PROPHET LEAGUE
+        </div>
+        <div style={{fontSize:12,color:"#9CA3AF",marginBottom:10}}>
+          {lang==="ko"
+            ? "본 게임과 무관한 독립 예측 리그 · 브래킷 픽과 상금 없음"
+            : "Independent prediction league · separate from main game · no prize"}
+        </div>
+        <div style={{display:"flex",justifyContent:"center",gap:16}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843"}}>🎯 +3</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"정확한 스코어":"Exact score"}</div>
+          </div>
+          <div style={{width:"1px",background:"rgba(255,255,255,.08)"}}/>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#60a5fa"}}>✓ +1</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"승무패 방향":"Win/Draw/Loss"}</div>
+          </div>
+          <div style={{width:"1px",background:"rgba(255,255,255,.08)"}}/>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#9CA3AF"}}>{playedIds.length}</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"경기 완료":"matches played"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 랭킹 없음 */}
+      {playedIds.length===0&&(
+        <div style={{textAlign:"center",padding:"40px 0",color:"#5A7090"}}>
+          <div style={{fontSize:32,marginBottom:8}}>⏳</div>
+          <div style={{fontSize:13}}>{lang==="ko"?"경기 결과 입력 후 랭킹이 업데이트됩니다":"Rankings update after match results are entered"}</div>
+        </div>
+      )}
+
+      {/* 랭킹 테이블 */}
+      {playedIds.length>0&&(
+        <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden"}}>
+          {/* 컬럼 헤더 */}
+          <div style={{display:"grid",gridTemplateColumns:"36px 1fr 60px 60px 60px",gap:4,padding:"8px 14px",borderBottom:"0.5px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
+            {["","",lang==="ko"?"🎯 정확","✓ 방향","총점"].map((h,i)=>(
+              <span key={i} style={{fontSize:10,color:"#5A7090",textAlign:i>1?"center":"left"}}>{h}</span>
+            ))}
+          </div>
+          {ranked.map((u,i)=>{
+            const prev = i>0 && ranked[i-1].total===u.total ? ranked[i-1] : null;
+            const rank = prev ? i : i; // 동점 처리
+            return(
+              <div key={u.uid} style={{
+                display:"grid",gridTemplateColumns:"36px 1fr 60px 60px 60px",gap:4,
+                padding:"10px 14px",
+                borderBottom:"0.5px solid rgba(255,255,255,.05)",
+                background:u.isMe?"rgba(212,168,67,.05)":"transparent",
+              }}>
+                {/* 순위 */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {rank<3
+                    ? <span style={{fontSize:16}}>{medals[rank]}</span>
+                    : <span style={{fontSize:12,color:"#5A7090",fontFamily:"'Teko',sans-serif"}}>{rank+1}</span>
+                  }
+                </div>
+                {/* 이름 */}
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",overflow:"hidden",background:"#1a2840",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#9CA3AF",border:u.isMe?"1.5px solid #D4A843":"none"}}>
+                    {u.photo
+                      ? <img src={u.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                      : u.name[0]}
+                  </div>
+                  <span style={{fontSize:13,color:u.isMe?"#D4A843":"#E0E8F0",fontWeight:u.isMe?600:400}}>
+                    {u.name}{u.isMe&&" ★"}
+                  </span>
+                </div>
+                {/* 정확한 스코어 */}
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontSize:13,color:u.exactCount>0?"#D4A843":"#3A5070",fontWeight:600}}>{u.exactCount}</span>
+                  {u.exactCount>0&&<span style={{fontSize:9,color:"#D4A843",marginLeft:2}}>({u.exactScore}pt)</span>}
+                </div>
+                {/* 방향 */}
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontSize:13,color:u.dirCount>0?"#60a5fa":"#3A5070",fontWeight:600}}>{u.dirCount}</span>
+                  {u.dirCount>0&&<span style={{fontSize:9,color:"#60a5fa",marginLeft:2}}>({u.dirScore}pt)</span>}
+                </div>
+                {/* 총점 */}
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:u.isMe?"#D4A843":u.total>0?"#E0E8F0":"#3A5070"}}>{u.total}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 내 예측 현황 */}
+      {(()=>{
+        const me = ranked.find(u=>u.isMe);
+        if(!me||playedIds.length===0) return null;
+        const predCount = Object.keys(Object.values(users).find(u=>u.uid===currentUid)?.scorePredictions||{}).length;
+        const dirCount2 = Object.keys(Object.values(users).find(u=>u.uid===currentUid)?.directionPicks||{}).length;
+        return(
+          <div style={{marginTop:12,padding:"12px 16px",background:"rgba(212,168,67,.05)",border:"0.5px solid rgba(212,168,67,.15)",borderRadius:12,display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843"}}>{predCount}</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"스코어 예측 제출":"score predictions"}</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa"}}>{dirCount2}</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"방향 예측 제출":"direction picks"}</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:me.total>0?"#a78bfa":"#3A5070"}}>{me.total}pt</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"현재 예언가 점수":"prophet score"}</div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
   const matchResults = tournament.matchResults || {};
@@ -2534,6 +2687,7 @@ export default function Main(){
     {id:"dashboard",label:lang==="ko"?"홈":lang==="es"?"INICIO":"HOME"},
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
     {id:"results",label:lang==="ko"?"결과":lang==="es"?"RESULTADOS":"RESULTS"},
+    {id:"prophet",label:"🔮 PROPHET"},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
     {id:"rules",label:t.howToPlay},
@@ -2580,6 +2734,7 @@ export default function Main(){
           </div>
         )}
         {tab==="results"&&<ResultsTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
+        {tab==="prophet"&&<ProphetTab users={users} tournament={tournament} currentUid={firebaseUser.uid} lang={lang}/>}
         {tab==="leaderboard"&&<Leaderboard users={users} currentUid={firebaseUser.uid} tournament={tournament} t={t} lang={lang}/>}
         {tab==="stats"&&<PickStats users={users} tournament={tournament} lang={lang}/>}
         {tab==="rules"&&<HowToPlay lang={lang}/>}
