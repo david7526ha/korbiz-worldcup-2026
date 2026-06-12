@@ -5,7 +5,7 @@ import {
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
   setApproved, setPaid, subscribeUsers,
   subscribeTournamentState, saveTournamentState,
-  saveScorePrediction, saveReaction,
+  saveScorePrediction, saveReaction, saveDirectionPick,
 } from "../lib/firebase";
 import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -711,6 +711,12 @@ function Dashboard({users, tournament, currentUid, lang}){
         <OddsWidget lang={lang}/>
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
+
+      {/* 예언가 랭킹 */}
+      <ProphetLeaderboard users={users} tournament={tournament} lang={lang}/>
+
+      {/* 조별 순위 */}
+      <GroupStandings users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
       {/* 오늘의 경기 스코어 예측 */}
       <TodayMatches users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
@@ -1436,6 +1442,29 @@ function TodayMatches({users, tournament, currentUid, lang}){
                 <span style={{fontSize:12,color:"#E0E8F0",flex:1}}>{m.away}</span>
               </div>
 
+              {/* 승/무/패 방향 예측 */}
+              {(()=>{
+                const myDir = me?.directionPicks?.[m.id];
+                const dirs = [{k:"home",l:m.home.split(" ")[0]},{k:"draw",l:lang==="ko"?"무":"Draw"},{k:"away",l:m.away.split(" ")[0]}];
+                return(
+                  <div style={{display:"flex",gap:5,marginTop:8}}>
+                    {dirs.map(function(d){
+                      const sel = myDir===d.k;
+                      return(
+                        <button key={d.k} disabled={kicked}
+                          onClick={async function(){
+                            if(kicked) return;
+                            try{ await saveDirectionPick(currentUid, m.id, sel?"":d.k); }catch(e){}
+                          }}
+                          style={{flex:1,padding:"6px 4px",borderRadius:8,border:"0.5px solid "+(sel?"rgba(212,168,67,.6)":"rgba(255,255,255,.1)"),background:sel?"rgba(212,168,67,.15)":"rgba(255,255,255,.03)",color:sel?"#D4A843":"#5A7090",fontSize:10,fontWeight:sel?700:400,cursor:kicked?"default":"pointer",touchAction:"manipulation"}}>
+                          {d.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               {/* 저장 버튼 / 상태 */}
               {!kicked&&(
                 <div style={{marginTop:7,display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8}}>
@@ -1480,6 +1509,161 @@ function TodayMatches({users, tournament, currentUid, lang}){
     </div>
   );
 }
+
+
+// ─── 1. 예언가 랭킹 ──────────────────────────────────────────────────────────
+function ProphetLeaderboard({users, tournament, lang}){
+  const matchResults = tournament.matchResults || {};
+  const playedIds = Object.keys(matchResults);
+  if(playedIds.length === 0) return null;
+
+  const approved = Object.values(users).filter(u=>u.approved&&u.paid);
+  const ranked = approved.map(u=>{
+    let score=0, exact=0, dir=0;
+    playedIds.forEach(mid=>{
+      const r = matchResults[mid];
+      const p = u.scorePredictions?.[mid];
+      const d = u.directionPicks?.[mid];
+      if(!r) return;
+      const actualDir = r.home>r.away?"home":r.home<r.away?"away":"draw";
+      if(p && String(p.home)===String(r.home) && String(p.away)===String(r.away)){
+        exact++; score+=3;
+      }
+      if(d && d===actualDir){ dir++; score+=1; }
+    });
+    return {uid:u.uid, name:(u.name||"?").split(" ")[0], photo:u.photoURL, exact, dir, score};
+  }).sort((a,b)=>b.score-a.score||b.exact-a.exact);
+
+  const lbl = lang==="ko"?"예언가 랭킹":lang==="es"?"PROFETAS":"PROPHET RANKING";
+  const top = ranked.slice(0,5);
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:4}}>
+        🔮 {lbl}
+      </div>
+      <div style={{fontSize:10,color:"#3A5070",marginBottom:10}}>
+        {lang==="ko"?"정확한 스코어 +3점 · 승무패 방향 +1점":"Exact score +3pts · Correct direction +1pt"}
+      </div>
+      {top.map((u,i)=>{
+        const medals=["🥇","🥈","🥉","④","⑤"];
+        return(
+          <div key={u.uid} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<top.length-1?"0.5px solid rgba(255,255,255,.05)":"none"}}>
+            <span style={{fontSize:13,width:20}}>{medals[i]||i+1}</span>
+            <div style={{width:24,height:24,borderRadius:"50%",overflow:"hidden",background:"#1a2840",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9CA3AF"}}>
+              {u.photo?<img src={u.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:u.name[0]}
+            </div>
+            <span style={{flex:1,fontSize:12,color:"#E0E8F0"}}>{u.name}</span>
+            <span style={{fontSize:10,color:"#D4A843"}}>🎯{u.exact}</span>
+            <span style={{fontSize:10,color:"#9CA3AF",marginLeft:4}}>✓{u.dir}</span>
+            <span style={{fontSize:13,fontFamily:"'Teko',sans-serif",color:"#D4A843",marginLeft:6,width:28,textAlign:"right"}}>{u.score}pt</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── 2. 조별 순위표 ──────────────────────────────────────────────────────────
+function GroupStandings({users, tournament, currentUid, lang}){
+  const matchResults = tournament.matchResults || {};
+  if(Object.keys(matchResults).length === 0) return null;
+
+  const me = Object.values(users).find(u=>u.uid===currentUid);
+  const myPicks = me?.groupPicks || {};
+
+  // 조별 팀 목록 (GROUPS에서)
+  const groups = {};
+  Object.entries(GROUPS).forEach(([grp,{teams}])=>{ groups[grp]=teams; });
+
+  // 경기별 승점 계산
+  const teamStats = {}; // {teamName: {w,d,l,gf,ga,pts,group}}
+  MATCH_SCHEDULE.forEach(m=>{
+    const r = matchResults[m.id];
+    if(!r||r.home===""||r.away==="") return;
+    const h=parseInt(r.home), a=parseInt(r.away);
+    if(isNaN(h)||isNaN(a)) return;
+    [m.home, m.away].forEach(t=>{
+      if(!teamStats[t]) teamStats[t]={w:0,d:0,l:0,gf:0,ga:0,pts:0,group:m.group};
+    });
+    if(h>a){
+      teamStats[m.home].w++; teamStats[m.home].pts+=3;
+      teamStats[m.away].l++;
+    } else if(h<a){
+      teamStats[m.away].w++; teamStats[m.away].pts+=3;
+      teamStats[m.home].l++;
+    } else {
+      teamStats[m.home].d++; teamStats[m.home].pts++;
+      teamStats[m.away].d++; teamStats[m.away].pts++;
+    }
+    teamStats[m.home].gf+=h; teamStats[m.home].ga+=a;
+    teamStats[m.away].gf+=a; teamStats[m.away].ga+=h;
+  });
+
+  // 데이터 있는 조만 필터
+  const activeGroups = Object.keys(groups).filter(grp=>
+    groups[grp].some(t=>teamStats[t]&&(teamStats[t].w+teamStats[t].d+teamStats[t].l)>0)
+  ).sort();
+
+  if(activeGroups.length===0) return null;
+
+  const lbl = lang==="ko"?"조별 순위":"GROUP STANDINGS";
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+        📊 {lbl}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
+        {activeGroups.map(grp=>{
+          const teams = groups[grp] || [];
+          const sorted = [...teams]
+            .map(t=>({name:t,...(teamStats[t]||{w:0,d:0,l:0,gf:0,ga:0,pts:0})}))
+            .sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
+          const myGrpPicks = myPicks[grp]||[];
+
+          return(
+            <div key={grp} style={{background:"rgba(255,255,255,.02)",border:"0.5px solid rgba(255,255,255,.07)",borderRadius:10,overflow:"hidden"}}>
+              <div style={{background:"rgba(212,168,67,.07)",padding:"5px 10px",borderBottom:"0.5px solid rgba(255,255,255,.07)"}}>
+                <span style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843",letterSpacing:".08em"}}>
+                  GROUP {grp}
+                </span>
+              </div>
+              {/* 헤더 */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"4px 8px",borderBottom:"0.5px solid rgba(255,255,255,.05)"}}>
+                {["","W","D","L","GD","PTS"].map(h=>(
+                  <span key={h} style={{fontSize:9,color:"#5A7090",textAlign:"center"}}>{h}</span>
+                ))}
+              </div>
+              {sorted.map((t,i)=>{
+                const isMyPick = myGrpPicks.includes(t.name);
+                const inZone = i<2; // 진출권
+                const gd = t.gf-t.ga;
+                return(
+                  <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                      {inZone&&<div style={{width:3,height:14,borderRadius:2,background:"#22C55E",flexShrink:0}}/>}
+                      {!inZone&&<div style={{width:3,height:14,flexShrink:0}}/>}
+                      <span style={{fontSize:11,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {isMyPick?"⭐ ":""}{t.name}
+                      </span>
+                    </div>
+                    {[t.w,t.d,t.l,(gd>0?"+":"")+gd,t.pts].map((v,j)=>(
+                      <span key={j} style={{fontSize:11,color:j===4?"#E0E8F0":"#9CA3AF",fontWeight:j===4?700:400,textAlign:"center"}}>{v}</span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── 3. 승/무/패 방향 예측 (TodayMatches에 통합) ─────────────────────────────
+// → TodayMatches 컴포넌트를 교체해서 스코어 + 방향 예측 합체
 
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
