@@ -1739,7 +1739,7 @@ function ProphetTab({users, tournament, currentUid, lang}){
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden"}}>
           {/* 컬럼 헤더 */}
           <div style={{display:"grid",gridTemplateColumns:"36px 1fr 60px 60px 60px",gap:4,padding:"8px 14px",borderBottom:"0.5px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
-            {["","",lang==="ko"?"🎯 정확","✓ 방향","총점"].map((h,i)=>(
+            {["","",lang==="ko"?"🎯 정확":"🎯 Exact",lang==="ko"?"✓ 방향":"✓ Dir",lang==="ko"?"총점":"Total"].map((h,i)=>(
               <span key={i} style={{fontSize:10,color:"#5A7090",textAlign:i>1?"center":"left"}}>{h}</span>
             ))}
           </div>
