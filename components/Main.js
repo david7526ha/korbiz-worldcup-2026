@@ -2727,7 +2727,7 @@ export default function Main(){
   const tabs=[
     {id:"dashboard",label:lang==="ko"?"홈":lang==="es"?"INICIO":"HOME"},
     {id:"picks",label:phase==="group"?t.groupPicks:t.bracket},
-    {id:"results",label:lang==="ko"?"결과":lang==="es"?"RESULTADOS":"RESULTS"},
+    {id:"results",label:lang==="ko"?"결과/일정":lang==="es"?"RESULTADOS":"RESULTS & SCHEDULE"},
     {id:"prophet",label:"🔮 PROPHET"},
     {id:"leaderboard",label:t.standings},
     {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
