@@ -1593,7 +1593,8 @@ function GroupStandings({users, tournament, currentUid, lang}){
   // 경기별 승점 계산
   const teamStats = {}; // {teamName: {w,d,l,gf,ga,pts,group}}
   MATCH_SCHEDULE.forEach(m=>{
-    const r = matchResults[m.id];
+    // 현재 id와 레거시 id(뒤에 a/b/c 붙은 것) 모두 체크
+    const r = matchResults[m.id] || matchResults[m.id+"a"] || matchResults[m.id.replace(/[abc]$/,"")];
     if(!r) return;
     const h=parseInt(r.home), a=parseInt(r.away);
     if(isNaN(h)||isNaN(a)||String(r.home)===""||String(r.away)==="") return;
@@ -1615,11 +1616,6 @@ function GroupStandings({users, tournament, currentUid, lang}){
   });
 
   // 데이터 있는 조만 필터
-  // 디버그: matchResults keys 콘솔 출력
-  if(process?.env?.NODE_ENV==="development"||true){
-    console.log("matchResults keys:", Object.keys(matchResults));
-    console.log("teamStats:", JSON.stringify(teamStats));
-  }
   const activeGroups = Object.keys(groups).filter(grp=>
     groups[grp].some(t=>teamStats[t]&&(teamStats[t].w+teamStats[t].d+teamStats[t].l)>0)
   ).sort();
@@ -1843,7 +1839,7 @@ function ProphetTab({users, tournament, currentUid, lang}){
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
   const matchResults = tournament.matchResults || {};
-  const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]);
+  const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]||matchResults[m.id+"a"]||matchResults[m.id.replace(/[abc]$/,"")]);
   const upcoming = MATCH_SCHEDULE.filter(m => !matchResults[m.id]);
 
   if(played.length === 0) return(
@@ -1875,7 +1871,7 @@ function ResultsTab({users, tournament, currentUid, lang}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10,marginBottom:20}}>
         {played.map(function(m){
-          const r = matchResults[m.id];
+          const r = matchResults[m.id]||matchResults[m.id+"a"]||matchResults[m.id.replace(/[abc]$/,"")];
           const ytUrl = "https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+"+m.home.replace(/ /g,"+")+"+"+ m.away.replace(/ /g,"+")+ "+highlights";
           const homeWin = r.home > r.away;
           const awayWin = r.away > r.home;
