@@ -1,17 +1,10 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
-import { NextResponse } from 'next/server';
 
-export async function GET() {
-  try {
-    const doc = await adminDb.collection('tournament').doc('state').get();
-    const data = doc.data() || {};
-    return NextResponse.json({
-      matchResults: data.matchResults || {},
-      groupResults: data.groupResults || {},
-      phase: data.phase,
-      groupLocked: data.groupLocked,
-    });
-  } catch(e) {
-    return NextResponse.json({error: e.message}, {status: 500});
-  }
+export async function GET(request) {
+  const data = (await adminDb.collection('tournament').doc('state').get()).data() || {};
+  const mr = data.matchResults || {};
+  const gr = data.groupResults || {};
+  return new Response(JSON.stringify({matchResults:mr, groupResults:gr, phase:data.phase}), {
+    headers: {'Content-Type':'application/json', 'Access-Control-Allow-Origin':'*'}
+  });
 }
