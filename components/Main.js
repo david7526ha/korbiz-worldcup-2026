@@ -1594,9 +1594,9 @@ function GroupStandings({users, tournament, currentUid, lang}){
   const teamStats = {}; // {teamName: {w,d,l,gf,ga,pts,group}}
   MATCH_SCHEDULE.forEach(m=>{
     const r = matchResults[m.id];
-    if(!r||r.home===""||r.away==="") return;
+    if(!r) return;
     const h=parseInt(r.home), a=parseInt(r.away);
-    if(isNaN(h)||isNaN(a)) return;
+    if(isNaN(h)||isNaN(a)||String(r.home)===""||String(r.away)==="") return;
     [m.home, m.away].forEach(t=>{
       if(!teamStats[t]) teamStats[t]={w:0,d:0,l:0,gf:0,ga:0,pts:0,group:m.group};
     });
@@ -1615,6 +1615,11 @@ function GroupStandings({users, tournament, currentUid, lang}){
   });
 
   // 데이터 있는 조만 필터
+  // 디버그: matchResults keys 콘솔 출력
+  if(process?.env?.NODE_ENV==="development"||true){
+    console.log("matchResults keys:", Object.keys(matchResults));
+    console.log("teamStats:", JSON.stringify(teamStats));
+  }
   const activeGroups = Object.keys(groups).filter(grp=>
     groups[grp].some(t=>teamStats[t]&&(teamStats[t].w+teamStats[t].d+teamStats[t].l)>0)
   ).sort();
