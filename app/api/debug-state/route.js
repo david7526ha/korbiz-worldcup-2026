@@ -1,10 +1,11 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 
-export async function GET(request) {
-  const data = (await adminDb.collection('tournament').doc('state').get()).data() || {};
-  const mr = data.matchResults || {};
-  const gr = data.groupResults || {};
-  return new Response(JSON.stringify({matchResults:mr, groupResults:gr, phase:data.phase}), {
-    headers: {'Content-Type':'application/json', 'Access-Control-Allow-Origin':'*'}
+// GET: 현재 matchResults 읽기
+export async function GET() {
+  const doc = await adminDb.collection('tournament').doc('state').get();
+  const data = doc.data() || {};
+  return Response.json({
+    matchResults: data.matchResults || {},
+    groupResults: data.groupResults || {},
   });
 }
