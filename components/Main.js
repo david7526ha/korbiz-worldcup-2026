@@ -785,16 +785,17 @@ function OddsWidget({lang, tournament}){
   const lbl = lang==="ko"?"도박사 배팅 확률":lang==="es"?"PROBABILIDAD":"BOOKMAKER ODDS";
   // 킥오프 지난 경기 + 결과 있는 경기 제외
   const matchResults = tournament?.matchResults || {};
-  const now = Date.now();
+  const nowTs = Date.now();
   const filteredOdds = odds.filter(function(o){
-    const found = MATCH_SCHEDULE.find(function(m){
-      return (m.home===o.home||m.home.includes(o.home)||o.home.includes(m.home.split(" ")[0])) &&
-             (m.away===o.away||m.away.includes(o.away)||o.away.includes(m.away.split(" ")[0]));
-    });
-    // 매칭되는 경기 없으면 → 정적 데이터만 있는 경우, iso로 비교 불가 → 제외
+    // id 기반으로 MATCH_SCHEDULE 매칭 (팀명 불일치 방지)
+    const found = o.id
+      ? MATCH_SCHEDULE.find(function(m){ return m.id===o.id; })
+      : MATCH_SCHEDULE.find(function(m){
+          return m.home===o.home && m.away===o.away;
+        });
     if(!found) return false;
     // 킥오프 시간 지났으면 제외
-    if(found.iso && now >= new Date(found.iso).getTime()) return false;
+    if(found.iso && nowTs >= new Date(found.iso).getTime()) return false;
     // 결과 이미 있으면 제외
     if(matchResults[found.id] || matchResults[found.id+"a"]) return false;
     return true;
