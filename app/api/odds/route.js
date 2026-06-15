@@ -1,98 +1,59 @@
 import { NextResponse } from 'next/server';
 
-// 다음 경기 오즈를 가져오는 API Route
-// Pinnacle public API (no auth for basic h2h)
 export async function GET() {
-  // 현재 진행 중이거나 다음 경기 팀 목록
-  const NEXT_MATCHES = [
-    { home: "Mexico", away: "South Africa", date: "2026-06-11" },
-    { home: "South Korea", away: "Czechia", date: "2026-06-11" },
-    { home: "Canada", away: "Bosnia-Herzegovina", date: "2026-06-12" },
-    { home: "USA", away: "Paraguay", date: "2026-06-12" },
-    { home: "Qatar", away: "Switzerland", date: "2026-06-13" },
-    { home: "Brazil", away: "Morocco", date: "2026-06-13" },
-    { home: "Haiti", away: "Scotland", date: "2026-06-13" },
-    { home: "Australia", away: "Turkey", date: "2026-06-14" },
-    { home: "Germany", away: "Curacao", date: "2026-06-14" },
-    { home: "Netherlands", away: "Japan", date: "2026-06-14" },
-    { home: "Ivory Coast", away: "Ecuador", date: "2026-06-14" },
-    { home: "Sweden", away: "Tunisia", date: "2026-06-14" },
-  ];
-
-  try {
-    // The Odds API 시도 (무료 키 없이 샘플 반환 여부 확인)
-    const res = await fetch(
-      'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?regions=us&markets=h2h&oddsFormat=decimal',
-      { 
-        headers: { 'Content-Type': 'application/json' },
-        next: { revalidate: 300 } // 5분 캐시
-      }
-    );
-
-    if (res.ok) {
-      const data = await res.json();
-      // odds 데이터 있으면 변환
-      const formatted = data.slice(0,8).map(game => {
-        const pinnacle = game.bookmakers?.find(b => b.key === 'pinnacle') || game.bookmakers?.[0];
-        const h2h = pinnacle?.markets?.find(m => m.key === 'h2h');
-        if (!h2h) return null;
-        
-        const home = h2h.outcomes.find(o => o.name === game.home_team);
-        const away = h2h.outcomes.find(o => o.name === game.away_team);
-        const draw = h2h.outcomes.find(o => o.name === 'Draw');
-        
-        // 소수 오즈 → 확률 변환 (vig 제거)
-        const toProb = (dec) => dec ? 1/dec : 0;
-        const hp = toProb(home?.price), ap = toProb(away?.price), dp = toProb(draw?.price);
-        const total = hp + ap + dp;
-        
-        return {
-          home: game.home_team,
-          away: game.away_team,
-          date: game.commence_time?.split('T')[0],
-          homeWin: Math.round(hp/total*100),
-          draw: Math.round(dp/total*100),
-          awayWin: Math.round(ap/total*100),
-          source: pinnacle?.title || 'Pinnacle',
-        };
-      }).filter(Boolean);
-
-      return NextResponse.json({ odds: formatted, live: true });
-    }
-  } catch(e) {
-    console.log('Live odds fetch failed:', e.message);
-  }
-
-  // fallback: Pinnacle 직접 스크래핑 시도
-  try {
-    const res2 = await fetch(
-      'https://guest.api.arcadia.pinnacle.com/0.1/leagues/3507/matchups?brandId=0',
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'X-Device-UUID': 'web-uuid-1234',
-        },
-        next: { revalidate: 300 }
-      }
-    );
-    if (res2.ok) {
-      const d = await res2.json();
-      return NextResponse.json({ odds: d.slice(0,8), live: true, source: 'pinnacle_direct' });
-    }
-  } catch(e) {}
-
-  // 최종 fallback: 정적 오즈 데이터 (ESPN/Pinnacle 기반 수동 입력)
+  // MATCH_SCHEDULE과 완전 동일한 팀명 사용
   const staticOdds = [
-    { home:"Mexico", away:"South Africa", homeWin:42, draw:27, awayWin:31, source:"Pinnacle" },
-    { home:"South Korea", away:"Czechia", homeWin:38, draw:28, awayWin:34, source:"Pinnacle" },
-    { home:"Canada", away:"Bosnia-Herzegovina", homeWin:44, draw:26, awayWin:30, source:"Pinnacle" },
-    { home:"USA", away:"Paraguay", homeWin:48, draw:25, awayWin:27, source:"Pinnacle" },
-    { home:"Qatar", away:"Switzerland", homeWin:22, draw:25, awayWin:53, source:"Pinnacle" },
-    { home:"Brazil", away:"Morocco", homeWin:58, draw:23, awayWin:19, source:"Pinnacle" },
-    { home:"Germany", away:"Curacao", homeWin:85, draw:10, awayWin:5, source:"Pinnacle" },
-    { home:"Netherlands", away:"Japan", homeWin:52, draw:26, awayWin:22, source:"Pinnacle" },
+    // Round 1
+    { id:"A1",  home:"Mexico",        away:"South Africa",      homeWin:42, draw:27, awayWin:31 },
+    { id:"A2",  home:"South Korea",   away:"Czechia",           homeWin:38, draw:28, awayWin:34 },
+    { id:"B1",  home:"Canada",        away:"Bosnia-Herzegovina",homeWin:44, draw:26, awayWin:30 },
+    { id:"D1",  home:"United States", away:"Paraguay",          homeWin:48, draw:25, awayWin:27 },
+    { id:"B2",  home:"Qatar",         away:"Switzerland",       homeWin:22, draw:25, awayWin:53 },
+    { id:"C1",  home:"Brazil",        away:"Morocco",           homeWin:58, draw:23, awayWin:19 },
+    { id:"C2",  home:"Haiti",         away:"Scotland",          homeWin:18, draw:27, awayWin:55 },
+    { id:"D2",  home:"Australia",     away:"Türkiye",           homeWin:35, draw:27, awayWin:38 },
+    { id:"E1",  home:"Germany",       away:"Curaçao",           homeWin:85, draw:10, awayWin:5  },
+    { id:"F1",  home:"Netherlands",   away:"Japan",             homeWin:52, draw:26, awayWin:22 },
+    { id:"E2",  home:"Ivory Coast",   away:"Ecuador",           homeWin:38, draw:28, awayWin:34 },
+    { id:"F2",  home:"Sweden",        away:"Tunisia",           homeWin:45, draw:28, awayWin:27 },
+    { id:"H1",  home:"Spain",         away:"Cape Verde",        homeWin:78, draw:14, awayWin:8  },
+    { id:"G1",  home:"Belgium",       away:"Egypt",             homeWin:58, draw:25, awayWin:17 },
+    { id:"H2",  home:"Saudi Arabia",  away:"Uruguay",           homeWin:28, draw:27, awayWin:45 },
+    { id:"G2",  home:"Iran",          away:"New Zealand",       homeWin:42, draw:28, awayWin:30 },
+    { id:"I1",  home:"France",        away:"Senegal",           homeWin:55, draw:25, awayWin:20 },
+    { id:"I2",  home:"Iraq",          away:"Norway",            homeWin:25, draw:28, awayWin:47 },
+    { id:"J1",  home:"Argentina",     away:"Algeria",           homeWin:72, draw:18, awayWin:10 },
+    { id:"J2",  home:"Austria",       away:"Jordan",            homeWin:55, draw:25, awayWin:20 },
+    { id:"K1",  home:"Portugal",      away:"Congo DR",          homeWin:75, draw:15, awayWin:10 },
+    { id:"L1",  home:"England",       away:"Croatia",           homeWin:52, draw:27, awayWin:21 },
+    { id:"L2",  home:"Ghana",         away:"Panama",            homeWin:38, draw:28, awayWin:34 },
+    { id:"K2",  home:"Uzbekistan",    away:"Colombia",          homeWin:28, draw:28, awayWin:44 },
+    // Round 2
+    { id:"A3b", home:"Czechia",             away:"South Africa",      homeWin:48, draw:27, awayWin:25 },
+    { id:"B3b", home:"Switzerland",         away:"Bosnia-Herzegovina", homeWin:52, draw:26, awayWin:22 },
+    { id:"B4b", home:"Canada",              away:"Qatar",             homeWin:62, draw:22, awayWin:16 },
+    { id:"A4b", home:"Mexico",              away:"South Korea",       homeWin:42, draw:28, awayWin:30 },
+    { id:"D3b", home:"United States",       away:"Australia",         homeWin:48, draw:26, awayWin:26 },
+    { id:"C3b", home:"Scotland",            away:"Morocco",           homeWin:28, draw:27, awayWin:45 },
+    { id:"C4b", home:"Brazil",              away:"Haiti",             homeWin:88, draw:8,  awayWin:4  },
+    { id:"D4b", home:"Türkiye",             away:"Paraguay",          homeWin:42, draw:28, awayWin:30 },
+    { id:"F3b", home:"Netherlands",         away:"Sweden",            homeWin:55, draw:25, awayWin:20 },
+    { id:"E3b", home:"Germany",             away:"Ivory Coast",       homeWin:62, draw:22, awayWin:16 },
+    { id:"E4b", home:"Ecuador",             away:"Curaçao",           homeWin:68, draw:20, awayWin:12 },
+    { id:"F4b", home:"Tunisia",             away:"Japan",             homeWin:30, draw:28, awayWin:42 },
+    { id:"H3b", home:"Spain",               away:"Saudi Arabia",      homeWin:72, draw:18, awayWin:10 },
+    { id:"G3b", home:"Belgium",             away:"Iran",              homeWin:62, draw:22, awayWin:16 },
+    { id:"H4b", home:"Uruguay",             away:"Cape Verde",        homeWin:65, draw:20, awayWin:15 },
+    { id:"G4b", home:"New Zealand",         away:"Egypt",             homeWin:32, draw:28, awayWin:40 },
+    { id:"J3b", home:"Argentina",           away:"Austria",           homeWin:62, draw:22, awayWin:16 },
+    { id:"I3b", home:"France",              away:"Iraq",              homeWin:78, draw:14, awayWin:8  },
+    { id:"I4b", home:"Norway",              away:"Senegal",           homeWin:42, draw:28, awayWin:30 },
+    { id:"J4b", home:"Jordan",              away:"Algeria",           homeWin:28, draw:28, awayWin:44 },
+    { id:"K3b", home:"Portugal",            away:"Uzbekistan",        homeWin:72, draw:18, awayWin:10 },
+    { id:"L3b", home:"England",             away:"Ghana",             homeWin:58, draw:24, awayWin:18 },
+    { id:"L4b", home:"Panama",              away:"Croatia",           homeWin:28, draw:27, awayWin:45 },
+    { id:"K4b", home:"Colombia",            away:"Congo DR",          homeWin:58, draw:24, awayWin:18 },
   ];
-  
-  return NextResponse.json({ odds: staticOdds, live: false });
+
+  return NextResponse.json({ odds: staticOdds, live: false, source: "Pinnacle ref" });
 }
