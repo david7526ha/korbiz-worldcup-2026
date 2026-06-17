@@ -2462,9 +2462,8 @@ function HowToPlay({lang}){
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {[
               {icon:"1️⃣", ko:"홈 대시보드 → 🎯 스코어 맞히기 카드에서 경기별 스코어 예측 입력", en:"Home dashboard → 🎯 Predict The Score card → enter your score prediction per match"},
-              {icon:"2️⃣", ko:"같은 카드에서 홈팀승 / 무승부 / 원정팀승 방향 버튼 클릭", en:"Same card → tap Home Win / Draw / Away Win button"},
-              {icon:"3️⃣", ko:"킥오프 전까지만 가능 · 킥오프 후 자동 잠금 + 전원 예측 공개", en:"Deadline = kickoff · Auto-locked after kickoff · All predictions revealed"},
-              {icon:"4️⃣", ko:"결과 나오면 🔮 PROPHET 탭에서 랭킹 확인", en:"After results → check rankings in 🔮 PROPHET tab"},
+              {icon:"2️⃣", ko:"킥오프 전까지만 가능 · 킥오프 후 자동 잠금 + 전원 예측 공개", en:"Deadline = kickoff · Auto-locked after kickoff · All predictions revealed"},
+              {icon:"3️⃣", ko:"결과 나오면 🔮 PROPHET 탭에서 랭킹 확인 (승무패는 스코어에서 자동 판정)", en:"After results → check rankings in 🔮 PROPHET tab (Win/Draw/Loss auto-detected from your score)"},
             ].map(function(item,i){
               return(
                 <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
