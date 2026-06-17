@@ -1464,29 +1464,6 @@ function TodayMatches({users, tournament, currentUid, lang}){
                 <span style={{fontSize:12,color:"#E0E8F0",flex:1}}>{m.away}</span>
               </div>
 
-              {/* 승/무/패 방향 예측 */}
-              {(()=>{
-                const myDir = me?.directionPicks?.[m.id];
-                const dirs = [{k:"home",l:m.home.split(" ")[0]},{k:"draw",l:lang==="ko"?"무":"Draw"},{k:"away",l:m.away.split(" ")[0]}];
-                return(
-                  <div style={{display:"flex",gap:5,marginTop:8}}>
-                    {dirs.map(function(d){
-                      const sel = myDir===d.k;
-                      return(
-                        <button key={d.k} disabled={kicked}
-                          onClick={async function(){
-                            if(kicked) return;
-                            try{ await saveDirectionPick(currentUid, m.id, sel?"":d.k); }catch(e){}
-                          }}
-                          style={{flex:1,padding:"6px 4px",borderRadius:8,border:"0.5px solid "+(sel?"rgba(212,168,67,.6)":"rgba(255,255,255,.1)"),background:sel?"rgba(212,168,67,.15)":"rgba(255,255,255,.03)",color:sel?"#D4A843":"#5A7090",fontSize:10,fontWeight:sel?700:400,cursor:kicked?"default":"pointer",touchAction:"manipulation"}}>
-                          {d.l}
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
               {/* 저장 버튼 / 상태 */}
               {!kicked&&(
                 <div style={{marginTop:7,display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8}}>
