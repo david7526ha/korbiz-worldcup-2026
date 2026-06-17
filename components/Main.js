@@ -1548,10 +1548,12 @@ function ProphetLeaderboard({users, tournament, lang}){
       const d = u.directionPicks?.[mid];
       if(!r) return;
       const actualDir = r.home>r.away?"home":r.home<r.away?"away":"draw";
+      // 스코어 예측에서 방향 추론 (명시적 방향 픽 없어도 정확한 스코어면 방향도 자동 인정)
+      const predDir = d || (p ? (parseInt(p.home)>parseInt(p.away)?"home":parseInt(p.home)<parseInt(p.away)?"away":"draw") : null);
       if(p && String(p.home)===String(r.home) && String(p.away)===String(r.away)){
         exact++; score+=3;
       }
-      if(d && d===actualDir){ dir++; score+=1; }
+      if(predDir && predDir===actualDir){ dir++; score+=1; }
     });
     return {uid:u.uid, name:(u.name||"?").split(" ")[0], photo:u.photoURL, exact, dir, score};
   }).sort((a,b)=>b.score-a.score||b.exact-a.exact);
@@ -1704,10 +1706,12 @@ function ProphetTab({users, tournament, currentUid, lang}){
       const p = u.scorePredictions?.[mid];
       const d = u.directionPicks?.[mid];
       const actualDir = parseInt(r.home)>parseInt(r.away)?"home":parseInt(r.home)<parseInt(r.away)?"away":"draw";
+      // 스코어 예측에서 방향 추론 (명시적 방향 픽 없어도 정확한 스코어면 방향도 자동 인정)
+      const predDir = d || (p ? (parseInt(p.home)>parseInt(p.away)?"home":parseInt(p.home)<parseInt(p.away)?"away":"draw") : null);
       if(p && String(p.home)===String(r.home) && String(p.away)===String(r.away)){
         exactCount++; exactScore+=3;
       }
-      if(d && d===actualDir){ dirCount++; dirScore+=1; }
+      if(predDir && predDir===actualDir){ dirCount++; dirScore+=1; }
     });
     return {
       uid:u.uid,
