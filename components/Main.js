@@ -742,7 +742,7 @@ function Dashboard({users, tournament, currentUid, lang}){
                   </a>
                 </div>
                 {(teams||[]).map(team=>(
-                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {team}</div>
+                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {tn(team,lang)}</div>
                 ))}
               </div>
             ))}
@@ -819,9 +819,9 @@ function OddsWidget({lang, tournament}){
   if(!match) return null;
 
   const bars = [
-    {label:match.home, pct:match.homeWin, color:"#60a5fa"},
-    {label:"Draw", pct:match.draw, color:"#9CA3AF"},
-    {label:match.away, pct:match.awayWin, color:"#f87171"},
+    {label:tn(match.home,lang), pct:match.homeWin, color:"#60a5fa"},
+    {label:lang==="ko"?"무":lang==="es"?"Empate":"Draw", pct:match.draw, color:"#9CA3AF"},
+    {label:tn(match.away,lang), pct:match.awayWin, color:"#f87171"},
   ];
 
   return(
@@ -843,7 +843,7 @@ function OddsWidget({lang, tournament}){
           {filteredOdds.slice(0,6).map((m,i)=>(
             <button key={i} onClick={()=>setMatchIdx(i)}
               style={{flexShrink:0,fontSize:9,padding:"2px 7px",borderRadius:10,border:"0.5px solid "+(matchIdx===i?"rgba(212,168,67,.5)":"rgba(255,255,255,.1)"),background:matchIdx===i?"rgba(212,168,67,.12)":"transparent",color:matchIdx===i?"#D4A843":"#5A7090",cursor:"pointer",whiteSpace:"nowrap"}}>
-              {m.home.split(" ")[0]} v {m.away.split(" ")[0]}
+              {tn(m.home,lang).split(" ")[0]} v {tn(m.away,lang).split(" ")[0]}
             </button>
           ))}
         </div>
@@ -851,9 +851,9 @@ function OddsWidget({lang, tournament}){
 
       {/* 팀명 */}
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-        <span style={{fontSize:12,color:"#60a5fa",fontWeight:500}}>{match.home}</span>
+        <span style={{fontSize:12,color:"#60a5fa",fontWeight:500}}>{tn(match.home,lang)}</span>
         <span style={{fontSize:10,color:"#5A7090"}}>vs</span>
-        <span style={{fontSize:12,color:"#f87171",fontWeight:500}}>{match.away}</span>
+        <span style={{fontSize:12,color:"#f87171",fontWeight:500}}>{tn(match.away,lang)}</span>
       </div>
 
       {/* 바 차트 */}
@@ -1306,7 +1306,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
                   <div key={j} style={{padding:"5px 10px",background:slot.isMe?"rgba(212,168,67,.12)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
                     {slot.isMe&&<span style={{fontSize:9}}>⭐</span>}
                     <span style={{fontSize:11,color:slot.isMe?"#D4A843":slot.team?"#E0E8F0":"#5A7090",flex:1}}>
-                      {slot.team||(isWC?"3위 WC":slot.src)}
+                      {slot.team?tn(slot.team,lang):(isWC?"3위 WC":slot.src)}
                     </span>
                     <span style={{fontSize:9,color:"#3A5070",flexShrink:0}}>
                       {isWC?"WC":(slot.src.length===2?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):slot.src)}
@@ -1451,7 +1451,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
 
               {/* 예측 입력 행 */}
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right"}}>{m.home}</span>
+                <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right"}}>{tn(m.home,lang)}</span>
                 <input type="number" min="0" max="20" disabled={kicked}
                   value={draft.home}
                   onChange={function(e){ setDrafts(function(prev){ return {...prev,[m.id]:{...draft,home:e.target.value}}; }); }}
@@ -1461,7 +1461,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
                   value={draft.away}
                   onChange={function(e){ setDrafts(function(prev){ return {...prev,[m.id]:{...draft,away:e.target.value}}; }); }}
                   style={{width:38,textAlign:"center",background:kicked?"rgba(255,255,255,.03)":"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:kicked?"#5A7090":"#fff",fontSize:15,fontFamily:"'Teko',sans-serif",padding:"3px 0"}}/>
-                <span style={{fontSize:12,color:"#E0E8F0",flex:1}}>{m.away}</span>
+                <span style={{fontSize:12,color:"#E0E8F0",flex:1}}>{tn(m.away,lang)}</span>
               </div>
 
               {/* 저장 버튼 / 상태 */}
@@ -1647,7 +1647,7 @@ function GroupStandings({users, tournament, currentUid, lang}){
                       {inZone&&<div style={{width:3,height:14,borderRadius:2,background:"#22C55E",flexShrink:0}}/>}
                       {!inZone&&<div style={{width:3,height:14,flexShrink:0}}/>}
                       <span style={{fontSize:11,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {isMyPick?"⭐ ":""}{t.name}
+                        {isMyPick?"⭐ ":""}{tn(t.name,lang)}
                       </span>
                     </div>
                     {[t.w,t.d,t.l,(gd>0?"+":"")+gd,t.pts].map((v,j)=>(
@@ -1880,7 +1880,7 @@ function ResultsTab({users, tournament, currentUid, lang}){
               {/* 스코어 */}
               <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:8}}>
                 <div style={{flex:1,textAlign:"right"}}>
-                  <div style={{fontSize:13,color:homeWin?"#E0E8F0":"#5A7090",fontWeight:homeWin?600:400}}>{m.home}</div>
+                  <div style={{fontSize:13,color:homeWin?"#E0E8F0":"#5A7090",fontWeight:homeWin?600:400}}>{tn(m.home,lang)}</div>
                 </div>
                 <div style={{textAlign:"center",minWidth:70}}>
                   <div style={{fontFamily:"'Teko',sans-serif",fontSize:28,color:"#fff",lineHeight:1}}>
@@ -1889,7 +1889,7 @@ function ResultsTab({users, tournament, currentUid, lang}){
                   {draw&&<div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>DRAW</div>}
                 </div>
                 <div style={{flex:1,textAlign:"left"}}>
-                  <div style={{fontSize:13,color:awayWin?"#E0E8F0":"#5A7090",fontWeight:awayWin?600:400}}>{m.away}</div>
+                  <div style={{fontSize:13,color:awayWin?"#E0E8F0":"#5A7090",fontWeight:awayWin?600:400}}>{tn(m.away,lang)}</div>
                 </div>
               </div>
 
@@ -1984,11 +1984,11 @@ function ResultsTab({users, tournament, currentUid, lang}){
                           {/* 구분선 */}
                           <div style={{width:"0.5px",height:28,background:"rgba(255,255,255,.08)",flexShrink:0}}/>
                           {/* 홈팀 */}
-                          <div style={{flex:1,textAlign:"right",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.home}</div>
+                          <div style={{flex:1,textAlign:"right",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{tn(m.home,lang)}</div>
                           {/* vs */}
                           <div style={{textAlign:"center",flexShrink:0,width:24,fontSize:10,color:"#5A7090"}}>vs</div>
                           {/* 어웨이팀 */}
-                          <div style={{flex:1,textAlign:"left",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{m.away}</div>
+                          <div style={{flex:1,textAlign:"left",fontSize:12,color:"#E0E8F0",fontWeight:500}}>{tn(m.away,lang)}</div>
                         </div>
                       );
                     })}
@@ -2144,7 +2144,7 @@ function InfoTab({users, tournament, currentUid, lang}){
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                 <span style={{fontSize:14,flexShrink:0}}>{t.flag}</span>
                 <span style={{fontSize:12,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,flex:1}}>
-                  {isMyPick?"⭐ ":""}{t.team}
+                  {isMyPick?"⭐ ":""}{tn(t.team,lang)}
                   {t.rank&&<span style={{fontSize:10,color:"#5A7090",marginLeft:5}}>FIFA #{t.rank}</span>}
                 </span>
                 <span style={{fontSize:13,fontWeight:700,color:t.color}}>{t.prob}%</span>
@@ -2181,7 +2181,7 @@ function InfoTab({users, tournament, currentUid, lang}){
                     <div key={team} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",borderBottom:"0.5px solid rgba(255,255,255,.03)",background:isMyPick?"rgba(212,168,67,.05)":"transparent"}}>
                       <span style={{fontSize:12,flexShrink:0}}>{flag}</span>
                       <span style={{fontSize:11,flex:1,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400}}>
-                        {isMyPick?"⭐ ":""}{team}
+                        {isMyPick?"⭐ ":""}{tn(team,lang)}
                       </span>
                       <span style={{fontSize:11,color:rank?(rank<=10?"#22C55E":rank<=20?"#D4A843":"#9CA3AF"):"#5A7090",fontWeight:rank&&rank<=10?600:400}}>
                         {rank?"#"+rank:"–"}
@@ -2236,7 +2236,7 @@ function InfoTab({users, tournament, currentUid, lang}){
           var W=CW*2+CONN*2+MID, H=ROWS*ROW+16;
 
           var TeamRow=function(team,src,wc,isMe,y,x,w){
-            var label=team||(lang==="ko"?src[0]+(src==="WC"?"위("+wc+")":src[1]==="1"?"조1위":"조2위"):rSrc(src,wc));
+            var label=team?tn(team,lang):(lang==="ko"?src[0]+(src==="WC"?"위("+wc+")":src[1]==="1"?"조1위":"조2위"):rSrc(src,wc));
             return(
               <g>
                 <rect x={x} y={y} width={w} height={TH} rx={3}
@@ -2897,7 +2897,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                       {m.date} · {m.time} · Group {m.group}
                     </div>
                     {/* 홈팀 */}
-                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right",minWidth:80}}>{m.home}</span>
+                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,textAlign:"right",minWidth:80}}>{tn(m.home,lang)}</span>
                     {/* 홈 스코어 */}
                     <input type="number" min="0" max="20" value={r.home}
                       onChange={function(e){setSt(function(prev){const mr={...(prev.matchResults||{})};mr[m.id]={...(mr[m.id]||{home:"",away:""}),home:e.target.value};return{...prev,matchResults:mr};});}}
@@ -2910,7 +2910,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                       style={{width:44,textAlign:"center",background:"rgba(255,255,255,.08)",border:"0.5px solid rgba(255,255,255,.15)",borderRadius:6,color:"#fff",fontSize:16,fontFamily:"'Teko',sans-serif",padding:"4px 0",touchAction:"manipulation"}}
                     />
                     {/* 어웨이팀 */}
-                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,minWidth:80}}>{m.away}</span>
+                    <span style={{fontSize:12,color:"#E0E8F0",flex:1,minWidth:80}}>{tn(m.away,lang)}</span>
                     {done&&<span style={{fontSize:11,color:"#22C55E"}}>✓</span>}
                   </div>
                 );
