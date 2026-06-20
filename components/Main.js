@@ -505,16 +505,16 @@ function PicksModal({user,tournament,lang,onClose}){
         </div>
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
           <div style={{background:"rgba(255,255,255,.05)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#9CA3AF"}}>
-            {lang==="ko"?"선택팀":"Picked"}: <span style={{color:"#D4A843",fontWeight:700}}>{totalPicked}/32</span>
+            {lang==="ko"?"선택팀":lang==="es"?"Elegido":"Picked"}: <span style={{color:"#D4A843",fontWeight:700}}>{totalPicked}/32</span>
             {totalPickedRaw>32&&<span style={{fontSize:10,color:"#5A7090",marginLeft:4}}>(이전 데이터)</span>}
           </div>
           {hasResults&&<div style={{background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#22C55E"}}>
-            {lang==="ko"?"정답":"Correct"}: <span style={{fontWeight:700}}>{correct}</span> (+{correct*3} pts)
+            {lang==="ko"?"정답":lang==="es"?"Correcto":"Correct"}: <span style={{fontWeight:700}}>{correct}</span> (+{correct*3} pts)
           </div>}
         </div>
         {totalPicked===0?(
           <div style={{textAlign:"center",color:"#5A7090",padding:"40px 0",fontSize:14}}>
-            {lang==="ko"?"아직 픽하지 않았습니다":"No picks submitted yet"}
+            {lang==="ko"?"아직 픽하지 않았습니다":lang==="es"?"Aún sin picks enviados":"No picks submitted yet"}
           </div>
         ):(
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
@@ -526,7 +526,7 @@ function PicksModal({user,tournament,lang,onClose}){
               return(
                 <div key={grp} style={{background:"#111E2E",borderRadius:11,padding:12,border:"1px solid rgba(255,255,255,.07)"}}>
                   <div style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843",letterSpacing:".12em",marginBottom:8}}>
-                    {lang==="ko"?"조":"GROUP"} {grp}
+                    {lang==="ko"?"조":lang==="es"?"GRUPO":"GROUP"} {grp}
                   </div>
                   {myPicks.map(team=>{
                     const i=teams.indexOf(team);
@@ -660,10 +660,10 @@ function Dashboard({users, tournament, currentUid, lang}){
           <div style={{marginBottom:10,display:"flex",flexDirection:"column",gap:6}}>
             <div style={{background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.2)",borderRadius:10,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
               <div>
-                <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":"GROUP PICKS DEADLINE"}</span>
+                <span style={{fontSize:10,color:"#f87171",letterSpacing:".1em",marginRight:8}}>⏰ {lang==="ko"?"조별 픽 마감":lang==="es"?"LÍMITE DE PICKS":"GROUP PICKS DEADLINE"}</span>
                 <span style={{fontSize:12,color:"#fca5a5",fontWeight:500}}>June 12, 2026 · Kickoff ET</span>
               </div>
-              <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":"Save before kickoff!"}</span>
+              <span style={{fontSize:11,color:"#f87171"}}>{lang==="ko"?"마감 전 저장 필수!":lang==="es"?"¡Guarda antes del límite!":"Save before kickoff!"}</span>
             </div>
             {notPicked>0&&(()=>{
               const notPickedUsers = Object.values(users).filter(function(u){
@@ -673,9 +673,9 @@ function Dashboard({users, tournament, currentUid, lang}){
                 <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.25)",borderRadius:10,padding:"10px 14px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:notPickedUsers.length>0?8:0}}>
                     <span style={{fontSize:11,color:"#F59E0B",fontWeight:500}}>
-                      ⚠️ {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":"picks submitted"} · {notPicked}{lang==="ko"?"명 아직 안 함":" yet to pick"}
+                      ⚠️ {pickedCount}/{totalPaid} {lang==="ko"?"명 픽 완료":lang==="es"?" picks enviados":"picks submitted"} · {notPicked}{lang==="ko"?"명 아직 안 함":lang==="es"?" sin enviar":" yet to pick"}
                     </span>
-                    <span style={{fontSize:10,color:"#D97706"}}>{lang==="ko"?"마감: 6/12 킥오프":"Deadline: Jun 12 kickoff"}</span>
+                    <span style={{fontSize:10,color:"#D97706"}}>{lang==="ko"?"마감: 6/12 킥오프":lang==="es"?"Límite: 12 jun kickoff":"Deadline: Jun 12 kickoff"}</span>
                   </div>
                   {notPickedUsers.length>0&&(
                     <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
@@ -699,7 +699,7 @@ function Dashboard({users, tournament, currentUid, lang}){
             })()}
             {notPicked===0&&totalPaid>0&&(
               <div style={{background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.2)",borderRadius:10,padding:"7px 14px",textAlign:"center"}}>
-                <span style={{fontSize:11,color:"#22C55E"}}>✅ {lang==="ko"?"전원 픽 완료! 🎉":"All "+totalPaid+" participants have submitted picks! 🎉"}</span>
+                <span style={{fontSize:11,color:"#22C55E"}}>✅ {lang==="ko"?"전원 픽 완료! 🎉":lang==="es"?"¡Todos enviaron sus picks! 🎉":"All "+totalPaid+" participants have submitted picks! 🎉"}</span>
               </div>
             )}
           </div>
@@ -813,7 +813,7 @@ function OddsWidget({lang, tournament}){
   if(filteredOdds.length === 0) return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"20px 16px",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}>
       <span style={{fontSize:20}}>✅</span>
-      <span style={{fontSize:12,color:"#5A7090",textAlign:"center"}}>{lang==="ko"?"모든 예정 경기 완료":"All scheduled matches completed"}</span>
+      <span style={{fontSize:12,color:"#5A7090",textAlign:"center"}}>{lang==="ko"?"모든 예정 경기 완료":lang==="es"?"Todos los partidos completados":"All scheduled matches completed"}</span>
     </div>
   );
   if(!match) return null;
@@ -960,10 +960,10 @@ function WinProbWidget({users, tournament, currentUid, lang}){
           </div>
           <div style={{fontSize:11,color:color,fontWeight:500}}>
             {prob===null?"계산 중...":
-             prob>=70?(lang==="ko"?"🔥 매우 유리!":"🔥 Strong favorite!"):
-             prob>=40?(lang==="ko"?"💪 경쟁 중":"💪 In contention"):
-             prob>=15?(lang==="ko"?"⚡ 역전 가능":"⚡ Still possible"):
-             (lang==="ko"?"😤 기적이 필요해":"😤 Need a miracle")}
+             prob>=70?(lang==="ko"?"🔥 매우 유리!":lang==="es"?"🔥 ¡Gran favorito!":"🔥 Strong favorite!"):
+             prob>=40?(lang==="ko"?"💪 경쟁 중":lang==="es"?"💪 En competencia":"💪 In contention"):
+             prob>=15?(lang==="ko"?"⚡ 역전 가능":lang==="es"?"⚡ Aún posible":"⚡ Still possible"):
+             (lang==="ko"?"😤 기적이 필요해":lang==="es"?"😤 Necesita un milagro":"😤 Need a miracle")}
           </div>
         </div>
       </div>
@@ -1273,19 +1273,19 @@ function BracketPreview({users, tournament, currentUid, lang}){
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>
-          ⚔️ {lang==="ko"?"32강 대진표":"ROUND OF 32"}
+          ⚔️ {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO DE 32":"ROUND OF 32"}
           <span style={{fontSize:10,color:"#5A7090",marginLeft:8,fontFamily:"sans-serif",letterSpacing:"normal",fontWeight:400}}>
-            {lang==="ko"?"내 픽 ⭐":"your picks ⭐"}
+            {lang==="ko"?"내 픽 ⭐":lang==="es"?"tus picks ⭐":"your picks ⭐"}
           </span>
         </div>
         {!hasResults&&(
-          <span style={{fontSize:11,color:"#5A7090"}}>{doneCount}/12 {lang==="ko"?"조 완료":"groups"}</span>
+          <span style={{fontSize:11,color:"#5A7090"}}>{doneCount}/12 {lang==="ko"?"조 완료":lang==="es"?"grupos":"groups"}</span>
         )}
       </div>
 
       {!hasResults&&doneCount===0&&(
         <div style={{textAlign:"center",color:"#5A7090",fontSize:12,padding:"20px 0"}}>
-          {lang==="ko"?"조별 결과가 모두 확정되면 공개됩니다":"Revealed after all 12 group results are confirmed"}
+          {lang==="ko"?"조별 결과가 모두 확정되면 공개됩니다":lang==="es"?"Se revela tras confirmar los 12 grupos":"Revealed after all 12 group results are confirmed"}
         </div>
       )}
 
@@ -1421,11 +1421,11 @@ function TodayMatches({users, tournament, currentUid, lang}){
           🎯 {lbl}
         </div>
         <span style={{fontSize:10,color:"#5A7090"}}>
-          {lang==="ko"?"킥오프 전까지 · 점수 무관 자랑용":"before kickoff · bragging rights only"}
+          {lang==="ko"?"킥오프 전까지 · 점수 무관 자랑용":lang==="es"?"antes del inicio · solo por diversión":"before kickoff · bragging rights only"}
         </span>
       </div>
       <div style={{fontSize:10,color:"#3A5070",marginBottom:10}}>
-        {lang==="ko"?"정확한 스코어를 맞히면 결과 카드에 🎯 예언가 표시!":"Nail the exact score → 🎯 Prophet badge on the result card!"}
+        {lang==="ko"?"정확한 스코어를 맞히면 결과 카드에 🎯 예언가 표시!":lang==="es"?"¡Adivina el marcador exacto y aparece 🎯 Profeta!":"Nail the exact score → 🎯 Prophet badge on the result card!"}
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:8}}>
@@ -1446,7 +1446,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
             <div key={m.id} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(myP?"rgba(212,168,67,.25)":"rgba(255,255,255,.07)"),borderRadius:10,padding:"10px 12px"}}>
               <div style={{fontSize:10,color:"#5A7090",marginBottom:6}}>
                 {m.date} · {m.time} · Group {m.group}
-                {kicked&&<span style={{color:"#f87171",marginLeft:6}}>🔒 {lang==="ko"?"마감":"locked"}</span>}
+                {kicked&&<span style={{color:"#f87171",marginLeft:6}}>🔒 {lang==="ko"?"마감":lang==="es"?"cerrado":"locked"}</span>}
               </div>
 
               {/* 예측 입력 행 */}
@@ -1467,8 +1467,8 @@ function TodayMatches({users, tournament, currentUid, lang}){
               {/* 저장 버튼 / 상태 */}
               {!kicked&&(
                 <div style={{marginTop:7,display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8}}>
-                  {myP&&!justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {myP.home}:{myP.away} {lang==="ko"?"제출됨":"submitted"}</span>}
-                  {justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {lang==="ko"?"저장!":"saved!"}</span>}
+                  {myP&&!justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {myP.home}:{myP.away} {lang==="ko"?"제출됨":lang==="es"?"enviado":"submitted"}</span>}
+                  {justSaved&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {lang==="ko"?"저장!":lang==="es"?"¡guardado!":"saved!"}</span>}
                   <button
                     disabled={savingId===m.id||draft.home===""||draft.away===""}
                     onClick={async function(){
@@ -1481,7 +1481,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
                       setSavingId(null);
                     }}
                     style={{padding:"5px 14px",borderRadius:14,border:"none",fontSize:11,fontWeight:600,cursor:"pointer",background:(draft.home!==""&&draft.away!=="")?"rgba(212,168,67,.9)":"rgba(255,255,255,.08)",color:(draft.home!==""&&draft.away!=="")?"#000":"#5A7090",touchAction:"manipulation"}}>
-                    {savingId===m.id?"...":myP?(lang==="ko"?"수정":"UPDATE"):(lang==="ko"?"제출":"SUBMIT")}
+                    {savingId===m.id?"...":myP?(lang==="ko"?"수정":lang==="es"?"EDITAR":"UPDATE"):(lang==="ko"?"제출":lang==="es"?"ENVIAR":"SUBMIT")}
                   </button>
                 </div>
               )}
@@ -1499,7 +1499,7 @@ function TodayMatches({users, tournament, currentUid, lang}){
                 </div>
               )}
               {kicked&&allPreds.length===0&&(
-                <div style={{marginTop:8,fontSize:10,color:"#3A5070"}}>{lang==="ko"?"예측 없음":"no predictions"}</div>
+                <div style={{marginTop:8,fontSize:10,color:"#3A5070"}}>{lang==="ko"?"예측 없음":lang==="es"?"sin predicciones":"no predictions"}</div>
               )}
             </div>
           );
@@ -1544,7 +1544,7 @@ function ProphetLeaderboard({users, tournament, lang}){
         🔮 {lbl}
       </div>
       <div style={{fontSize:10,color:"#3A5070",marginBottom:10}}>
-        {lang==="ko"?"정확한 스코어 +3점 · 승무패 방향 +1점":"Exact score +3pts · Correct direction +1pt"}
+        {lang==="ko"?"정확한 스코어 +3점 · 승무패 방향 +1점":lang==="es"?"Marcador exacto +3pts · Resultado correcto +1pt":"Exact score +3pts · Correct direction +1pt"}
       </div>
       {top.map((u,i)=>{
         const medals=["🥇","🥈","🥉","④","⑤"];
@@ -1609,7 +1609,7 @@ function GroupStandings({users, tournament, currentUid, lang}){
 
   if(activeGroups.length===0) return null;
 
-  const lbl = lang==="ko"?"조별 순위":"GROUP STANDINGS";
+  const lbl = lang==="ko"?"조별 순위":lang==="es"?"TABLA DE GRUPOS":"GROUP STANDINGS";
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
@@ -1718,17 +1718,17 @@ function ProphetTab({users, tournament, currentUid, lang}){
         <div style={{display:"flex",justifyContent:"center",gap:16}}>
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#D4A843"}}>🎯 +3</div>
-            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"정확한 스코어":"Exact score"}</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"정확한 스코어":lang==="es"?"Marcador exacto":"Exact score"}</div>
           </div>
           <div style={{width:"1px",background:"rgba(255,255,255,.08)"}}/>
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#60a5fa"}}>✓ +1</div>
-            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"승무패 방향":"Win/Draw/Loss"}</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"승무패 방향":lang==="es"?"Resultado (V/E/D)":"Win/Draw/Loss"}</div>
           </div>
           <div style={{width:"1px",background:"rgba(255,255,255,.08)"}}/>
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Teko',sans-serif",fontSize:22,color:"#9CA3AF"}}>{playedIds.length}</div>
-            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"경기 완료":"matches played"}</div>
+            <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"경기 완료":lang==="es"?"partidos jugados":"matches played"}</div>
           </div>
         </div>
       </div>
@@ -1737,7 +1737,7 @@ function ProphetTab({users, tournament, currentUid, lang}){
       {playedIds.length===0&&(
         <div style={{textAlign:"center",padding:"40px 0",color:"#5A7090"}}>
           <div style={{fontSize:32,marginBottom:8}}>⏳</div>
-          <div style={{fontSize:13}}>{lang==="ko"?"경기 결과 입력 후 랭킹이 업데이트됩니다":"Rankings update after match results are entered"}</div>
+          <div style={{fontSize:13}}>{lang==="ko"?"경기 결과 입력 후 랭킹이 업데이트됩니다":lang==="es"?"El ranking se actualiza tras ingresar resultados":"Rankings update after match results are entered"}</div>
         </div>
       )}
 
@@ -1746,7 +1746,7 @@ function ProphetTab({users, tournament, currentUid, lang}){
         <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,overflow:"hidden"}}>
           {/* 컬럼 헤더 */}
           <div style={{display:"grid",gridTemplateColumns:"36px 1fr 60px 60px 60px",gap:4,padding:"8px 14px",borderBottom:"0.5px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
-            {["","",lang==="ko"?"🎯 정확":"🎯 Exact",lang==="ko"?"✓ 방향":"✓ Dir",lang==="ko"?"총점":"Total"].map((h,i)=>(
+            {["","",lang==="ko"?"🎯 정확":lang==="es"?"🎯 Exacto":"🎯 Exact",lang==="ko"?"✓ 방향":lang==="es"?"✓ Result.":"✓ Dir",lang==="ko"?"총점":lang==="es"?"Total":"Total"].map((h,i)=>(
               <span key={i} style={{fontSize:10,color:"#5A7090",textAlign:i>1?"center":"left"}}>{h}</span>
             ))}
           </div>
@@ -1808,15 +1808,15 @@ function ProphetTab({users, tournament, currentUid, lang}){
           <div style={{marginTop:12,padding:"12px 16px",background:"rgba(212,168,67,.05)",border:"0.5px solid rgba(212,168,67,.15)",borderRadius:12,display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
             <div style={{textAlign:"center"}}>
               <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843"}}>{predCount}</div>
-              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"스코어 예측 제출":"score predictions"}</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"스코어 예측 제출":lang==="es"?"predicciones de marcador":"score predictions"}</div>
             </div>
             <div style={{textAlign:"center"}}>
               <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa"}}>{dirCount2}</div>
-              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"방향 예측 제출":"direction picks"}</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"방향 예측 제출":lang==="es"?"predicciones de resultado":"direction picks"}</div>
             </div>
             <div style={{textAlign:"center"}}>
               <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:me.total>0?"#a78bfa":"#3A5070"}}>{me.total}pt</div>
-              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"현재 예언가 점수":"prophet score"}</div>
+              <div style={{fontSize:10,color:"#5A7090"}}>{lang==="ko"?"현재 예언가 점수":lang==="es"?"puntos de profeta":"prophet score"}</div>
             </div>
           </div>
         );
@@ -1835,7 +1835,7 @@ function ResultsTab({users, tournament, currentUid, lang}){
     <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
       <div style={{fontSize:40,marginBottom:12}}>⏳</div>
       <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#D4A843",marginBottom:8}}>
-        {lang==="ko"?"아직 결과 없음":"No results yet"}
+        {lang==="ko"?"아직 결과 없음":lang==="es"?"Aún sin resultados":"No results yet"}
       </div>
       <div style={{fontSize:13}}>
         {lang==="ko"?"경기 후 Admin에서 스코어를 입력하면 표시됩니다":"Scores will appear after Admin enters match results"}
