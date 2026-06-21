@@ -1373,24 +1373,49 @@ function estimateTeamAdvanceProb(team, group, tournament) {
     else { stats[m.home].pts++; stats[m.away].pts++; }
   });
 
-  // 한 조당 보통 3경기 (라운드1~3). 안 뛴 경기는 평균치로 추정해 순위 매김
+  var maxPlayed = Math.max.apply(null, groupTeams.map(function(t){ return stats[t].played; }));
+  // 아직 경기 시작도 안 한 조 → 균등 (2/4 진출)
+  if(maxPlayed === 0) return 0.5;
+
   var sorted = groupTeams.slice().sort(function(a,b){
     return (stats[b].pts - stats[a].pts) || (stats[b].gd - stats[a].gd);
   });
   var rank = sorted.indexOf(team); // 0-indexed
-  var maxPlayed = Math.max.apply(null, groupTeams.map(function(t){ return stats[t].played; }));
+  var myPts = stats[team].pts;
+  var played = stats[team].played;
+  var remaining = 3 - played; // 남은 경기 수 (조별리그 3경기 기준)
 
-  // 아직 경기 시작도 안 한 조 → 균등 (2/4 진출)
-  if(maxPlayed === 0) return 0.5;
+  // 수학적 확정 케이스: 남은 경기 다 져도(0점 추가) 4위보다 위인지, 다 이겨도(9점) 3위 안인지
+  // 단순화: 현재 승점이 3위/4위 최대가능승점(현재+remaining*3)보다 높으면 거의 확정 진출
+  var others = sorted.filter(function(t){return t!==team;});
+  var maxPossible = myPts + remaining*3;
+  var aboveMe = sorted.slice(0, rank); // 나보다 순위 높은 팀들
+  var belowMe = sorted.slice(rank+1);  // 나보다 순위 낮은 팀들
 
-  // 진행도에 따라 확신도 보정: 경기가 많이 끝날수록 현재 순위에 가까운 확률
-  var progress = maxPlayed / 3; // 0~1
-  var baseProb = rank < 2 ? 0.5 : 0.5; // 시작점은 동일
-  // 순위가 1~2위면 진행도에 따라 확률 상승, 3~4위면 하락
+  // 3위 팀이 남은 경기 다 이겨도 나를 못 따라잡으면 → 진출 확정
+  var thirdPlace = sorted[2];
+  if(thirdPlace && rank < 2) {
+    var thirdMax = stats[thirdPlace].pts + (3-stats[thirdPlace].played)*3;
+    if(myPts > thirdMax) return 1; // 수학적으로 진출 확정
+  }
+  // 내가 3위/4위인데 남은 경기 다 이겨도 2위를 못 따라잡으면 → 탈락 확정
+  var secondPlace = sorted[1];
+  if(secondPlace && rank >= 2) {
+    var secondPts = stats[secondPlace].pts;
+    if(maxPossible < secondPts) return 0; // 수학적으로 탈락 확정
+  }
+
+  // 확정 아니면: 순위 + 진행도 기반 확률 곡선 (더 가파르게)
+  var progress = played / 3; // 0~1
+  var ptsGap = rank < 2
+    ? myPts - (sorted[2] ? stats[sorted[2]].pts : 0) // 1~2위면 3위와의 격차
+    : (sorted[1] ? stats[sorted[1]].pts : 0) - myPts; // 3~4위면 2위와의 격차
+  var gapFactor = Math.min(1, ptsGap / 6); // 6점 차이면 거의 확정 수준
+
   var prob = rank < 2
-    ? 0.5 + 0.5*progress
-    : 0.5 - 0.5*progress;
-  return Math.max(0.02, Math.min(0.98, prob));
+    ? 0.55 + 0.40*progress + 0.05*gapFactor
+    : 0.45 - 0.40*progress - 0.05*gapFactor;
+  return Math.max(0.03, Math.min(0.97, prob));
 }
 
 function calcWinProbs(ranked, tournament) {
@@ -1422,27 +1447,28 @@ function calcWinProbs(ranked, tournament) {
   var wins = {};
   ranked.forEach(function(u){ wins[u.uid]=0; });
 
+  // 각 픽의 진출확률 p를 베르누이 시도로 직접 시뮬레이션 (진출=3점, 탈락=0점)
   var potentials = ranked.map(function(u){
     var cur = u.total||0;
-    var weightedExpected = 0; // 기대값 (평균)
-    var variance = 0; // 불확실성 범위
+    var picksWithProb = []; // [{p: 0~1}]
     Object.entries(u.groupPicks||{}).forEach(function(e){
       var grp = e[0], teams = e[1]||[];
       if(gr[grp]) return; // 이미 확정된 조는 cur에 반영됨, 스킵
       teams.forEach(function(team){
-        var p = getAdvanceProb(team, grp); // 0~1
-        weightedExpected += p * 3; // 기대 점수
-        variance += 3; // 불확실성 폭 (진출확률 낮을수록 +쪽 변동, 높을수록 -쪽이지만 단순화)
+        picksWithProb.push(getAdvanceProb(team, grp));
       });
     });
-    return {uid:u.uid, cur:cur, expected:weightedExpected, variance:variance};
+    return {uid:u.uid, cur:cur, picksWithProb:picksWithProb};
   });
 
   for(var i=0;i<SIMS;i++){
     var best=-1, bestUid=null;
     potentials.forEach(function(p){
-      // 기대값 중심으로 +-variance 범위에서 랜덤 실현 (기대값이 높을수록 실현값도 높게 편향)
-      var sim = p.cur + p.expected*0.7 + Math.random()*p.variance*0.6;
+      var sim = p.cur;
+      // 각 픽마다 독립적으로 진출확률에 따라 베르누이 시도 (성공시 +3점)
+      for(var k=0;k<p.picksWithProb.length;k++){
+        if(Math.random() < p.picksWithProb[k]) sim += 3;
+      }
       if(sim>best){ best=sim; bestUid=p.uid; }
     });
     if(bestUid) wins[bestUid]++;
