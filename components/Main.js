@@ -712,11 +712,11 @@ function Dashboard({users, tournament, currentUid, lang}){
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
+      {/* 오늘의 경기 스코어 예측 - 도박사 배팅확률 바로 아래 */}
+      <TodayMatches users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
+
       {/* 조별 순위 */}
       <GroupStandings users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
-
-      {/* 오늘의 경기 스코어 예측 */}
-      <TodayMatches users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
       {/* 스프린트 레이스 */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
