@@ -299,8 +299,8 @@ function calcScore(picks={}, tournament={}) {
     (picked||[]).forEach(t=>{
       if((gr[grp]||[]).includes(t)){
         total+=3;breakdown.push({l:`${grp}: ${t}`,p:3});
-      } else if(isTeamClinched(t, grp, tournament)){
-        // 조 결과 미확정이지만 수학적으로 진출 확정된 팀
+      } else if(estimateAdvanceTo32(t, grp, tournament) === 1){
+        // 조 결과 미확정이지만 32강 진출이 수학적으로 확정된 팀 (1·2위 확정 또는 와일드카드 확정)
         total+=3;breakdown.push({l:`${grp}: ${t} (clinched)`,p:3});
       }
     });
@@ -1352,118 +1352,97 @@ function BracketPreview({users, tournament, currentUid, lang}){
 // matchResults 기반으로 각 팀의 현재 진출 확률(0~1)을 추정
 // - 조가 이미 확정(groupResults 있음): 1위/2위면 1.0, 아니면 0.0
 // - 조 진행 중: 승점+득실차 기반으로 1~2위 안에 들 확률 추정 (간단한 순위 기반 휴리스틱)
-// 수학적으로 진출이 100% 확정된 팀인지 (남은 경기 결과와 무관하게 3위가 못 따라잡음)
-function isTeamClinched(team, group, tournament) {
-  var gr = tournament.groupResults || {};
-  if(gr[group]) return gr[group].includes(team);
 
-  var mr = tournament.matchResults || {};
-  var groupTeams = (GROUPS[group] && GROUPS[group].teams) || [];
-  if(groupTeams.length === 0) return false;
-
-  var stats = {};
-  groupTeams.forEach(function(t){ stats[t] = {pts:0,gf:0,ga:0,played:0}; });
-
-  MATCH_SCHEDULE.forEach(function(m){
-    if(m.group !== group) return;
-    var r = mr[m.id] || mr[m.id+"a"];
-    if(!r) return;
-    var h = parseInt(r.home), a = parseInt(r.away);
-    if(isNaN(h) || isNaN(a)) return;
-    if(!stats[m.home] || !stats[m.away]) return;
-    stats[m.home].played++; stats[m.away].played++;
-    stats[m.home].gf+=h; stats[m.home].ga+=a;
-    stats[m.away].gf+=a; stats[m.away].ga+=h;
-    if(h>a) stats[m.home].pts += 3;
-    else if(h<a) stats[m.away].pts += 3;
-    else { stats[m.home].pts++; stats[m.away].pts++; }
+// ─── 32강 진출 여부 판정 (1·2위 자동진출 + 3위 와일드카드 상위 8개) ──────────
+// 전체 12개조의 현재 stats를 한번에 계산
+function computeAllGroupStats(matchResults) {
+  var allStats = {}; // {group: {team: {pts,gd,gf,ga,played}}}
+  Object.keys(GROUPS).forEach(function(grp){
+    var teams = GROUPS[grp].teams;
+    var stats = {};
+    teams.forEach(function(t){ stats[t] = {pts:0,gd:0,gf:0,ga:0,played:0}; });
+    MATCH_SCHEDULE.forEach(function(m){
+      if(m.group !== grp) return;
+      var r = matchResults[m.id] || matchResults[m.id+"a"];
+      if(!r) return;
+      var h = parseInt(r.home), a = parseInt(r.away);
+      if(isNaN(h) || isNaN(a)) return;
+      if(!stats[m.home] || !stats[m.away]) return;
+      stats[m.home].played++; stats[m.away].played++;
+      stats[m.home].gf+=h; stats[m.home].ga+=a;
+      stats[m.away].gf+=a; stats[m.away].ga+=h;
+      stats[m.home].gd = stats[m.home].gf - stats[m.home].ga;
+      stats[m.away].gd = stats[m.away].gf - stats[m.away].ga;
+      if(h>a) stats[m.home].pts += 3;
+      else if(h<a) stats[m.away].pts += 3;
+      else { stats[m.home].pts++; stats[m.away].pts++; }
+    });
+    allStats[grp] = stats;
   });
-
-  // FIFA 공식 순서로 현재 순위 산정
-  var sorted = fifaSortGroup(groupTeams, stats, group, mr);
-  var rank = sorted.indexOf(team);
-  if(rank >= 2) return false; // 3~4위는 진출 확정 불가능
-
-  // 승점 기준 수학적 확정 체크: 3위가 남은 경기 다 이겨도(+3pt/경기) 내 현재 승점을 못 넘으면 확정
-  // (득실차/맞대결 역전 가능성까지 따지면 매우 복잡해지므로, 승점 차이로만 안전하게 판정 —
-  //  승점이 같아질 수 있는 경우는 "확정 아님"으로 보수적으로 처리)
-  var myPts = stats[team].pts;
-  var thirdPlace = sorted[2];
-  if(!thirdPlace) return false;
-  var thirdMax = stats[thirdPlace].pts + (3-stats[thirdPlace].played)*3;
-  return myPts > thirdMax; // 승점으로 확실히 못 따라잡으면 확정 (동률 가능성 있으면 미확정으로 보수적 판정)
+  return allStats;
 }
 
-function estimateTeamAdvanceProb(team, group, tournament) {
+// 전체 12개조 기준 "이 팀이 32강에 갈 수 있는가"를 0~1 확률로 추정
+function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
-  if(gr[group]) {
-    return gr[group].includes(team) ? 1 : 0;
-  }
+  if(gr[group]) return gr[group].includes(team) ? 1 : 0;
+
   var mr = tournament.matchResults || {};
-  var groupTeams = (GROUPS[group] && GROUPS[group].teams) || [];
-  if(groupTeams.length === 0) return 0.5;
+  var allStats = computeAllGroupStats(mr);
+  var myGroupTeams = (GROUPS[group]&&GROUPS[group].teams)||[];
+  var myStats = allStats[group] || {};
+  if(!myStats[team]) return 0.5;
 
-  var stats = {};
-  groupTeams.forEach(function(t){ stats[t] = {pts:0,gf:0,ga:0,played:0}; });
+  var maxPlayed = Math.max.apply(null, myGroupTeams.map(function(t){ return (myStats[t]||{played:0}).played; }));
+  if(maxPlayed === 0) return 0.5; // 조 시작 전
 
-  MATCH_SCHEDULE.forEach(function(m){
-    if(m.group !== group) return;
-    var r = mr[m.id] || mr[m.id+"a"];
-    if(!r) return;
-    var h = parseInt(r.home), a = parseInt(r.away);
-    if(isNaN(h) || isNaN(a)) return;
-    if(!stats[m.home] || !stats[m.away]) return;
-    stats[m.home].played++; stats[m.away].played++;
-    stats[m.home].gf+=h; stats[m.home].ga+=a;
-    stats[m.away].gf+=a; stats[m.away].ga+=h;
-    if(h>a) stats[m.home].pts += 3;
-    else if(h<a) stats[m.away].pts += 3;
-    else { stats[m.home].pts++; stats[m.away].pts++; }
+  // 1) 그룹 내 순위 (FIFA 헤드투헤드 타이브레이커 적용)
+  var sortedInGroup = fifaSortGroup(myGroupTeams, myStats, group, mr);
+  var rankInGroup = sortedInGroup.indexOf(team); // 0~3
+
+  // 2) 1·2위면: 3위가 남은 경기 다 이겨도 못 따라잡으면 100% 확정
+  if(rankInGroup < 2) {
+    var thirdInGroup = sortedInGroup[2];
+    if(thirdInGroup) {
+      var thirdMax = myStats[thirdInGroup].pts + (3-myStats[thirdInGroup].played)*3;
+      if(myStats[team].pts > thirdMax) return 1; // 수학적 확정
+    }
+    // 미확정이면 진행도 기반 확률 (1·2위는 기본적으로 유력)
+    var progress = myStats[team].played / 3;
+    var gapToThird = myStats[team].pts - (thirdInGroup ? myStats[thirdInGroup].pts : 0);
+    var conf = Math.min(1, gapToThird/6);
+    return Math.max(0.5, Math.min(0.98, 0.6 + 0.3*progress + 0.08*conf));
+  }
+
+  // 3) 4위면: 32강 갈 방법 없음 (1·2위 자동진출 + 3위 와일드카드뿐)
+  if(rankInGroup >= 3) return 0.02;
+
+  // 4) 3위인 경우: 전체 12개조 3위들과 비교해서 상위 8개 안에 드는지 추정
+  var allThirdPlaces = [];
+  Object.keys(allStats).forEach(function(g){
+    var teams = (GROUPS[g]&&GROUPS[g].teams)||[];
+    var stats = allStats[g];
+    var sortedG = fifaSortGroup(teams, stats, g, mr);
+    var t3 = sortedG[2];
+    if(t3) allThirdPlaces.push({group:g, team:t3, pts:stats[t3].pts, gd:stats[t3].gd, gf:stats[t3].gf, played:stats[t3].played});
   });
+  // 아직 다 안 끝난 조의 3위는 남은 경기 결과로 변동 가능 -> 현재 스냅샷 기준 비교 (보수적 추정)
+  allThirdPlaces.sort(function(a,b){
+    return (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf);
+  });
+  var myRankAmongThirds = allThirdPlaces.findIndex(function(x){ return x.group===group; });
+  if(myRankAmongThirds === -1) return 0.3;
 
-  var maxPlayed = Math.max.apply(null, groupTeams.map(function(t){ return stats[t].played; }));
-  // 아직 경기 시작도 안 한 조 → 균등 (2/4 진출)
-  if(maxPlayed === 0) return 0.5;
-
-  // FIFA 공식 타이브레이커 순서로 현재 순위 산정 (맞대결 우선)
-  var sorted = fifaSortGroup(groupTeams, stats, group, mr);
-  var rank = sorted.indexOf(team); // 0-indexed
-  var myPts = stats[team].pts;
-  var played = stats[team].played;
-  var remaining = 3 - played; // 남은 경기 수 (조별리그 3경기 기준)
-
-  // 수학적 확정 케이스: 남은 경기 다 져도(0점 추가) 4위보다 위인지, 다 이겨도(9점) 3위 안인지
-  // 단순화: 현재 승점이 3위/4위 최대가능승점(현재+remaining*3)보다 높으면 거의 확정 진출
-  var others = sorted.filter(function(t){return t!==team;});
-  var maxPossible = myPts + remaining*3;
-  var aboveMe = sorted.slice(0, rank); // 나보다 순위 높은 팀들
-  var belowMe = sorted.slice(rank+1);  // 나보다 순위 낮은 팀들
-
-  // 3위 팀이 남은 경기 다 이겨도 나를 못 따라잡으면 → 진출 확정
-  var thirdPlace = sorted[2];
-  if(thirdPlace && rank < 2) {
-    var thirdMax = stats[thirdPlace].pts + (3-stats[thirdPlace].played)*3;
-    if(myPts > thirdMax) return 1; // 수학적으로 진출 확정
-  }
-  // 내가 3위/4위인데 남은 경기 다 이겨도 2위를 못 따라잡으면 → 탈락 확정
-  var secondPlace = sorted[1];
-  if(secondPlace && rank >= 2) {
-    var secondPts = stats[secondPlace].pts;
-    if(maxPossible < secondPts) return 0; // 수학적으로 탈락 확정
-  }
-
-  // 확정 아니면: 순위 + 진행도 기반 확률 곡선 (더 가파르게)
-  var progress = played / 3; // 0~1
-  var ptsGap = rank < 2
-    ? myPts - (sorted[2] ? stats[sorted[2]].pts : 0) // 1~2위면 3위와의 격차
-    : (sorted[1] ? stats[sorted[1]].pts : 0) - myPts; // 3~4위면 2위와의 격차
-  var gapFactor = Math.min(1, ptsGap / 6); // 6점 차이면 거의 확정 수준
-
-  var prob = rank < 2
-    ? 0.55 + 0.40*progress + 0.05*gapFactor
-    : 0.45 - 0.40*progress - 0.05*gapFactor;
-  return Math.max(0.03, Math.min(0.97, prob));
+  // 상위 8위 안에 여유있게 들면 확률 높게, 8위 근처면 불확실
+  var distFromCutoff = 7 - myRankAmongThirds; // >0 이면 8위 안, <0 이면 밖
+  var progress = myStats[team].played / 3;
+  if(distFromCutoff >= 2) return Math.min(0.95, 0.6 + 0.1*progress + 0.05*distFromCutoff);
+  if(distFromCutoff <= -2) return Math.max(0.05, 0.3 - 0.1*progress);
+  // 컷오프 근처 (8위 경계) -> 불확실
+  return Math.max(0.15, Math.min(0.85, 0.5 + 0.15*distFromCutoff*progress));
 }
+
+
 
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
@@ -1484,7 +1463,7 @@ function calcWinProbs(ranked, tournament) {
   function getAdvanceProb(team, group) {
     var key = group+":"+team;
     if(!(key in advanceProbCache)) {
-      advanceProbCache[key] = estimateTeamAdvanceProb(team, group, tournament);
+      advanceProbCache[key] = estimateAdvanceTo32(team, group, tournament);
     }
     return advanceProbCache[key];
   }
