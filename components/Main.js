@@ -1344,39 +1344,105 @@ function BracketPreview({users, tournament, currentUid, lang}){
 // 각 유저의 "잠재점수" = 현재점수 + 아직 확정 안 된 픽팀들의 기대점수
 // 살아있는 팀(아직 결과 없는 조의 픽)이 많을수록 잠재점수 높음
 // Monte Carlo: 잠재점수 기반으로 랜덤 변동 부여 후 1등 횟수 집계
+// matchResults 기반으로 각 팀의 현재 진출 확률(0~1)을 추정
+// - 조가 이미 확정(groupResults 있음): 1위/2위면 1.0, 아니면 0.0
+// - 조 진행 중: 승점+득실차 기반으로 1~2위 안에 들 확률 추정 (간단한 순위 기반 휴리스틱)
+function estimateTeamAdvanceProb(team, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) {
+    return gr[group].includes(team) ? 1 : 0;
+  }
+  var mr = tournament.matchResults || {};
+  var groupTeams = (GROUPS[group] && GROUPS[group].teams) || [];
+  if(groupTeams.length === 0) return 0.5;
+
+  var stats = {};
+  groupTeams.forEach(function(t){ stats[t] = {pts:0,gd:0,played:0}; });
+
+  MATCH_SCHEDULE.forEach(function(m){
+    if(m.group !== group) return;
+    var r = mr[m.id] || mr[m.id+"a"];
+    if(!r) return;
+    var h = parseInt(r.home), a = parseInt(r.away);
+    if(isNaN(h) || isNaN(a)) return;
+    if(!stats[m.home] || !stats[m.away]) return;
+    stats[m.home].played++; stats[m.away].played++;
+    stats[m.home].gd += (h-a); stats[m.away].gd += (a-h);
+    if(h>a) stats[m.home].pts += 3;
+    else if(h<a) stats[m.away].pts += 3;
+    else { stats[m.home].pts++; stats[m.away].pts++; }
+  });
+
+  // 한 조당 보통 3경기 (라운드1~3). 안 뛴 경기는 평균치로 추정해 순위 매김
+  var sorted = groupTeams.slice().sort(function(a,b){
+    return (stats[b].pts - stats[a].pts) || (stats[b].gd - stats[a].gd);
+  });
+  var rank = sorted.indexOf(team); // 0-indexed
+  var maxPlayed = Math.max.apply(null, groupTeams.map(function(t){ return stats[t].played; }));
+
+  // 아직 경기 시작도 안 한 조 → 균등 (2/4 진출)
+  if(maxPlayed === 0) return 0.5;
+
+  // 진행도에 따라 확신도 보정: 경기가 많이 끝날수록 현재 순위에 가까운 확률
+  var progress = maxPlayed / 3; // 0~1
+  var baseProb = rank < 2 ? 0.5 : 0.5; // 시작점은 동일
+  // 순위가 1~2위면 진행도에 따라 확률 상승, 3~4위면 하락
+  var prob = rank < 2
+    ? 0.5 + 0.5*progress
+    : 0.5 - 0.5*progress;
+  return Math.max(0.02, Math.min(0.98, prob));
+}
+
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
   if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
 
   var gr = tournament.groupResults||{};
-  var grpDone = Object.keys(gr).length;
+  var mr = tournament.matchResults||{};
+  var hasAnyMatchResult = Object.keys(mr).length > 0;
 
-  // 점수가 모두 0이면 (경기 전) → 무조건 균등
-  var totalScore = ranked.reduce(function(s,u){return s+(u.total||0);},0);
-  if(totalScore === 0) {
+  // 경기 결과가 전혀 없으면 (완전 경기 전) → 무조건 균등
+  if(!hasAnyMatchResult) {
     var eq = Math.round(100/N);
     return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
   }
 
-  // 경기 진행 중 → 현재점수 + 아직 결과 없는 조의 픽 기반 Monte Carlo
+  // 팀별 진출확률 캐시 (조 14개 x 팀 4개 = 48개 정도, 매번 재계산해도 가벼움)
+  var advanceProbCache = {};
+  function getAdvanceProb(team, group) {
+    var key = group+":"+team;
+    if(!(key in advanceProbCache)) {
+      advanceProbCache[key] = estimateTeamAdvanceProb(team, group, tournament);
+    }
+    return advanceProbCache[key];
+  }
+
+  // 경기 진행 중 → 현재 확정점수 + 살아있는 픽의 "진출확률 가중" 기대값 기반 Monte Carlo
   var SIMS = 2000;
   var wins = {};
   ranked.forEach(function(u){ wins[u.uid]=0; });
 
   var potentials = ranked.map(function(u){
     var cur = u.total||0;
-    var alive = 0;
+    var weightedExpected = 0; // 기대값 (평균)
+    var variance = 0; // 불확실성 범위
     Object.entries(u.groupPicks||{}).forEach(function(e){
-      // 아직 결과 없는 조의 픽은 살아있음
-      if(!gr[e[0]]) alive += (e[1]||[]).length;
+      var grp = e[0], teams = e[1]||[];
+      if(gr[grp]) return; // 이미 확정된 조는 cur에 반영됨, 스킵
+      teams.forEach(function(team){
+        var p = getAdvanceProb(team, grp); // 0~1
+        weightedExpected += p * 3; // 기대 점수
+        variance += 3; // 불확실성 폭 (진출확률 낮을수록 +쪽 변동, 높을수록 -쪽이지만 단순화)
+      });
     });
-    return {uid:u.uid, cur:cur, maxAdd: alive * 3};
+    return {uid:u.uid, cur:cur, expected:weightedExpected, variance:variance};
   });
 
   for(var i=0;i<SIMS;i++){
     var best=-1, bestUid=null;
     potentials.forEach(function(p){
-      var sim = p.cur + Math.random()*p.maxAdd;
+      // 기대값 중심으로 +-variance 범위에서 랜덤 실현 (기대값이 높을수록 실현값도 높게 편향)
+      var sim = p.cur + p.expected*0.7 + Math.random()*p.variance*0.6;
       if(sim>best){ best=sim; bestUid=p.uid; }
     });
     if(bestUid) wins[bestUid]++;
