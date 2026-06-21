@@ -1081,7 +1081,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     const result = {};
     probList.forEach(p=>{ result[p.uid]=p.prob; });
     setWinProbs(result);
-  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().length).join('|'), Object.keys(tournament.groupResults||{}).length]);
+  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().length).join('|'), Object.keys(tournament.groupResults||{}).length, Object.keys(tournament.matchResults||{}).length]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
