@@ -297,7 +297,12 @@ function calcScore(picks={}, tournament={}) {
   const gr = tournament.groupResults||{};
   Object.entries(picks.groupPicks||{}).forEach(([grp,picked])=>{
     (picked||[]).forEach(t=>{
-      if((gr[grp]||[]).includes(t)){total+=3;breakdown.push({l:`${grp}: ${t}`,p:3});}
+      if((gr[grp]||[]).includes(t)){
+        total+=3;breakdown.push({l:`${grp}: ${t}`,p:3});
+      } else if(isTeamClinched(t, grp, tournament)){
+        // 조 결과 미확정이지만 수학적으로 진출 확정된 팀
+        total+=3;breakdown.push({l:`${grp}: ${t} (clinched)`,p:3});
+      }
     });
   });
   const br = tournament.bracketResults||{};
@@ -1347,6 +1352,45 @@ function BracketPreview({users, tournament, currentUid, lang}){
 // matchResults 기반으로 각 팀의 현재 진출 확률(0~1)을 추정
 // - 조가 이미 확정(groupResults 있음): 1위/2위면 1.0, 아니면 0.0
 // - 조 진행 중: 승점+득실차 기반으로 1~2위 안에 들 확률 추정 (간단한 순위 기반 휴리스틱)
+// 수학적으로 진출이 100% 확정된 팀인지 (남은 경기 결과와 무관하게 3위가 못 따라잡음)
+function isTeamClinched(team, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) return gr[group].includes(team);
+
+  var mr = tournament.matchResults || {};
+  var groupTeams = (GROUPS[group] && GROUPS[group].teams) || [];
+  if(groupTeams.length === 0) return false;
+
+  var stats = {};
+  groupTeams.forEach(function(t){ stats[t] = {pts:0,gd:0,played:0}; });
+
+  MATCH_SCHEDULE.forEach(function(m){
+    if(m.group !== group) return;
+    var r = mr[m.id] || mr[m.id+"a"];
+    if(!r) return;
+    var h = parseInt(r.home), a = parseInt(r.away);
+    if(isNaN(h) || isNaN(a)) return;
+    if(!stats[m.home] || !stats[m.away]) return;
+    stats[m.home].played++; stats[m.away].played++;
+    stats[m.home].gd += (h-a); stats[m.away].gd += (a-h);
+    if(h>a) stats[m.home].pts += 3;
+    else if(h<a) stats[m.away].pts += 3;
+    else { stats[m.home].pts++; stats[m.away].pts++; }
+  });
+
+  var sorted = groupTeams.slice().sort(function(a,b){
+    return (stats[b].pts - stats[a].pts) || (stats[b].gd - stats[a].gd);
+  });
+  var rank = sorted.indexOf(team);
+  if(rank >= 2) return false; // 3~4위는 진출 확정 불가능
+
+  var myPts = stats[team].pts;
+  var thirdPlace = sorted[2];
+  if(!thirdPlace) return false;
+  var thirdMax = stats[thirdPlace].pts + (3-stats[thirdPlace].played)*3;
+  return myPts > thirdMax; // 3위가 남은 경기 다 이겨도 못 따라잡으면 확정
+}
+
 function estimateTeamAdvanceProb(team, group, tournament) {
   var gr = tournament.groupResults || {};
   if(gr[group]) {
