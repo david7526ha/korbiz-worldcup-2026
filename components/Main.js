@@ -1362,7 +1362,7 @@ function isTeamClinched(team, group, tournament) {
   if(groupTeams.length === 0) return false;
 
   var stats = {};
-  groupTeams.forEach(function(t){ stats[t] = {pts:0,gd:0,played:0}; });
+  groupTeams.forEach(function(t){ stats[t] = {pts:0,gf:0,ga:0,played:0}; });
 
   MATCH_SCHEDULE.forEach(function(m){
     if(m.group !== group) return;
@@ -1372,23 +1372,26 @@ function isTeamClinched(team, group, tournament) {
     if(isNaN(h) || isNaN(a)) return;
     if(!stats[m.home] || !stats[m.away]) return;
     stats[m.home].played++; stats[m.away].played++;
-    stats[m.home].gd += (h-a); stats[m.away].gd += (a-h);
+    stats[m.home].gf+=h; stats[m.home].ga+=a;
+    stats[m.away].gf+=a; stats[m.away].ga+=h;
     if(h>a) stats[m.home].pts += 3;
     else if(h<a) stats[m.away].pts += 3;
     else { stats[m.home].pts++; stats[m.away].pts++; }
   });
 
-  var sorted = groupTeams.slice().sort(function(a,b){
-    return (stats[b].pts - stats[a].pts) || (stats[b].gd - stats[a].gd);
-  });
+  // FIFA 공식 순서로 현재 순위 산정
+  var sorted = fifaSortGroup(groupTeams, stats, group, mr);
   var rank = sorted.indexOf(team);
   if(rank >= 2) return false; // 3~4위는 진출 확정 불가능
 
+  // 승점 기준 수학적 확정 체크: 3위가 남은 경기 다 이겨도(+3pt/경기) 내 현재 승점을 못 넘으면 확정
+  // (득실차/맞대결 역전 가능성까지 따지면 매우 복잡해지므로, 승점 차이로만 안전하게 판정 —
+  //  승점이 같아질 수 있는 경우는 "확정 아님"으로 보수적으로 처리)
   var myPts = stats[team].pts;
   var thirdPlace = sorted[2];
   if(!thirdPlace) return false;
   var thirdMax = stats[thirdPlace].pts + (3-stats[thirdPlace].played)*3;
-  return myPts > thirdMax; // 3위가 남은 경기 다 이겨도 못 따라잡으면 확정
+  return myPts > thirdMax; // 승점으로 확실히 못 따라잡으면 확정 (동률 가능성 있으면 미확정으로 보수적 판정)
 }
 
 function estimateTeamAdvanceProb(team, group, tournament) {
@@ -1401,7 +1404,7 @@ function estimateTeamAdvanceProb(team, group, tournament) {
   if(groupTeams.length === 0) return 0.5;
 
   var stats = {};
-  groupTeams.forEach(function(t){ stats[t] = {pts:0,gd:0,played:0}; });
+  groupTeams.forEach(function(t){ stats[t] = {pts:0,gf:0,ga:0,played:0}; });
 
   MATCH_SCHEDULE.forEach(function(m){
     if(m.group !== group) return;
@@ -1411,7 +1414,8 @@ function estimateTeamAdvanceProb(team, group, tournament) {
     if(isNaN(h) || isNaN(a)) return;
     if(!stats[m.home] || !stats[m.away]) return;
     stats[m.home].played++; stats[m.away].played++;
-    stats[m.home].gd += (h-a); stats[m.away].gd += (a-h);
+    stats[m.home].gf+=h; stats[m.home].ga+=a;
+    stats[m.away].gf+=a; stats[m.away].ga+=h;
     if(h>a) stats[m.home].pts += 3;
     else if(h<a) stats[m.away].pts += 3;
     else { stats[m.home].pts++; stats[m.away].pts++; }
@@ -1421,9 +1425,8 @@ function estimateTeamAdvanceProb(team, group, tournament) {
   // 아직 경기 시작도 안 한 조 → 균등 (2/4 진출)
   if(maxPlayed === 0) return 0.5;
 
-  var sorted = groupTeams.slice().sort(function(a,b){
-    return (stats[b].pts - stats[a].pts) || (stats[b].gd - stats[a].gd);
-  });
+  // FIFA 공식 타이브레이커 순서로 현재 순위 산정 (맞대결 우선)
+  var sorted = fifaSortGroup(groupTeams, stats, group, mr);
   var rank = sorted.indexOf(team); // 0-indexed
   var myPts = stats[team].pts;
   var played = stats[team].played;
@@ -1755,9 +1758,8 @@ function GroupStandings({users, tournament, currentUid, lang}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
         {activeGroups.map(grp=>{
           const teams = groups[grp] || [];
-          const sorted = [...teams]
-            .map(t=>({name:t,...(teamStats[t]||{w:0,d:0,l:0,gf:0,ga:0,pts:0})}))
-            .sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
+          const orderedNames = fifaSortGroup(teams, teamStats, grp, matchResults);
+          const sorted = orderedNames.map(t=>({name:t,...(teamStats[t]||{w:0,d:0,l:0,gf:0,ga:0,pts:0})}));
           const myGrpPicks = myPicks[grp]||[];
 
           return(
@@ -2441,6 +2443,81 @@ function InfoTab({users, tournament, currentUid, lang}){
   );
 }
 
+
+// ─── FIFA 2026 공식 타이브레이커 (Regulations Article 13) ────────────────────
+// 순서: 1)승점 2)맞대결승점 3)맞대결득실차 4)맞대결득점 5)전체득실차 6)전체득점
+// (페어플레이/FIFA랭킹은 카드 데이터 없어 미구현 - 완전동률 시 그대로 둠)
+function buildHeadToHead(group, matchResults) {
+  var h2h = {};
+  MATCH_SCHEDULE.forEach(function(m){
+    if(m.group !== group) return;
+    var r = matchResults[m.id] || matchResults[m.id+"a"];
+    if(!r) return;
+    var h = parseInt(r.home), a = parseInt(r.away);
+    if(isNaN(h)||isNaN(a)) return;
+    [m.home, m.away].forEach(function(t){
+      if(!h2h[t]) h2h[t] = {};
+    });
+    if(!h2h[m.home][m.away]) h2h[m.home][m.away] = {pts:0,gd:0,gf:0};
+    if(!h2h[m.away][m.home]) h2h[m.away][m.home] = {pts:0,gd:0,gf:0};
+    h2h[m.home][m.away].gd += (h-a); h2h[m.home][m.away].gf += h;
+    h2h[m.away][m.home].gd += (a-h); h2h[m.away][m.home].gf += a;
+    if(h>a) h2h[m.home][m.away].pts += 3;
+    else if(h<a) h2h[m.away][m.home].pts += 3;
+    else { h2h[m.home][m.away].pts++; h2h[m.away][m.home].pts++; }
+  });
+  return h2h;
+}
+
+// FIFA 공식 순서로 팀 배열 정렬. teamStats: {team:{pts,gd,gf,ga}}
+function fifaSortGroup(teams, teamStats, group, matchResults) {
+  var h2h = buildHeadToHead(group, matchResults||{});
+
+  var byPts = {};
+  teams.forEach(function(t){
+    var p = (teamStats[t]||{pts:0}).pts;
+    if(!byPts[p]) byPts[p] = [];
+    byPts[p].push(t);
+  });
+  var ptsLevels = Object.keys(byPts).map(Number).sort(function(a,b){return b-a;});
+
+  var result = [];
+  ptsLevels.forEach(function(p){
+    var tied = byPts[p];
+    if(tied.length === 1) { result.push(tied[0]); return; }
+
+    var miniStats = {};
+    tied.forEach(function(t){ miniStats[t] = {pts:0,gd:0,gf:0}; });
+    tied.forEach(function(t1){
+      tied.forEach(function(t2){
+        if(t1===t2) return;
+        var rec = (h2h[t1]||{})[t2];
+        if(rec){
+          miniStats[t1].pts += rec.pts;
+          miniStats[t1].gd += rec.gd;
+          miniStats[t1].gf += rec.gf;
+        }
+      });
+    });
+
+    var sortedTied = tied.slice().sort(function(a,b){
+      // 2.맞대결승점 3.맞대결득실차 4.맞대결득점
+      if(miniStats[b].pts !== miniStats[a].pts) return miniStats[b].pts - miniStats[a].pts;
+      if(miniStats[b].gd !== miniStats[a].gd) return miniStats[b].gd - miniStats[a].gd;
+      if(miniStats[b].gf !== miniStats[a].gf) return miniStats[b].gf - miniStats[a].gf;
+      // 5.전체득실차 6.전체득점
+      var sa = teamStats[a]||{gf:0,ga:0}, sb = teamStats[b]||{gf:0,ga:0};
+      var gdA = sa.gf - sa.ga, gdB = sb.gf - sb.ga;
+      if(gdB !== gdA) return gdB - gdA;
+      if(sb.gf !== sa.gf) return sb.gf - sa.gf;
+      return 0; // 완전 동률 (페어플레이/FIFA랭킹 단계 - 카드 데이터 없어 미반영, 입력 순서 유지)
+    });
+    result = result.concat(sortedTied);
+  });
+
+  return result;
+}
+
 // ─── COUNTDOWN BANNER ─────────────────────────────────────────────────────────
 function CountdownBanner({ lang, phase, uid }) {
   const [groupTime, setGroupTime] = useState(null);
@@ -2934,7 +3011,40 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
   const [saving,setSaving]=useState(false);
   const pending=Object.values(users).filter(u=>!u.approved);
   const approved=Object.values(users).filter(u=>u.approved);
-  const save=async()=>{setSaving(true);try{await saveTournamentState(st);showToast("Saved ✓");onClose();}catch{showToast("Error","error");}setSaving(false);};
+  const save=async()=>{
+    setSaving(true);
+    try{
+      // groupResults 저장 전 FIFA 공식 타이브레이커 순서로 자동 재정렬 (1위가 항상 [0])
+      var fixedGroupResults = {};
+      Object.entries(st.groupResults||{}).forEach(function(e){
+        var grp=e[0], picked=e[1]||[];
+        if(picked.length<2){ fixedGroupResults[grp]=picked; return; }
+        // 해당 조 전체 경기 결과로 stats 계산 후 FIFA 순서 적용, picked팀만 필터
+        var groupTeams = (GROUPS[grp]&&GROUPS[grp].teams)||[];
+        var stats={};
+        groupTeams.forEach(function(t){stats[t]={pts:0,gf:0,ga:0};});
+        MATCH_SCHEDULE.forEach(function(m){
+          if(m.group!==grp) return;
+          var r=(st.matchResults||{})[m.id]||(st.matchResults||{})[m.id+"a"];
+          if(!r) return;
+          var h=parseInt(r.home),a=parseInt(r.away);
+          if(isNaN(h)||isNaN(a)) return;
+          if(!stats[m.home]||!stats[m.away]) return;
+          stats[m.home].gf+=h;stats[m.home].ga+=a;
+          stats[m.away].gf+=a;stats[m.away].ga+=h;
+          if(h>a) stats[m.home].pts+=3;
+          else if(h<a) stats[m.away].pts+=3;
+          else { stats[m.home].pts++; stats[m.away].pts++; }
+        });
+        var sortedAll = fifaSortGroup(groupTeams, stats, grp, st.matchResults||{});
+        fixedGroupResults[grp] = sortedAll.filter(function(t){return picked.includes(t);});
+      });
+      await saveTournamentState({...st, groupResults: fixedGroupResults});
+      showToast("Saved ✓");
+      onClose();
+    }catch{showToast("Error","error");}
+    setSaving(false);
+  };
   const toggleGroup=(grp,team)=>setSt(prev=>{const cur=prev.groupResults?.[grp]||[];const next=cur.includes(team)?cur.filter(x=>x!==team):[...cur,team];return{...prev,groupResults:{...prev.groupResults,[grp]:next}};});
   const setBR=(key,winner)=>setSt(prev=>({...prev,bracketResults:{...prev.bracketResults,[key]:prev.bracketResults?.[key]===winner?"":winner}}));
   const setTeam=(idx,val)=>setSt(prev=>{const arr=[...prev.bracketTeams];arr[idx]=val;return{...prev,bracketTeams:arr};});
