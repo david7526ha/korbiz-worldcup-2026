@@ -1405,7 +1405,16 @@ function estimateAdvanceTo32(team, group, tournament) {
     var thirdInGroup = sortedInGroup[2];
     if(thirdInGroup) {
       var thirdMax = myStats[thirdInGroup].pts + (3-myStats[thirdInGroup].played)*3;
-      if(myStats[team].pts > thirdMax) return 1; // 수학적 확정
+      if(myStats[team].pts > thirdMax) return 1; // 승점으로 수학적 확정
+      // 승점이 동률 가능한 경우, 골득실로도 현실적으로 못 따라잡으면 확정 처리
+      // (3위가 남은 경기를 전부 큰 점수차로 이기고, 나는 남은 경기를 큰 점수차로 져야만
+      //  추월 가능한 경우는 실질적으로 무시 가능한 수준 - gd 격차 5점 이상이면 확정으로 봄)
+      if(myStats[team].pts === thirdMax) {
+        var remainingGames = 3 - myStats[thirdInGroup].played;
+        var maxRealisticGdSwing = remainingGames * 4; // 한 경기당 현실적 최대 골차 +4 가정
+        var gdGap = myStats[team].gd - myStats[thirdInGroup].gd;
+        if(gdGap > maxRealisticGdSwing) return 1; // 현실적으로 추월 불가능 -> 확정 처리
+      }
     }
     // 미확정이면 진행도 기반 확률 (1·2위는 기본적으로 유력)
     var progress = myStats[team].played / 3;
