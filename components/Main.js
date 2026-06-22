@@ -957,11 +957,11 @@ function WinProbWidget({users, tournament, currentUid, lang}){
         {/* 설명 */}
         <div style={{flex:1}}>
           <div style={{fontSize:11,color:"#5A7090",lineHeight:1.5,marginBottom:6}}>
-            {lang==="ko"
-              ? "현재 점수 + 남은 경기 시뮬레이션 3,000회 기반"
-              : lang==="es"
-              ? "Basado en 3,000 simulaciones"
-              : (prob!==null && Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+(u.total||0);},0)===0 ? "Pre-tournament — equal odds for all" : "Based on current picks & results")}
+            {(()=>{
+              var allZero = Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+(u.total||0);},0)===0;
+              if(allZero) return lang==="ko"?"첫 경기 전 — 전원 동일 확률":lang==="es"?"Antes del torneo — probabilidad igual para todos":"Pre-tournament — equal odds for all";
+              return lang==="ko"?"현재 확정 점수 기준":lang==="es"?"Basado en puntos confirmados actuales":"Based on current confirmed score";
+            })()}
           </div>
           <div style={{fontSize:11,color:color,fontWeight:500}}>
             {prob===null?"계산 중...":
@@ -1469,64 +1469,50 @@ function estimateAdvanceTo32(team, group, tournament) {
 
 
 
+// 포커 방식: "지금 이 순간의 확정 점수"만으로 우승확률 계산.
+// 미확정 픽의 미래 기대값은 반영하지 않음 -> 점수가 같으면 확률도 동일.
+// 픽이 실제로 탈락/진출 확정되는 "그 순간"에 점수(total)가 바뀌면서 확률도 자연히 갈림.
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
   if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
 
-  var gr = tournament.groupResults||{};
-  var mr = tournament.matchResults||{};
-  var hasAnyMatchResult = Object.keys(mr).length > 0;
+  var totalScore = ranked.reduce(function(s,u){return s+(u.total||0);},0);
 
-  // 경기 결과가 전혀 없으면 (완전 경기 전) → 무조건 균등
-  if(!hasAnyMatchResult) {
+  // 전원 점수 0 (경기 전) -> 완전 균등
+  if(totalScore === 0) {
     var eq = Math.round(100/N);
     return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
   }
 
-  // 팀별 진출확률 캐시 (조 14개 x 팀 4개 = 48개 정도, 매번 재계산해도 가벼움)
-  var advanceProbCache = {};
-  function getAdvanceProb(team, group) {
-    var key = group+":"+team;
-    if(!(key in advanceProbCache)) {
-      advanceProbCache[key] = estimateAdvanceTo32(team, group, tournament);
-    }
-    return advanceProbCache[key];
-  }
+  // 동점자 그룹별로 묶어서 같은 확률 배분 (1위 동점자들이 우승확률을 나눠가짐)
+  var maxScore = Math.max.apply(null, ranked.map(function(u){ return u.total||0; }));
+  var leaders = ranked.filter(function(u){ return (u.total||0) === maxScore; });
+  var leaderProb = Math.round(100 / leaders.length);
 
-  // 경기 진행 중 → 현재 확정점수 + 살아있는 픽의 "진출확률 가중" 기대값 기반 Monte Carlo
-  var SIMS = 2000;
-  var wins = {};
-  ranked.forEach(function(u){ wins[u.uid]=0; });
-
-  // 각 픽의 진출확률 p를 베르누이 시도로 직접 시뮬레이션 (진출=3점, 탈락=0점)
-  var potentials = ranked.map(function(u){
-    var cur = u.total||0;
-    var picksWithProb = []; // [{p: 0~1}]
-    Object.entries(u.groupPicks||{}).forEach(function(e){
-      var grp = e[0], teams = e[1]||[];
-      if(gr[grp]) return; // 이미 확정된 조는 cur에 반영됨, 스킵
-      teams.forEach(function(team){
-        picksWithProb.push(getAdvanceProb(team, grp));
-      });
-    });
-    return {uid:u.uid, cur:cur, picksWithProb:picksWithProb};
+  // 1위가 아닌 사람들은 현재 점수 격차에 따라 낮은 확률 배분 (역전 가능성 반영, 점수 기준만)
+  var others = ranked.filter(function(u){ return (u.total||0) < maxScore; });
+  var maxPossibleGap = 108; // 조별리그 최대 108점 기준 격차 정규화
+  var otherProbs = others.map(function(u){
+    var gap = maxScore - (u.total||0);
+    var raw = Math.max(0, 1 - gap/maxPossibleGap*3); // 격차 클수록 빠르게 0에 수렴
+    return {uid:u.uid, raw:raw};
   });
+  var rawSum = otherProbs.reduce(function(s,o){return s+o.raw;}, 0);
+  // 전체 100%에서 leaders가 가져간 몫(leaderProb*leaders.length)을 제외한 나머지를 격차 비례 배분
+  var remainingPct = Math.max(0, 100 - leaderProb*leaders.length);
 
-  for(var i=0;i<SIMS;i++){
-    var best=-1, bestUid=null;
-    potentials.forEach(function(p){
-      var sim = p.cur;
-      // 각 픽마다 독립적으로 진출확률에 따라 베르누이 시도 (성공시 +3점)
-      for(var k=0;k<p.picksWithProb.length;k++){
-        if(Math.random() < p.picksWithProb[k]) sim += 3;
-      }
-      if(sim>best){ best=sim; bestUid=p.uid; }
+  var result = {};
+  leaders.forEach(function(u){ result[u.uid] = leaderProb; });
+  if(rawSum > 0) {
+    otherProbs.forEach(function(o){
+      result[o.uid] = Math.round(remainingPct * (o.raw/rawSum));
     });
-    if(bestUid) wins[bestUid]++;
+  } else {
+    otherProbs.forEach(function(o){ result[o.uid] = 0; });
   }
 
   return ranked.map(function(u){
-    return {uid:u.uid, prob:Math.round(wins[u.uid]/SIMS*100)};
+    return {uid:u.uid, prob: result[u.uid] !== undefined ? result[u.uid] : 0};
   });
 }
 
