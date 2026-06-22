@@ -1400,28 +1400,39 @@ function estimateAdvanceTo32(team, group, tournament) {
   var sortedInGroup = fifaSortGroup(myGroupTeams, myStats, group, mr);
   var rankInGroup = sortedInGroup.indexOf(team); // 0~3
 
-  // 2) 1·2위면: 3위가 남은 경기 다 이겨도 못 따라잡으면 100% 확정
+  // 2) 1·2위면: "나를 제외한 모든 팀"이 각자 남은 경기를 다 이겨도 못 따라잡으면 확정
   if(rankInGroup < 2) {
-    var thirdInGroup = sortedInGroup[2];
-    if(thirdInGroup) {
-      var thirdMax = myStats[thirdInGroup].pts + (3-myStats[thirdInGroup].played)*3;
-      if(myStats[team].pts > thirdMax) {
-        return 1; // 승점으로 수학적 확정 (3위가 다 이겨도 승점 자체가 못 따라옴)
-      }
-      if(myStats[team].pts === thirdMax) {
-        // 승점이 동률까지 갈 수 있는 경우 -> FIFA 타이브레이커 순서로 재확인
-        // 1순위: 맞대결(헤드투헤드) 결과. 이미 직접 맞붙어 내가 이겼다면,
-        // 승점 동률이 되어도 헤드투헤드에서 내가 우선이므로 확정으로 처리.
-        var h2h = buildHeadToHead(group, mr);
-        var myH2H = (h2h[team]||{})[thirdInGroup];
-        if(myH2H && myH2H.pts > 0 && (!((h2h[thirdInGroup]||{})[team]) || myH2H.pts >= (h2h[thirdInGroup][team]||{pts:0}).pts)) {
-          // 맞대결에서 내가 이겼거나(pts>0) 최소 동등 -> 동률 시 내가 우선권 -> 확정
-          if(myH2H.pts > ((h2h[thirdInGroup]||{})[team]||{pts:0}).pts) return 1;
-        }
-        // 맞대결 기록이 없거나(아직 안 만남) 맞대결도 동률이면 -> 전체 득실차/득점까지 비교해야 하므로 미확정
+    var h2h = buildHeadToHead(group, mr);
+    var others = myGroupTeams.filter(function(t){ return t !== team; });
+    var clinched = true;
+    var anyUncertain = false;
+
+    for(var oi=0; oi<others.length; oi++){
+      var other = others[oi];
+      var otherMax = myStats[other].pts + (3-myStats[other].played)*3;
+      if(myStats[team].pts > otherMax) continue; // 이 팀은 못 따라옴 -> 안전
+
+      if(myStats[team].pts === otherMax) {
+        // 동률 가능 -> 맞대결로 우선권 확인
+        var myH2H = (h2h[team]||{})[other];
+        var otherH2H = (h2h[other]||{})[team];
+        var myH2HPts = myH2H ? myH2H.pts : null;
+        var otherH2HPts = otherH2H ? otherH2H.pts : null;
+        if(myH2HPts !== null && myH2HPts > (otherH2HPts||0)) continue; // 맞대결 우위 -> 안전
+        // 맞대결 기록 없음(아직 안 만남) 또는 맞대결도 동률 -> 불확실
+        anyUncertain = true;
+        clinched = false;
+      } else {
+        // otherMax가 내 점수보다 높음 -> 따라잡힐 수 있음 -> 불확실
+        anyUncertain = true;
+        clinched = false;
       }
     }
+
+    if(clinched) return 1; // 모든 다른 팀에 대해 안전 -> 32강 확정
+
     // 미확정이면 진행도 기반 확률 (1·2위는 기본적으로 유력)
+    var thirdInGroup = sortedInGroup[2];
     var progress = myStats[team].played / 3;
     var gapToThird = myStats[team].pts - (thirdInGroup ? myStats[thirdInGroup].pts : 0);
     var conf = Math.min(1, gapToThird/6);
