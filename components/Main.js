@@ -913,7 +913,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
       if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
       return newProb;
     });
-  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().length:0)).join('|'), Object.keys(tournament.groupResults||{}).length]);
+  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().length:0)).join('|'), Object.keys(tournament.groupResults||{}).length, Object.keys(tournament.matchResults||{}).length]);
 
   const lbl = lang==="ko"?"우승 확률":lang==="es"?"Mi probabilidad":"Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
