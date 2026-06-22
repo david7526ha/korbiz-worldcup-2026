@@ -958,7 +958,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
         <div style={{flex:1}}>
           <div style={{fontSize:11,color:"#5A7090",lineHeight:1.5,marginBottom:6}}>
             {(()=>{
-              var allZero = Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+(u.total||0);},0)===0;
+              var allZero = Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}},tournament).total;},0)===0;
               if(allZero) return lang==="ko"?"첫 경기 전 — 전원 동일 확률":lang==="es"?"Antes del torneo — probabilidad igual para todos":"Pre-tournament — equal odds for all";
               return lang==="ko"?"현재 확정 점수 기준":lang==="es"?"Basado en puntos confirmados actuales":"Based on current confirmed score";
             })()}
