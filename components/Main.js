@@ -1405,15 +1405,20 @@ function estimateAdvanceTo32(team, group, tournament) {
     var thirdInGroup = sortedInGroup[2];
     if(thirdInGroup) {
       var thirdMax = myStats[thirdInGroup].pts + (3-myStats[thirdInGroup].played)*3;
-      if(myStats[team].pts > thirdMax) return 1; // 승점으로 수학적 확정
-      // 승점이 동률 가능한 경우, 골득실로도 현실적으로 못 따라잡으면 확정 처리
-      // (3위가 남은 경기를 전부 큰 점수차로 이기고, 나는 남은 경기를 큰 점수차로 져야만
-      //  추월 가능한 경우는 실질적으로 무시 가능한 수준 - gd 격차 5점 이상이면 확정으로 봄)
+      if(myStats[team].pts > thirdMax) {
+        return 1; // 승점으로 수학적 확정 (3위가 다 이겨도 승점 자체가 못 따라옴)
+      }
       if(myStats[team].pts === thirdMax) {
-        var remainingGames = 3 - myStats[thirdInGroup].played;
-        var maxRealisticGdSwing = remainingGames * 4; // 한 경기당 현실적 최대 골차 +4 가정
-        var gdGap = myStats[team].gd - myStats[thirdInGroup].gd;
-        if(gdGap > maxRealisticGdSwing) return 1; // 현실적으로 추월 불가능 -> 확정 처리
+        // 승점이 동률까지 갈 수 있는 경우 -> FIFA 타이브레이커 순서로 재확인
+        // 1순위: 맞대결(헤드투헤드) 결과. 이미 직접 맞붙어 내가 이겼다면,
+        // 승점 동률이 되어도 헤드투헤드에서 내가 우선이므로 확정으로 처리.
+        var h2h = buildHeadToHead(group, mr);
+        var myH2H = (h2h[team]||{})[thirdInGroup];
+        if(myH2H && myH2H.pts > 0 && (!((h2h[thirdInGroup]||{})[team]) || myH2H.pts >= (h2h[thirdInGroup][team]||{pts:0}).pts)) {
+          // 맞대결에서 내가 이겼거나(pts>0) 최소 동등 -> 동률 시 내가 우선권 -> 확정
+          if(myH2H.pts > ((h2h[thirdInGroup]||{})[team]||{pts:0}).pts) return 1;
+        }
+        // 맞대결 기록이 없거나(아직 안 만남) 맞대결도 동률이면 -> 전체 득실차/득점까지 비교해야 하므로 미확정
       }
     }
     // 미확정이면 진행도 기반 확률 (1·2위는 기본적으로 유력)
