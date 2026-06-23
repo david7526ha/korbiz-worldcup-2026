@@ -1400,36 +1400,35 @@ function estimateAdvanceTo32(team, group, tournament) {
   var sortedInGroup = fifaSortGroup(myGroupTeams, myStats, group, mr);
   var rankInGroup = sortedInGroup.indexOf(team); // 0~3
 
-  // 2) 1·2위면: "나를 제외한 모든 팀"이 각자 남은 경기를 다 이겨도 못 따라잡으면 확정
+  // 2) 1·2위면: 32강행 여부만 중요 (정확히 몇 위인지는 무관).
+  // 따라서 "현재 3·4위인 팀들"이 나를 추월해서 1·2위 안으로 들어올 수 있는지만 체크.
+  // 이미 1·2위인 다른 한 팀(나와 경쟁이 아니라 둘 다 진출하는 동료)은 비교 대상에서 제외.
   if(rankInGroup < 2) {
     var h2h = buildHeadToHead(group, mr);
-    var others = myGroupTeams.filter(function(t){ return t !== team; });
+    var challengers = myGroupTeams.filter(function(t){
+      var r = sortedInGroup.indexOf(t);
+      return t !== team && r >= 2; // 현재 3·4위 팀들만 (1·2위 동료는 제외)
+    });
     var clinched = true;
-    var anyUncertain = false;
 
-    for(var oi=0; oi<others.length; oi++){
-      var other = others[oi];
+    for(var oi=0; oi<challengers.length; oi++){
+      var other = challengers[oi];
       var otherMax = myStats[other].pts + (3-myStats[other].played)*3;
-      if(myStats[team].pts > otherMax) continue; // 이 팀은 못 따라옴 -> 안전
+      if(myStats[team].pts > otherMax) continue; // 이 도전자는 못 따라옴 -> 안전
 
       if(myStats[team].pts === otherMax) {
-        // 동률 가능 -> 맞대결로 우선권 확인
         var myH2H = (h2h[team]||{})[other];
         var otherH2H = (h2h[other]||{})[team];
         var myH2HPts = myH2H ? myH2H.pts : null;
         var otherH2HPts = otherH2H ? otherH2H.pts : null;
         if(myH2HPts !== null && myH2HPts > (otherH2HPts||0)) continue; // 맞대결 우위 -> 안전
-        // 맞대결 기록 없음(아직 안 만남) 또는 맞대결도 동률 -> 불확실
-        anyUncertain = true;
         clinched = false;
       } else {
-        // otherMax가 내 점수보다 높음 -> 따라잡힐 수 있음 -> 불확실
-        anyUncertain = true;
-        clinched = false;
+        clinched = false; // 따라잡힐 수 있음
       }
     }
 
-    if(clinched) return 1; // 모든 다른 팀에 대해 안전 -> 32강 확정
+    if(clinched) return 1; // 모든 도전자(3·4위)에 대해 안전 -> 32강 확정
 
     // 미확정이면 진행도 기반 확률 (1·2위는 기본적으로 유력)
     var thirdInGroup = sortedInGroup[2];
