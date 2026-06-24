@@ -1415,9 +1415,13 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
       setZoom(newZoom);
     } else if(e.touches.length === 1 && panRef.current.active){
       // transform 순서가 translate(pan) scale(zoom) 이므로,
-      // pan은 스케일 이전 좌표계 -> 화면상 dx/dy를 zoom으로 나눠야 손가락과 1:1로 맞음
-      const dx = (e.touches[0].clientX - panRef.current.startX) / zoom;
-      const dy = (e.touches[0].clientY - panRef.current.startY) / zoom;
+      // pan은 스케일 이전 좌표계 -> 화면상 dx/dy를 zoom으로 나눠야 손가락과 1:1로 맞음.
+      // 90도 강제회전 상태에서는 실제 터치 이벤트 좌표축이 화면에 보이는 것과 90도 어긋나므로
+      // (회전된 화면의 가로 = 원래좌표의 세로, 회전된 화면의 세로 = 원래좌표의 -가로) 보정함
+      const rawDx = e.touches[0].clientX - panRef.current.startX;
+      const rawDy = e.touches[0].clientY - panRef.current.startY;
+      const dx = (isPortrait ? rawDy : rawDx) / zoom;
+      const dy = (isPortrait ? -rawDx : rawDy) / zoom;
       setPan({x:panRef.current.startPanX+dx, y:panRef.current.startPanY+dy});
     }
   };
@@ -1534,17 +1538,14 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     : ["R32","R16","QF","SF"];
 
   // 화면이 세로(portrait)면 CSS로 강제 90도 회전시켜 가로처럼 보이게 함
-  const [isPortrait, setIsPortrait] = useState(false);
-  useEffect(()=>{
-    var check = function(){ setIsPortrait(window.innerHeight > window.innerWidth); };
-    check();
-    window.addEventListener("resize", check);
-    return ()=>window.removeEventListener("resize", check);
-  },[]);
+  // 모달이 열리는 순간의 방향을 한 번만 고정 (실기기 회전/resize에도 절대 안 바뀜 -> 깜빡임 방지)
+  const [isPortrait] = useState(()=> typeof window !== "undefined" && window.innerHeight > window.innerWidth);
+  const [lockedW] = useState(()=> typeof window !== "undefined" ? window.innerWidth : 375);
+  const [lockedH] = useState(()=> typeof window !== "undefined" ? window.innerHeight : 667);
 
   var rotateStyle = isPortrait ? {
     position:"fixed", top:"50%", left:"50%",
-    width:window.innerHeight, height:window.innerWidth,
+    width:lockedH, height:lockedW,
     transform:"translate(-50%,-50%) rotate(90deg)",
     transformOrigin:"center center",
   } : { position:"fixed", inset:0 };
