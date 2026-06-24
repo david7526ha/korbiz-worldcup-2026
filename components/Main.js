@@ -1477,8 +1477,29 @@ function estimateAdvanceTo32(team, group, tournament) {
     return Math.max(0.5, Math.min(0.98, 0.6 + 0.3*progress + 0.08*conf));
   }
 
-  // 3) 4위면: 32강 갈 방법 없음 (1·2위 자동진출 + 3위 와일드카드뿐)
-  if(rankInGroup >= 3) return 0.02;
+  // 3) 4위인 경우: 먼저 "3위로 올라갈 수 있는지"부터 확인해야 함 (3위는 와일드카드 후보)
+  // 4위가 3위를 추월하려면, 현재 3위 팀의 최대가능점수를 내가 넘어서야 함
+  if(rankInGroup >= 3) {
+    var thirdPlaceTeam = sortedInGroup[2];
+    var myMaxAsFourth = myStats[team].pts + (3-myStats[team].played)*3;
+    if(!thirdPlaceTeam) return 0.05;
+    var thirdMaxAtMyRank = myStats[thirdPlaceTeam].pts; // 3위의 현재 점수 (이미 확정된 부분)
+    // 내가 3위를 절대 못 넘을 상황(남은경기 다 이겨도 3위 현재점수보다 낮음)이면 탈락 직전
+    if(myMaxAsFourth < thirdMaxAtMyRank) return 0.02;
+    if(myMaxAsFourth === thirdMaxAtMyRank) {
+      // 동률 가능 -> 맞대결 확인
+      var h2hVs3rd = buildHeadToHead(group, mr);
+      var my3rdH2H = (h2hVs3rd[team]||{})[thirdPlaceTeam];
+      var third4thH2H = (h2hVs3rd[thirdPlaceTeam]||{})[team];
+      var myPtsVs3rd = my3rdH2H ? my3rdH2H.pts : 0;
+      var thirdPtsVs4th = third4thH2H ? third4thH2H.pts : 0;
+      if(thirdPtsVs4th > myPtsVs3rd) return 0.03; // 맞대결도 불리 -> 거의 탈락
+    }
+    // 4위지만 아직 3위 추월 가능성이 남아있음 -> 진행도 기반 낮은 확률 (탈락 임박이지만 100%는 아님)
+    var progress4th = myStats[team].played / 3;
+    var gapBehind = thirdMaxAtMyRank - myStats[team].pts;
+    return Math.max(0.05, Math.min(0.45, 0.3 - 0.1*progress4th - 0.03*gapBehind));
+  }
 
   // 4) 3위인 경우: 전체 12개조 3위들과 비교해서 상위 8개 안에 드는지 추정
   var allThirdPlaces = [];
