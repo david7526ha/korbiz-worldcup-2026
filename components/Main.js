@@ -913,7 +913,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
       if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
       return newProb;
     });
-  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().length:0)).join('|'), Object.keys(tournament.groupResults||{}).length, Object.keys(tournament.matchResults||{}).length]);
+  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().join(','):'')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
 
   const lbl = lang==="ko"?"우승 확률":lang==="es"?"Mi probabilidad":"Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
@@ -1081,7 +1081,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     const result = {};
     probList.forEach(p=>{ result[p.uid]=p.prob; });
     setWinProbs(result);
-  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().length).join('|'), Object.keys(tournament.groupResults||{}).length, Object.keys(tournament.matchResults||{}).length]);
+  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
