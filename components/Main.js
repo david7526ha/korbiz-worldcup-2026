@@ -1764,16 +1764,23 @@ function GroupStandings({users, tournament, currentUid, lang}){
               </div>
               {sorted.map((t,i)=>{
                 const isMyPick = myGrpPicks.includes(t.name);
-                const inZone = i<2; // 진출권
+                const inZone = i<2; // 현재 순위 기준 진출권
                 const gd = t.gf-t.ga;
+                const advProb = estimateAdvanceTo32(t.name, grp, tournament);
+                const isQualified = advProb === 1;
+                const isEliminated = advProb <= 0.03;
                 return(
-                  <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:5}}>
-                      {inZone&&<div style={{width:3,height:14,borderRadius:2,background:"#22C55E",flexShrink:0}}/>}
-                      {!inZone&&<div style={{width:3,height:14,flexShrink:0}}/>}
-                      <span style={{fontSize:11,color:isMyPick?"#D4A843":"#E0E8F0",fontWeight:isMyPick?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:isQualified?"rgba(34,197,94,.06)":isEliminated?"rgba(239,68,68,.04)":inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
+                      {isQualified&&<div style={{width:3,height:14,borderRadius:2,background:"#22C55E",flexShrink:0}}/>}
+                      {isEliminated&&<div style={{width:3,height:14,borderRadius:2,background:"#EF4444",flexShrink:0}}/>}
+                      {!isQualified&&!isEliminated&&inZone&&<div style={{width:3,height:14,borderRadius:2,background:"rgba(34,197,94,.4)",flexShrink:0}}/>}
+                      {!isQualified&&!isEliminated&&!inZone&&<div style={{width:3,height:14,flexShrink:0}}/>}
+                      <span style={{fontSize:11,color:isMyPick?"#D4A843":isEliminated?"#5A7090":"#E0E8F0",fontWeight:isMyPick?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:isEliminated?"line-through":"none"}}>
                         {isMyPick?"⭐ ":""}{tn(t.name,lang)}
                       </span>
+                      {isQualified&&<span style={{fontSize:8,padding:"1px 4px",borderRadius:4,background:"rgba(34,197,94,.2)",color:"#22C55E",fontWeight:700,flexShrink:0,letterSpacing:".02em"}}>Q</span>}
+                      {isEliminated&&<span style={{fontSize:8,padding:"1px 4px",borderRadius:4,background:"rgba(239,68,68,.15)",color:"#EF4444",fontWeight:700,flexShrink:0,letterSpacing:".02em"}}>OUT</span>}
                     </div>
                     {[t.w,t.d,t.l,(gd>0?"+":"")+gd,t.pts].map((v,j)=>(
                       <span key={j} style={{fontSize:11,color:j===4?"#E0E8F0":"#9CA3AF",fontWeight:j===4?700:400,textAlign:"center"}}>{v}</span>
