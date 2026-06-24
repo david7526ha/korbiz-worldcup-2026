@@ -1086,6 +1086,27 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
 
+  // 동점자 그룹 내에서만 우승확률 높은 순으로 재정렬 (점수 순위 자체는 그대로 유지)
+  const displayOrder = (function(){
+    var groups = {};
+    ranked.forEach(function(u){
+      var key = u.total;
+      if(!groups[key]) groups[key]=[];
+      groups[key].push(u);
+    });
+    var scores = Object.keys(groups).map(Number).sort(function(a,b){return b-a;});
+    var out = [];
+    scores.forEach(function(s){
+      var group = groups[s];
+      group.sort(function(a,b){
+        var pa = winProbs[a.uid]||0, pb = winProbs[b.uid]||0;
+        return pb-pa;
+      });
+      out = out.concat(group);
+    });
+    return out;
+  })();
+
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 12px 8px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -1095,7 +1116,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
         <div style={{fontSize:11,color:"#5A7090"}}>max {maxPts} pts</div>
       </div>
 
-      {ranked.map((u, i) => {
+      {displayOrder.map((u, i) => {
         const isMe = u.uid === currentUid;
         const pct = topScore > 0 ? (u.total / topScore) * 88 : 0;
         const finalPct = animated ? pct : 0;
