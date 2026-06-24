@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   auth, db, signInWithGoogle, signOutUser, isAdmin,
   ensureUserDoc, saveGroupPicks, saveBracketPicks,
@@ -1383,21 +1383,43 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
   useEffect(()=>{
     var prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
-    // 모달 열린 동안만 핀치줌 허용 (전역 viewport는 줌 잠금 상태이므로 임시로 풀어줌)
-    var viewportMeta = document.querySelector('meta[name="viewport"]');
-    var prevContent = viewportMeta ? viewportMeta.getAttribute("content") : null;
-    if(viewportMeta){
-      viewportMeta.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes");
-    }
-
-    return ()=>{
-      document.body.style.overflow = prevOverflow;
-      if(viewportMeta && prevContent !== null){
-        viewportMeta.setAttribute("content", prevContent);
-      }
-    };
+    return ()=>{ document.body.style.overflow = prevOverflow; };
   },[]);
+
+  // ── 자체 핀치줌/드래그 구현 (브라우저 viewport는 그대로 잠긴 상태 유지) ──
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({x:0,y:0});
+  const pinchRef = useRef({dist:0, startZoom:1});
+  const panRef = useRef({active:false, startX:0, startY:0, startPanX:0, startPanY:0});
+
+  const getDist = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  };
+
+  const onTouchStart = (e) => {
+    if(e.touches.length === 2){
+      pinchRef.current.dist = getDist(e.touches);
+      pinchRef.current.startZoom = zoom;
+    } else if(e.touches.length === 1){
+      panRef.current = {active:true, startX:e.touches[0].clientX, startY:e.touches[0].clientY, startPanX:pan.x, startPanY:pan.y};
+    }
+  };
+  const onTouchMove = (e) => {
+    if(e.touches.length === 2){
+      e.preventDefault();
+      const newDist = getDist(e.touches);
+      const scale = newDist / (pinchRef.current.dist||1);
+      const newZoom = Math.max(0.5, Math.min(3, pinchRef.current.startZoom * scale));
+      setZoom(newZoom);
+    } else if(e.touches.length === 1 && panRef.current.active){
+      const dx = e.touches[0].clientX - panRef.current.startX;
+      const dy = e.touches[0].clientY - panRef.current.startY;
+      setPan({x:panRef.current.startPanX+dx, y:panRef.current.startPanY+dy});
+    }
+  };
+  const onTouchEnd = () => { panRef.current.active = false; };
 
   // 32강 매치업
   var R32 = {
@@ -1537,10 +1559,20 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
         </button>
       </div>
 
-      {/* 핀치줌+스크롤 가능한 브래킷 영역 */}
-      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",touchAction:"pinch-zoom pan-x pan-y"}}>
-        <div style={{padding:16,display:"flex",justifyContent:"center",minWidth:SVG_W+32}}>
-          <svg width={SVG_W} height={SVG_H} style={{display:"block",flexShrink:0}}>
+      {/* 자체 핀치줌+드래그 가능한 브래킷 영역 (브라우저 줌과 완전 분리) */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{flex:1,overflow:"hidden",touchAction:"none",position:"relative",background:"#04080F"}}
+      >
+        <div style={{
+          position:"absolute",top:"50%",left:"50%",
+          transform:`translate(-50%,-50%) translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
+          transformOrigin:"center center",
+          transition: panRef.current.active ? "none" : "transform 0.05s linear",
+        }}>
+          <svg width={SVG_W} height={SVG_H} style={{display:"block"}}>
             {/* 라운드 라벨 (위쪽) */}
             {roundLabels.map(function(lbl,i){
               return(
@@ -1579,8 +1611,15 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
             {renderEmptyRound(3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8)}
           </svg>
         </div>
-        <div style={{textAlign:"center",padding:"4px 0 16px",fontSize:10,color:"#3A5070"}}>
-          {lang==="ko"?"← 핀치줌 · 스크롤 가능 →":"← pinch to zoom · scroll →"}
+
+        {/* 줌 리셋 버튼 */}
+        <button
+          onClick={()=>{setZoom(1);setPan({x:0,y:0});}}
+          style={{position:"absolute",bottom:14,right:14,padding:"8px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,.2)",background:"rgba(12,22,32,.9)",color:"#D4A843",fontSize:11,touchAction:"manipulation"}}>
+          ⟲ {lang==="ko"?"초기화":"Reset"}
+        </button>
+        <div style={{position:"absolute",top:8,left:0,right:0,textAlign:"center",fontSize:10,color:"#3A5070",pointerEvents:"none"}}>
+          {lang==="ko"?"두 손가락으로 줌 · 한 손가락으로 이동":"pinch to zoom · drag to pan"}
         </div>
       </div>
     </div>
@@ -3651,7 +3690,7 @@ export default function Main(){
   ];
 
   return(
-    <div style={{minHeight:"100vh",background:"#060C14",fontFamily:"'Outfit',sans-serif",color:"#E0E8F0"}}>
+    <div style={{minHeight:"100vh",background:"#060C14",fontFamily:"'Outfit',sans-serif",color:"#E0E8F0",overflowX:"hidden",touchAction:"pan-y",overscrollBehaviorX:"none"}}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}`}</style>
       <div style={{background:"#0C1620",borderBottom:"1px solid rgba(255,255,255,.07)",position:"sticky",top:0,zIndex:200}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}}>
