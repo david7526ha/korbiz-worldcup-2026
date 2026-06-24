@@ -1251,6 +1251,7 @@ const WC_SLOTS = [
 ];
 
 function BracketPreview({users, tournament, currentUid, lang}){
+  const [fullscreen, setFullscreen] = useState(false);
   const gr = tournament.groupResults||{};
   const doneCount = Object.keys(gr).length;
   const hasResults = doneCount >= 12;
@@ -1297,16 +1298,22 @@ function BracketPreview({users, tournament, currentUid, lang}){
 
   return(
     <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:15,color:"#D4A843",letterSpacing:".1em"}}>
           ⚔️ {lang==="ko"?"32강 대진표":lang==="es"?"CUADRO DE 32":"ROUND OF 32"}
           <span style={{fontSize:10,color:"#5A7090",marginLeft:8,fontFamily:"sans-serif",letterSpacing:"normal",fontWeight:400}}>
             {lang==="ko"?"내 픽 ⭐":lang==="es"?"tus picks ⭐":"your picks ⭐"}
           </span>
         </div>
-        {!hasResults&&(
-          <span style={{fontSize:11,color:"#5A7090"}}>{doneCount}/12 {lang==="ko"?"조 완료":lang==="es"?"grupos":"groups"}</span>
-        )}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {!hasResults&&(
+            <span style={{fontSize:11,color:"#5A7090"}}>{doneCount}/12 {lang==="ko"?"조 완료":lang==="es"?"grupos":"groups"}</span>
+          )}
+          <button onClick={()=>setFullscreen(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(212,168,67,.35)",background:"rgba(212,168,67,.08)",color:"#D4A843",fontSize:11,fontWeight:600,cursor:"pointer",touchAction:"manipulation",whiteSpace:"nowrap"}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D4A843" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            {lang==="ko"?"브래킷 보기":lang==="es"?"Ver cuadro":"Full Bracket"}
+          </button>
+        </div>
       </div>
 
       {!hasResults&&doneCount===0&&(
@@ -1360,6 +1367,110 @@ function BracketPreview({users, tournament, currentUid, lang}){
           </div>
         </div>
       )}
+
+      {fullscreen && (
+        <BracketFullscreenModal
+          onClose={()=>setFullscreen(false)}
+          st={st} myPicks={myPicks} lang={lang}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── BRACKET FULLSCREEN MODAL (March Madness style) ─────────────────────────
+function BracketFullscreenModal({onClose, st, myPicks, lang}){
+  useEffect(()=>{
+    var prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return ()=>{ document.body.style.overflow = prevOverflow; };
+  },[]);
+
+  var LEFT = [
+    {a:"A2",b:"B2"},{a:"C1",b:"F2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},
+    {a:"E2",b:"I2"},{a:"I1",b:"WC2"},{a:"A1",b:"WC3"},{a:"B1",b:"D2"},
+  ];
+  var RIGHT = [
+    {a:"L1",b:"WC4"},{a:"G1",b:"WC5"},{a:"D1",b:"WC6"},{a:"J1",b:"H2"},
+    {a:"K1",b:"WC7"},{a:"H1",b:"G2"},{a:"L2",b:"K2"},{a:"J2",b:"WC8"},
+  ];
+
+  var srcLabel = function(src){
+    if(src.indexOf("WC")===0) return lang==="ko"?"3위 WC":"3rd WC";
+    return src[0]+(lang==="ko"?("조"+(src[1]==="1"?"1위":"2위")):(" "+(src[1]==="1"?"W":"R")));
+  };
+
+  var Slot = function(src){
+    var team = st[src];
+    var isMe = team && myPicks.has(team);
+    var label = team ? tn(team,lang) : srcLabel(src);
+    return(
+      <div style={{padding:"4px 8px",background:isMe?"rgba(212,168,67,.18)":"rgba(255,255,255,.04)",borderRadius:3,display:"flex",alignItems:"center",gap:4,minHeight:22}}>
+        {isMe&&<span style={{fontSize:8,flexShrink:0}}>⭐</span>}
+        <span style={{fontSize:10,color:isMe?"#D4A843":team?"#E0E8F0":"#5A7090",fontWeight:isMe?700:400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+          {label}
+        </span>
+      </div>
+    );
+  };
+
+  var MatchBox = function(m, side){
+    return(
+      <div style={{display:"flex",flexDirection:"column",gap:2,width:128}}>
+        {Slot(m.a)}
+        {Slot(m.b)}
+      </div>
+    );
+  };
+
+  // 8개를 4쌍씩 연결선으로 그룹화 (March Madness 느낌)
+  var renderColumn = function(matches, side){
+    return(
+      <div style={{display:"flex",flexDirection:"column",gap:14,position:"relative"}}>
+        {matches.map(function(m,i){
+          return(
+            <div key={i} style={{position:"relative"}}>
+              {MatchBox(m, side)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(5,10,18,.97)",zIndex:9999,display:"flex",flexDirection:"column",touchAction:"pan-x pan-y pinch-zoom"}}>
+      {/* 헤더 */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,.08)",flexShrink:0}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".15em"}}>
+          ⚔️ ROUND OF 32
+        </div>
+        <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.06)",color:"#E0E8F0",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>
+          ✕ {lang==="ko"?"닫기":lang==="es"?"Cerrar":"Close"}
+        </button>
+      </div>
+
+      {/* 가로 스크롤 브래킷 본체 */}
+      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",padding:"20px 16px"}}>
+        <div style={{display:"flex",justifyContent:"center",alignItems:"flex-start",gap:40,minWidth:640}}>
+          {/* 왼쪽 8경기 */}
+          {renderColumn(LEFT, "left")}
+
+          {/* 가운데 결승 표시 */}
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minWidth:90,paddingTop:140,gap:8}}>
+            <div style={{fontSize:24}}>🏆</div>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843",letterSpacing:".1em",textAlign:"center"}}>FINAL</div>
+            <div style={{width:1,flex:1,background:"linear-gradient(to bottom,rgba(212,168,67,.4),transparent)"}}/>
+          </div>
+
+          {/* 오른쪽 8경기 */}
+          {renderColumn(RIGHT, "right")}
+        </div>
+
+        <div style={{textAlign:"center",marginTop:20,fontSize:10,color:"#3A5070"}}>
+          {lang==="ko"?"← 좌우로 스크롤 · 핀치줌 가능 →":"← scroll & pinch to zoom →"}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3448,8 +3559,8 @@ export default function Main(){
           <Avatar name={firebaseUser.displayName} photoURL={firebaseUser.photoURL} size={28}/>
           <button onClick={signOutUser} style={{background:"transparent",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"3px 8px",color:"#5A7090",fontSize:10,cursor:"pointer"}}>{t.signOut}</button>
         </div>
-        <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch",msOverflowStyle:"none",scrollbarWidth:"none"}}>
-          {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"7px 12px",border:"none",background:"transparent",whiteSpace:"nowrap",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:12,whiteSpace:"nowrap",cursor:"pointer"}}>{tb.label.toUpperCase()}</button>)}
+        <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch",msOverflowStyle:"none",scrollbarWidth:"none",touchAction:"pan-x",overscrollBehaviorY:"contain"}}>
+          {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"12px 14px",border:"none",background:"transparent",whiteSpace:"nowrap",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:13,whiteSpace:"nowrap",cursor:"pointer",touchAction:"manipulation",minHeight:44}}>{tb.label.toUpperCase()}</button>)}
         </div>
       </div>
 
