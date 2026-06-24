@@ -960,7 +960,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
             {(()=>{
               var allZero = Object.values(users).filter(u=>u.approved&&u.paid).reduce(function(s,u){return s+calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}},tournament).total;},0)===0;
               if(allZero) return lang==="ko"?"첫 경기 전 — 전원 동일 확률":lang==="es"?"Antes del torneo — probabilidad igual para todos":"Pre-tournament — equal odds for all";
-              return lang==="ko"?"현재 확정 점수 기준":lang==="es"?"Basado en puntos confirmados actuales":"Based on current confirmed score";
+              return lang==="ko"?"확정 점수 + 남은 픽의 생존 가능성 기준":lang==="es"?"Basado en puntos confirmados + potencial restante":"Based on confirmed score + surviving pick potential";
             })()}
           </div>
           <div style={{fontSize:11,color:color,fontWeight:500}}>
@@ -1531,6 +1531,22 @@ function estimateAdvanceTo32(team, group, tournament) {
 // 포커 방식: "지금 이 순간의 확정 점수"만으로 우승확률 계산.
 // 미확정 픽의 미래 기대값은 반영하지 않음 -> 점수가 같으면 확률도 동일.
 // 픽이 실제로 탈락/진출 확정되는 "그 순간"에 점수(total)가 바뀌면서 확률도 자연히 갈림.
+// 한 유저의 "남은 잠재 점수" 계산: 아직 결과 안 난 조의 픽들 중,
+// 탈락 확정된 픽은 0, 그 외는 진출확률 기반 기대값 합산
+function calcRemainingPotential(user, tournament) {
+  var gr = tournament.groupResults || {};
+  var potential = 0;
+  Object.entries(user.groupPicks||{}).forEach(function(e){
+    var grp = e[0], teams = e[1]||[];
+    if(gr[grp]) return; // 이미 확정된 조는 total에 반영됨, 스킵
+    teams.forEach(function(team){
+      var advProb = estimateAdvanceTo32(team, grp, tournament);
+      potential += advProb * 3; // 탈락확정(거의0)이면 거의 0, 진출확정(1)이면 +3 그대로
+    });
+  });
+  return potential;
+}
+
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
   if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
@@ -1543,25 +1559,30 @@ function calcWinProbs(ranked, tournament) {
     return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
   }
 
-  // 동점자 그룹별로 묶어서 같은 확률 배분 (1위 동점자들이 우승확률을 나눠가짐)
-  var maxScore = Math.max.apply(null, ranked.map(function(u){ return u.total||0; }));
-  var leaders = ranked.filter(function(u){ return (u.total||0) === maxScore; });
+  // "현재확정점수 + 남은픽 기대값"을 잠재력으로 사용.
+  // 확정점수만 같아도, 탈락확정 픽이 많은 사람은 잠재력이 낮아져 확률도 낮아짐.
+  var withPotential = ranked.map(function(u){
+    var potential = u.total||0;
+    potential += calcRemainingPotential(u, tournament);
+    return {uid:u.uid, cur:u.total||0, potential:potential};
+  });
+
+  var maxPotential = Math.max.apply(null, withPotential.map(function(p){ return p.potential; }));
+  var leaders = withPotential.filter(function(p){ return p.potential === maxPotential; });
   var leaderProb = Math.round(100 / leaders.length);
 
-  // 1위가 아닌 사람들은 현재 점수 격차에 따라 낮은 확률 배분 (역전 가능성 반영, 점수 기준만)
-  var others = ranked.filter(function(u){ return (u.total||0) < maxScore; });
-  var maxPossibleGap = 108; // 조별리그 최대 108점 기준 격차 정규화
-  var otherProbs = others.map(function(u){
-    var gap = maxScore - (u.total||0);
-    var raw = Math.max(0, 1 - gap/maxPossibleGap*3); // 격차 클수록 빠르게 0에 수렴
-    return {uid:u.uid, raw:raw};
+  var others = withPotential.filter(function(p){ return p.potential < maxPotential; });
+  var maxPossibleGap = 108;
+  var otherProbs = others.map(function(p){
+    var gap = maxPotential - p.potential;
+    var raw = Math.max(0, 1 - gap/maxPossibleGap*3);
+    return {uid:p.uid, raw:raw};
   });
   var rawSum = otherProbs.reduce(function(s,o){return s+o.raw;}, 0);
-  // 전체 100%에서 leaders가 가져간 몫(leaderProb*leaders.length)을 제외한 나머지를 격차 비례 배분
   var remainingPct = Math.max(0, 100 - leaderProb*leaders.length);
 
   var result = {};
-  leaders.forEach(function(u){ result[u.uid] = leaderProb; });
+  leaders.forEach(function(p){ result[p.uid] = leaderProb; });
   if(rawSum > 0) {
     otherProbs.forEach(function(o){
       result[o.uid] = Math.round(remainingPct * (o.raw/rawSum));
