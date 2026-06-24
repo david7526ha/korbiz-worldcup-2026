@@ -1261,15 +1261,31 @@ function BracketPreview({users, tournament, currentUid, lang}){
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(function(teams){ (teams||[]).forEach(function(t){myPicks.add(t);}); });
 
-  // 조 1위/2위 결정
+  // 조 1위/2위 결정 - Admin 공식확정(groupResults) 우선, 없으면 수학적 확정(estimateAdvanceTo32)으로 자동 채움
   const st = {};
   const third = []; // 3위팀 [팀명, 조] 목록
+  const mr = tournament.matchResults || {};
   Object.entries(GROUPS).forEach(function(e){
     var grp=e[0], info=e[1];
     var advanced = gr[grp]||[];
     if(advanced.length>=1) st[grp+"1"]=advanced[0];
     if(advanced.length>=2) st[grp+"2"]=advanced[1];
     if(advanced.length>=3) third.push({team:advanced[2],grp:grp});
+
+    // Admin 미확정 조라도, 수학적으로 100% 확정된 팀은 1위/2위 슬롯에 자동 채움
+    if(advanced.length < 2) {
+      var teams = info.teams || [];
+      var clinchedTeams = teams.filter(function(t){
+        return estimateAdvanceTo32(t, grp, tournament) === 1;
+      });
+      // 현재 순위(승점 기준)로 1위/2위 슬롯 매칭
+      if(clinchedTeams.length > 0) {
+        var statsForSort = (computeAllGroupStats(mr)[grp]) || {};
+        var sortedClinched = fifaSortGroup(clinchedTeams, statsForSort, grp, mr);
+        if(!st[grp+"1"] && sortedClinched[0]) st[grp+"1"] = sortedClinched[0];
+        if(!st[grp+"2"] && sortedClinched[1]) st[grp+"2"] = sortedClinched[1];
+      }
+    }
   });
 
   // 라벨 헬퍼
