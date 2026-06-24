@@ -1383,7 +1383,20 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
   useEffect(()=>{
     var prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return ()=>{ document.body.style.overflow = prevOverflow; };
+
+    // 모달 열린 동안만 핀치줌 허용 (전역 viewport는 줌 잠금 상태이므로 임시로 풀어줌)
+    var viewportMeta = document.querySelector('meta[name="viewport"]');
+    var prevContent = viewportMeta ? viewportMeta.getAttribute("content") : null;
+    if(viewportMeta){
+      viewportMeta.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes");
+    }
+
+    return ()=>{
+      document.body.style.overflow = prevOverflow;
+      if(viewportMeta && prevContent !== null){
+        viewportMeta.setAttribute("content", prevContent);
+      }
+    };
   },[]);
 
   // 32강 매치업
@@ -1496,8 +1509,24 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     ? ["32강","16강","8강","4강"]
     : ["R32","R16","QF","SF"];
 
+  // 화면이 세로(portrait)면 CSS로 강제 90도 회전시켜 가로처럼 보이게 함
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(()=>{
+    var check = function(){ setIsPortrait(window.innerHeight > window.innerWidth); };
+    check();
+    window.addEventListener("resize", check);
+    return ()=>window.removeEventListener("resize", check);
+  },[]);
+
+  var rotateStyle = isPortrait ? {
+    position:"fixed", top:"50%", left:"50%",
+    width:window.innerHeight, height:window.innerWidth,
+    transform:"translate(-50%,-50%) rotate(90deg)",
+    transformOrigin:"center center",
+  } : { position:"fixed", inset:0 };
+
   return(
-    <div style={{position:"fixed",inset:0,background:"#04080F",zIndex:9999,display:"flex",flexDirection:"column"}}>
+    <div style={{...rotateStyle,background:"#04080F",zIndex:9999,display:"flex",flexDirection:"column"}}>
       {/* 헤더 */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,.08)",flexShrink:0,background:"#0C1620"}}>
         <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
