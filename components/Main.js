@@ -1383,6 +1383,47 @@ function computeAllGroupStats(matchResults) {
 }
 
 // 전체 12개조 기준 "이 팀이 32강에 갈 수 있는가"를 0~1 확률로 추정
+// 32강 탈락이 수학적으로 확정된 팀인지 (3·4위 둘 다 + 자신 포함 4팀 중 최소 2팀이 확실히 위에 있음)
+function isTeamEliminated(team, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) return !gr[group].includes(team);
+
+  var mr = tournament.matchResults || {};
+  var allStats = computeAllGroupStats(mr);
+  var myGroupTeams = (GROUPS[group]&&GROUPS[group].teams)||[];
+  var myStats = allStats[group] || {};
+  if(!myStats[team]) return false;
+
+  var maxPlayed = Math.max.apply(null, myGroupTeams.map(function(t){ return (myStats[t]||{played:0}).played; }));
+  if(maxPlayed === 0) return false;
+
+  var h2h = buildHeadToHead(group, mr);
+  var myMax = myStats[team].pts + (3-myStats[team].played)*3; // 내가 남은 경기 다 이겨도 도달 가능한 최대 점수
+  var others = myGroupTeams.filter(function(t){ return t !== team; });
+
+  var teamsAboveMeForSure = 0;
+  others.forEach(function(other){
+    if(myStats[other].pts > myMax) {
+      teamsAboveMeForSure++;
+    } else if(myStats[other].pts === myMax) {
+      // 동률 가능 -> 맞대결로 확정 우위 있는지 확인
+      var otherH2H = (h2h[other]||{})[team];
+      var myH2H = (h2h[team]||{})[other];
+      var otherPts = otherH2H ? otherH2H.pts : null;
+      var myPts = myH2H ? myH2H.pts : 0;
+      if(otherPts !== null && otherPts > myPts) teamsAboveMeForSure++;
+    }
+  });
+
+  // 3개 팀 중 최소 2팀이 확실히 나보다 위 -> 나는 3위 이하로 확정 -> 32강(1·2위+WC) 중 1·2위는 탈락
+  // 단, 3위로라도 와일드카드 갈 가능성은 별도이므로, 완전 탈락은 "3위 와일드카드 가능성도 없을 때"만
+  if(teamsAboveMeForSure < 2) return false;
+
+  // 3위가 확정이어도 와일드카드로 갈 수 있는지 추가 체크
+  var advProb = estimateAdvanceTo32(team, group, tournament);
+  return advProb <= 0.03;
+}
+
 function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
   if(gr[group]) return gr[group].includes(team) ? 1 : 0;
@@ -1768,7 +1809,7 @@ function GroupStandings({users, tournament, currentUid, lang}){
                 const gd = t.gf-t.ga;
                 const advProb = estimateAdvanceTo32(t.name, grp, tournament);
                 const isQualified = advProb === 1;
-                const isEliminated = advProb <= 0.03;
+                const isEliminated = isTeamEliminated(t.name, grp, tournament);
                 return(
                   <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:isQualified?"rgba(34,197,94,.06)":isEliminated?"rgba(239,68,68,.04)":inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
