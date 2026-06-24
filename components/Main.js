@@ -1272,18 +1272,24 @@ function BracketPreview({users, tournament, currentUid, lang}){
     if(advanced.length>=2) st[grp+"2"]=advanced[1];
     if(advanced.length>=3) third.push({team:advanced[2],grp:grp});
 
-    // Admin 미확정 조라도, 수학적으로 100% 확정된 팀은 1위/2위 슬롯에 자동 채움
+    // Admin 미확정 조라도, 32강 진출이 확정된 두 팀 + 그 둘의 순서(1위/2위)까지 확정일 때만 슬롯 채움
     if(advanced.length < 2) {
       var teams = info.teams || [];
       var clinchedTeams = teams.filter(function(t){
         return estimateAdvanceTo32(t, grp, tournament) === 1;
       });
-      // 현재 순위(승점 기준)로 1위/2위 슬롯 매칭
-      if(clinchedTeams.length > 0) {
+      if(clinchedTeams.length >= 2) {
         var statsForSort = (computeAllGroupStats(mr)[grp]) || {};
         var sortedClinched = fifaSortGroup(clinchedTeams, statsForSort, grp, mr);
-        if(!st[grp+"1"] && sortedClinched[0]) st[grp+"1"] = sortedClinched[0];
-        if(!st[grp+"2"] && sortedClinched[1]) st[grp+"2"] = sortedClinched[1];
+        var first = sortedClinched[0], second = sortedClinched[1];
+        // 1위/2위 순서가 마지막 경기 결과와 무관하게 고정된 경우만 슬롯 배정
+        if(first && second && isOrderLocked(first, second, grp, tournament)) {
+          if(!st[grp+"1"]) st[grp+"1"] = first;
+          if(!st[grp+"2"]) st[grp+"2"] = second;
+        }
+      } else if(clinchedTeams.length === 1) {
+        // 32강 확정팀이 1명뿐이면, 그 팀의 자리(1위 or 2위)가 확정인지는
+        // 아직 2번째 확정팀이 없어 순서 비교 불가 -> 슬롯 비움 (보수적)
       }
     }
   });
@@ -1724,6 +1730,35 @@ function isTeamEliminated(team, group, tournament) {
   // 3위가 확정이어도 와일드카드로 갈 수 있는지 추가 체크
   var advProb = estimateAdvanceTo32(team, group, tournament);
   return advProb <= 0.03;
+}
+
+
+// 두 팀(현재 1위, 2위) 사이의 순서가 남은 경기 결과와 무관하게 100% 고정되는지 확인.
+// 둘 다 32강 진출은 확정이어도, "누가 1위/2위인지"는 마지막 경기로 바뀔 수 있음 -> 브래킷 시딩에 중요.
+function isOrderLocked(teamHigher, teamLower, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) return true; // 조 전체 확정이면 순서도 확정
+
+  var mr = tournament.matchResults || {};
+  var allStats = computeAllGroupStats(mr);
+  var stats = allStats[group] || {};
+  if(!stats[teamHigher] || !stats[teamLower]) return false;
+
+  var higherMin = stats[teamHigher].pts; // 더 안 뛰어도 최소 보장 점수(현재값, 내려갈 일 없음)
+  var lowerMax = stats[teamLower].pts + (3-stats[teamLower].played)*3; // 낮은팀 최대가능점수
+
+  if(higherMin > lowerMax) return true; // 낮은팀이 다 이겨도 못 따라옴 -> 순서 고정
+
+  if(higherMin === lowerMax) {
+    // 동률 가능 -> 맞대결로 우선권 있는지 확인
+    var h2h = buildHeadToHead(group, mr);
+    var higherH2H = (h2h[teamHigher]||{})[teamLower];
+    var lowerH2H = (h2h[teamLower]||{})[teamHigher];
+    var higherPts = higherH2H ? higherH2H.pts : null;
+    var lowerPts = lowerH2H ? lowerH2H.pts : 0;
+    if(higherPts !== null && higherPts > lowerPts) return true; // 맞대결 우위 -> 순서 고정
+  }
+  return false; // 마지막 경기 결과에 따라 순서가 바뀔 수 있음
 }
 
 function estimateAdvanceTo32(team, group, tournament) {
