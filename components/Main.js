@@ -1386,42 +1386,66 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     return ()=>{ document.body.style.overflow = prevOverflow; };
   },[]);
 
-  var LEFT = [
-    {a:"A2",b:"B2"},{a:"C1",b:"F2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},
-    {a:"E2",b:"I2"},{a:"I1",b:"WC2"},{a:"A1",b:"WC3"},{a:"B1",b:"D2"},
-  ];
-  var RIGHT = [
-    {a:"L1",b:"WC4"},{a:"G1",b:"WC5"},{a:"D1",b:"WC6"},{a:"J1",b:"H2"},
-    {a:"K1",b:"WC7"},{a:"H1",b:"G2"},{a:"L2",b:"K2"},{a:"J2",b:"WC8"},
-  ];
+  // 32강 매치업
+  var R32 = {
+    L: [
+      {a:"A2",b:"B2"},{a:"C1",b:"F2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},
+      {a:"E2",b:"I2"},{a:"I1",b:"WC2"},{a:"A1",b:"WC3"},{a:"B1",b:"D2"},
+    ],
+    R: [
+      {a:"L1",b:"WC4"},{a:"G1",b:"WC5"},{a:"D1",b:"WC6"},{a:"J1",b:"H2"},
+      {a:"K1",b:"WC7"},{a:"H1",b:"G2"},{a:"L2",b:"K2"},{a:"J2",b:"WC8"},
+    ],
+  };
 
   var srcLabel = function(src){
-    if(src.indexOf("WC")===0) return lang==="ko"?"3rd WC":"3rd WC";
+    if(src.indexOf("WC")===0) return "3rd";
     return src[0]+(src[1]==="1"?" W":" R");
   };
 
-  // ── 고정 좌표 SVG 레이아웃 (March Madness 스타일) ──────────────────────────
-  var BOX_W = 130, BOX_H = 36, ROW_GAP = 14, ROW_H = BOX_H*2+ROW_GAP;
-  var MARGIN_TOP = 24, COL_GAP = 160; // 중앙 갭(결승 표시 공간)
-  var SVG_H = 8*ROW_H + MARGIN_TOP*2;
-  var SVG_W = BOX_W*2 + COL_GAP + 60; // 좌우 박스 + 중앙 + 여백
+  // ── 레이아웃 상수 ──────────────────────────────────────────────────────────
+  var BOX_W = 118, BOX_H = 30, PAIR_GAP = 6;
+  var ROUND_GAP = 36; // 라운드(컬럼) 간 가로 간격
+  var TOP_MARGIN = 20;
 
-  var xLeft = 20;
-  var xRight = SVG_W - 20 - BOX_W;
-  var xCenter = SVG_W/2;
+  // 8개 32강 매치 -> 4개 16강 매치 -> 2개 8강 -> 1개 4강(준결승) -> 결승
+  // 한쪽(L 또는 R)은 8경기(32강)->4(16강)->2(8강)->1(준결승)
+  var pairHeight = function(round){ return Math.pow(2, round) * (BOX_H*2+PAIR_GAP); };
+  // round 0 = 32강(8경기), round1=16강(4경기), round2=8강(2경기), round3=준결승(1경기)
 
-  var renderSlot = function(src, x, y){
-    var team = st[src];
+  var ROUND_ROW_H = [
+    BOX_H*2+PAIR_GAP,             // round0: 32강 한 매치 높이
+    (BOX_H*2+PAIR_GAP)*2+PAIR_GAP, // round1: 16강 한 매치 높이(두 32강 매치를 합친 위치)
+    (BOX_H*2+PAIR_GAP)*4+PAIR_GAP*3, // round2: 8강
+    (BOX_H*2+PAIR_GAP)*8+PAIR_GAP*7, // round3: 준결승
+  ];
+
+  var SVG_H = 8*(BOX_H*2+PAIR_GAP) + TOP_MARGIN*2 + 40;
+  var COL_W = BOX_W;
+  var CENTER_GAP = 110;
+  var SVG_W = COL_W*4*2 + ROUND_GAP*3*2 + CENTER_GAP + 60; // 좌우 각 4라운드 + 중앙
+
+  var xColL = [20, 20+COL_W+ROUND_GAP, 20+2*(COL_W+ROUND_GAP), 20+3*(COL_W+ROUND_GAP)];
+  var xColR = xColL.map(function(x){ return SVG_W - x - COL_W; }).reverse().map(function(x,i,arr){ return arr[arr.length-1-i]; });
+  // 오른쪽은 결승쪽이 안쪽이라 역순 배치
+  var xColRFixed = [
+    SVG_W-20-COL_W,
+    SVG_W-20-COL_W-(COL_W+ROUND_GAP),
+    SVG_W-20-COL_W-2*(COL_W+ROUND_GAP),
+    SVG_W-20-COL_W-3*(COL_W+ROUND_GAP),
+  ];
+
+  var renderSlot = function(src, x, y, team){
     var isMe = team && myPicks.has(team);
-    var label = team ? tn(team,lang) : srcLabel(src);
-    if(label.length>15) label = label.slice(0,14)+"…";
+    var label = team ? tn(team,lang) : (src?srcLabel(src):"TBD");
+    if(label.length>13) label = label.slice(0,12)+"…";
     return(
-      <g key={x+"-"+y}>
-        <rect x={x} y={y} width={BOX_W} height={BOX_H-2} rx={4}
-          fill={isMe?"rgba(212,168,67,.22)":"rgba(255,255,255,.05)"}
-          stroke={isMe?"#D4A843":"rgba(255,255,255,.12)"} strokeWidth={isMe?1.2:0.6}/>
-        <text x={x+8} y={y+BOX_H/2+3} fontSize={11}
-          fill={isMe?"#D4A843":(team?"#E0E8F0":"#5A7090")}
+      <g key={x+"-"+y+"-"+(src||"x")}>
+        <rect x={x} y={y} width={BOX_W} height={BOX_H-2} rx={3}
+          fill={isMe?"rgba(212,168,67,.22)":"rgba(255,255,255,.045)"}
+          stroke={isMe?"#D4A843":"rgba(255,255,255,.1)"} strokeWidth={isMe?1.1:0.5}/>
+        <text x={x+6} y={y+BOX_H/2+2} fontSize={9.5}
+          fill={isMe?"#D4A843":(team?"#E0E8F0":"#46566e")}
           fontWeight={isMe?700:400}>
           {isMe?"★ ":""}{label}
         </text>
@@ -1429,55 +1453,105 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     );
   };
 
-  var renderMatch = function(m, i, isLeft){
-    var x = isLeft ? xLeft : xRight;
-    var y = MARGIN_TOP + i*ROW_H;
-    var connX = isLeft ? x+BOX_W : x;
-    var connDir = isLeft ? 1 : -1;
+  // round0 (32강) 매치 렌더 - 실제 데이터 있음
+  var renderR32 = function(m, i, xCol, isLeftSide){
+    var y = TOP_MARGIN + i*(BOX_H*2+PAIR_GAP);
+    var teamA = st[m.a], teamB = m.b.indexOf("WC")===0?null:st[m.b];
+    var midY = y + BOX_H - 1;
+    var connX = isLeftSide ? xCol+BOX_W : xCol;
+    var nextX = isLeftSide ? xCol+BOX_W+ROUND_GAP : xCol-ROUND_GAP;
     return(
-      <g key={(isLeft?"L":"R")+i}>
-        {renderSlot(m.a, x, y)}
-        {renderSlot(m.b, x, y+BOX_H)}
-        {/* 연결선: 두 슬롯에서 중앙쪽으로 살짝 뻗어나가는 브래킷 라인 */}
-        <line x1={connX} y1={y+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
-        <line x1={connX} y1={y+BOX_H+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
-        <line x1={connX+connDir*16} y1={y+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
+      <g key={(isLeftSide?"L0-":"R0-")+i}>
+        {renderSlot(m.a, xCol, y, teamA)}
+        {renderSlot(m.b, xCol, y+BOX_H, teamB)}
+        <line x1={connX} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H/2-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
+        <line x1={connX} y1={y+BOX_H*1.5-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
+        <line x1={isLeftSide?connX+14:connX-14} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
       </g>
     );
   };
+
+  // 빈 라운드(16강~결승, 아직 팀 미정) 렌더 - TBD 박스만
+  var renderEmptyRound = function(roundIdx, numMatches, xCol, isLeftSide, baseRowH){
+    var boxes = [];
+    for(var i=0;i<numMatches;i++){
+      var y = TOP_MARGIN + i*baseRowH + baseRowH/2 - BOX_H;
+      var connX = isLeftSide ? xCol+BOX_W : xCol;
+      boxes.push(
+        <g key={"R"+roundIdx+"-"+i}>
+          {renderSlot(null, xCol, y, null)}
+          {renderSlot(null, xCol, y+BOX_H, null)}
+          {roundIdx<3&&<>
+            <line x1={connX} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H/2-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
+            <line x1={connX} y1={y+BOX_H*1.5-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
+            <line x1={isLeftSide?connX+14:connX-14} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
+          </>}
+        </g>
+      );
+    }
+    return boxes;
+  };
+
+  var roundLabels = lang==="ko"
+    ? ["32강","16강","8강","4강"]
+    : ["R32","R16","QF","SF"];
 
   return(
     <div style={{position:"fixed",inset:0,background:"#04080F",zIndex:9999,display:"flex",flexDirection:"column"}}>
       {/* 헤더 */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,.08)",flexShrink:0,background:"#0C1620"}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:17,color:"#D4A843",letterSpacing:".12em"}}>
-          ⚔️ ROUND OF 32
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em"}}>
+          🏆 {lang==="ko"?"토너먼트 대진표":"TOURNAMENT BRACKET"}
         </div>
         <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.06)",color:"#E0E8F0",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>
           ✕ {lang==="ko"?"닫기":lang==="es"?"Cerrar":"Close"}
         </button>
       </div>
 
-      {/* 가로+세로 스크롤 가능한 SVG 브래킷 (회전 없이, 절대 좌표라 절대 줄바꿈 안 됨) */}
-      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",touchAction:"pan-x pan-y pinch-zoom"}}>
+      {/* 핀치줌+스크롤 가능한 브래킷 영역 */}
+      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",touchAction:"pinch-zoom pan-x pan-y"}}>
         <div style={{padding:16,display:"flex",justifyContent:"center",minWidth:SVG_W+32}}>
           <svg width={SVG_W} height={SVG_H} style={{display:"block",flexShrink:0}}>
-            {/* 가운데 트로피/FINAL 표시 */}
-            <text x={xCenter} y={SVG_H/2-30} textAnchor="middle" fontSize={28}>🏆</text>
-            <text x={xCenter} y={SVG_H/2} textAnchor="middle" fontSize={13} fill="#D4A843"
-              fontFamily="'Teko',sans-serif" letterSpacing="2">FINAL</text>
-            <text x={xCenter} y={SVG_H/2+18} textAnchor="middle" fontSize={9} fill="#5A7090">Jul 19</text>
-            <line x1={xCenter} y1={MARGIN_TOP} x2={xCenter} y2={SVG_H/2-50}
-              stroke="rgba(212,168,67,.25)" strokeWidth={1} strokeDasharray="3,4"/>
-            <line x1={xCenter} y1={SVG_H/2+30} x2={xCenter} y2={SVG_H-MARGIN_TOP}
-              stroke="rgba(212,168,67,.25)" strokeWidth={1} strokeDasharray="3,4"/>
+            {/* 라운드 라벨 (위쪽) */}
+            {roundLabels.map(function(lbl,i){
+              return(
+                <g key={"lblL"+i}>
+                  <text x={xColL[i]+BOX_W/2} y={12} textAnchor="middle" fontSize={9} fill="#5A7090" letterSpacing="1">{lbl}</text>
+                </g>
+              );
+            })}
+            {roundLabels.map(function(lbl,i){
+              return(
+                <g key={"lblR"+i}>
+                  <text x={xColRFixed[i]+BOX_W/2} y={12} textAnchor="middle" fontSize={9} fill="#5A7090" letterSpacing="1">{lbl}</text>
+                </g>
+              );
+            })}
 
-            {LEFT.map(function(m,i){ return renderMatch(m,i,true); })}
-            {RIGHT.map(function(m,i){ return renderMatch(m,i,false); })}
+            {/* 중앙 결승 */}
+            <text x={SVG_W/2} y={SVG_H/2-26} textAnchor="middle" fontSize={26}>🏆</text>
+            <text x={SVG_W/2} y={SVG_H/2} textAnchor="middle" fontSize={12} fill="#D4A843" fontFamily="'Teko',sans-serif" letterSpacing="2">
+              {lang==="ko"?"결승":"FINAL"}
+            </text>
+            <text x={SVG_W/2} y={SVG_H/2+15} textAnchor="middle" fontSize={8} fill="#5A7090">Jul 19</text>
+
+            {/* 32강 (실데이터) - 왼쪽 */}
+            {R32.L.map(function(m,i){ return renderR32(m,i,xColL[0],true); })}
+            {/* 16강,8강,4강 빈 박스 - 왼쪽 */}
+            {renderEmptyRound(1,4,xColL[1],true,(BOX_H*2+PAIR_GAP)*2)}
+            {renderEmptyRound(2,2,xColL[2],true,(BOX_H*2+PAIR_GAP)*4)}
+            {renderEmptyRound(3,1,xColL[3],true,(BOX_H*2+PAIR_GAP)*8)}
+
+            {/* 32강 (실데이터) - 오른쪽 */}
+            {R32.R.map(function(m,i){ return renderR32(m,i,xColRFixed[0],false); })}
+            {/* 16강,8강,4강 빈 박스 - 오른쪽 */}
+            {renderEmptyRound(1,4,xColRFixed[1],false,(BOX_H*2+PAIR_GAP)*2)}
+            {renderEmptyRound(2,2,xColRFixed[2],false,(BOX_H*2+PAIR_GAP)*4)}
+            {renderEmptyRound(3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8)}
           </svg>
         </div>
         <div style={{textAlign:"center",padding:"4px 0 16px",fontSize:10,color:"#3A5070"}}>
-          {lang==="ko"?"← 좌우/위아래 스크롤 가능 →":"← scroll in any direction →"}
+          {lang==="ko"?"← 핀치줌 · 스크롤 가능 →":"← pinch to zoom · scroll →"}
         </div>
       </div>
     </div>
@@ -3566,10 +3640,10 @@ export default function Main(){
           <div style={{padding:"2px 6px",borderRadius:4,fontSize:9,fontWeight:700,background:me.paid?"rgba(34,197,94,.12)":"rgba(239,68,68,.12)",color:me.paid?"#22C55E":"#EF4444",border:`1px solid ${me.paid?"rgba(34,197,94,.3)":"rgba(239,68,68,.3)"}`}}>{me.paid?t.paid:t.unpaid}</div>
           {admin&&<button onClick={()=>setShowAdmin(true)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(239,68,68,.35)",background:"rgba(239,68,68,.1)",color:"#f87171",fontFamily:"'Teko',sans-serif",letterSpacing:".1em",fontSize:10,cursor:"pointer"}}>{t.admin}</button>}
           <Avatar name={firebaseUser.displayName} photoURL={firebaseUser.photoURL} size={28}/>
-          <button onClick={signOutUser} style={{background:"transparent",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"3px 8px",color:"#5A7090",fontSize:10,cursor:"pointer"}}>{t.signOut}</button>
         </div>
         <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch",msOverflowStyle:"none",scrollbarWidth:"none",touchAction:"pan-x",overscrollBehaviorY:"contain"}}>
           {tabs.map(tb=><button key={tb.id} onClick={()=>setTabAndScroll(tb.id)} style={{padding:"12px 14px",border:"none",background:"transparent",whiteSpace:"nowrap",color:tab===tb.id?"#D4A843":"#5A7090",borderBottom:`2px solid ${tab===tb.id?"#D4A843":"transparent"}`,fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:13,whiteSpace:"nowrap",cursor:"pointer",touchAction:"manipulation",minHeight:44}}>{tb.label.toUpperCase()}</button>)}
+          <button onClick={signOutUser} style={{padding:"12px 14px",border:"none",background:"transparent",whiteSpace:"nowrap",color:"#EF4444",borderBottom:"2px solid transparent",fontFamily:"'Teko',sans-serif",letterSpacing:".12em",fontSize:13,cursor:"pointer",touchAction:"manipulation",minHeight:44,flexShrink:0}}>↪ {t.signOut.toUpperCase()}</button>
         </div>
       </div>
 
