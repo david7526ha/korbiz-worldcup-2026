@@ -1568,28 +1568,22 @@ function calcWinProbs(ranked, tournament) {
   });
 
   var maxPotential = Math.max.apply(null, withPotential.map(function(p){ return p.potential; }));
-  var leaders = withPotential.filter(function(p){ return p.potential === maxPotential; });
-  var leaderProb = Math.round(100 / leaders.length);
+  var minPotential = Math.min.apply(null, withPotential.map(function(p){ return p.potential; }));
+  var range = Math.max(1, maxPotential - minPotential); // 실제 발생한 격차 범위로 정규화 (0 나누기 방지)
 
-  var others = withPotential.filter(function(p){ return p.potential < maxPotential; });
-  var maxPossibleGap = 108;
-  var otherProbs = others.map(function(p){
-    var gap = maxPotential - p.potential;
-    var raw = Math.max(0, 1 - gap/maxPossibleGap*3);
-    return {uid:p.uid, raw:raw};
+  // 잠재력에 비례해서 가중치 부여 (선형, 격차가 클수록 부드럽게 차등)
+  // 최저~최고 잠재력을 0.1~1.0 가중치로 매핑 (완전히 0이 되지 않게 최소값 보장)
+  var weights = withPotential.map(function(p){
+    var normalized = (p.potential - minPotential) / range; // 0~1
+    var weight = 0.15 + 0.85*normalized; // 0.15~1.0 범위 (가장 낮아도 완전히 0은 아님)
+    return {uid:p.uid, weight:weight};
   });
-  var rawSum = otherProbs.reduce(function(s,o){return s+o.raw;}, 0);
-  var remainingPct = Math.max(0, 100 - leaderProb*leaders.length);
+  var weightSum = weights.reduce(function(s,w){return s+w.weight;}, 0);
 
   var result = {};
-  leaders.forEach(function(p){ result[p.uid] = leaderProb; });
-  if(rawSum > 0) {
-    otherProbs.forEach(function(o){
-      result[o.uid] = Math.round(remainingPct * (o.raw/rawSum));
-    });
-  } else {
-    otherProbs.forEach(function(o){ result[o.uid] = 0; });
-  }
+  weights.forEach(function(w){
+    result[w.uid] = Math.round(100 * (w.weight/weightSum));
+  });
 
   return ranked.map(function(u){
     return {uid:u.uid, prob: result[u.uid] !== undefined ? result[u.uid] : 0};
