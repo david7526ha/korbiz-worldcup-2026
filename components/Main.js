@@ -1396,79 +1396,88 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
   ];
 
   var srcLabel = function(src){
-    if(src.indexOf("WC")===0) return lang==="ko"?"3위 WC":"3rd WC";
-    return src[0]+(lang==="ko"?("조"+(src[1]==="1"?"1위":"2위")):(" "+(src[1]==="1"?"W":"R")));
+    if(src.indexOf("WC")===0) return lang==="ko"?"3rd WC":"3rd WC";
+    return src[0]+(src[1]==="1"?" W":" R");
   };
 
-  var Slot = function(src){
+  // ── 고정 좌표 SVG 레이아웃 (March Madness 스타일) ──────────────────────────
+  var BOX_W = 130, BOX_H = 36, ROW_GAP = 14, ROW_H = BOX_H*2+ROW_GAP;
+  var MARGIN_TOP = 24, COL_GAP = 160; // 중앙 갭(결승 표시 공간)
+  var SVG_H = 8*ROW_H + MARGIN_TOP*2;
+  var SVG_W = BOX_W*2 + COL_GAP + 60; // 좌우 박스 + 중앙 + 여백
+
+  var xLeft = 20;
+  var xRight = SVG_W - 20 - BOX_W;
+  var xCenter = SVG_W/2;
+
+  var renderSlot = function(src, x, y){
     var team = st[src];
     var isMe = team && myPicks.has(team);
     var label = team ? tn(team,lang) : srcLabel(src);
+    if(label.length>15) label = label.slice(0,14)+"…";
     return(
-      <div style={{padding:"4px 8px",background:isMe?"rgba(212,168,67,.18)":"rgba(255,255,255,.04)",borderRadius:3,display:"flex",alignItems:"center",gap:4,minHeight:22}}>
-        {isMe&&<span style={{fontSize:8,flexShrink:0}}>⭐</span>}
-        <span style={{fontSize:10,color:isMe?"#D4A843":team?"#E0E8F0":"#5A7090",fontWeight:isMe?700:400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-          {label}
-        </span>
-      </div>
+      <g key={x+"-"+y}>
+        <rect x={x} y={y} width={BOX_W} height={BOX_H-2} rx={4}
+          fill={isMe?"rgba(212,168,67,.22)":"rgba(255,255,255,.05)"}
+          stroke={isMe?"#D4A843":"rgba(255,255,255,.12)"} strokeWidth={isMe?1.2:0.6}/>
+        <text x={x+8} y={y+BOX_H/2+3} fontSize={11}
+          fill={isMe?"#D4A843":(team?"#E0E8F0":"#5A7090")}
+          fontWeight={isMe?700:400}>
+          {isMe?"★ ":""}{label}
+        </text>
+      </g>
     );
   };
 
-  var MatchBox = function(m, side){
+  var renderMatch = function(m, i, isLeft){
+    var x = isLeft ? xLeft : xRight;
+    var y = MARGIN_TOP + i*ROW_H;
+    var connX = isLeft ? x+BOX_W : x;
+    var connDir = isLeft ? 1 : -1;
     return(
-      <div style={{display:"flex",flexDirection:"column",gap:2,width:128}}>
-        {Slot(m.a)}
-        {Slot(m.b)}
-      </div>
-    );
-  };
-
-  // 8개를 4쌍씩 연결선으로 그룹화 (March Madness 느낌)
-  var renderColumn = function(matches, side){
-    return(
-      <div style={{display:"flex",flexDirection:"column",gap:14,position:"relative"}}>
-        {matches.map(function(m,i){
-          return(
-            <div key={i} style={{position:"relative"}}>
-              {MatchBox(m, side)}
-            </div>
-          );
-        })}
-      </div>
+      <g key={(isLeft?"L":"R")+i}>
+        {renderSlot(m.a, x, y)}
+        {renderSlot(m.b, x, y+BOX_H)}
+        {/* 연결선: 두 슬롯에서 중앙쪽으로 살짝 뻗어나가는 브래킷 라인 */}
+        <line x1={connX} y1={y+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
+        <line x1={connX} y1={y+BOX_H+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
+        <line x1={connX+connDir*16} y1={y+BOX_H/2-1} x2={connX+connDir*16} y2={y+BOX_H+BOX_H/2-1} stroke="rgba(212,168,67,.3)" strokeWidth={1.2}/>
+      </g>
     );
   };
 
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(5,10,18,.97)",zIndex:9999,display:"flex",flexDirection:"column",touchAction:"pan-x pan-y pinch-zoom"}}>
+    <div style={{position:"fixed",inset:0,background:"#04080F",zIndex:9999,display:"flex",flexDirection:"column"}}>
       {/* 헤더 */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,.08)",flexShrink:0}}>
-        <div style={{fontFamily:"'Teko',sans-serif",fontSize:18,color:"#D4A843",letterSpacing:".15em"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,.08)",flexShrink:0,background:"#0C1620"}}>
+        <div style={{fontFamily:"'Teko',sans-serif",fontSize:17,color:"#D4A843",letterSpacing:".12em"}}>
           ⚔️ ROUND OF 32
         </div>
-        <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.06)",color:"#E0E8F0",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>
+        <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.06)",color:"#E0E8F0",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>
           ✕ {lang==="ko"?"닫기":lang==="es"?"Cerrar":"Close"}
         </button>
       </div>
 
-      {/* 가로 스크롤 브래킷 본체 */}
-      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",padding:"20px 16px"}}>
-        <div style={{display:"flex",justifyContent:"center",alignItems:"flex-start",gap:40,minWidth:640}}>
-          {/* 왼쪽 8경기 */}
-          {renderColumn(LEFT, "left")}
+      {/* 가로+세로 스크롤 가능한 SVG 브래킷 (회전 없이, 절대 좌표라 절대 줄바꿈 안 됨) */}
+      <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",touchAction:"pan-x pan-y pinch-zoom"}}>
+        <div style={{padding:16,display:"flex",justifyContent:"center",minWidth:SVG_W+32}}>
+          <svg width={SVG_W} height={SVG_H} style={{display:"block",flexShrink:0}}>
+            {/* 가운데 트로피/FINAL 표시 */}
+            <text x={xCenter} y={SVG_H/2-30} textAnchor="middle" fontSize={28}>🏆</text>
+            <text x={xCenter} y={SVG_H/2} textAnchor="middle" fontSize={13} fill="#D4A843"
+              fontFamily="'Teko',sans-serif" letterSpacing="2">FINAL</text>
+            <text x={xCenter} y={SVG_H/2+18} textAnchor="middle" fontSize={9} fill="#5A7090">Jul 19</text>
+            <line x1={xCenter} y1={MARGIN_TOP} x2={xCenter} y2={SVG_H/2-50}
+              stroke="rgba(212,168,67,.25)" strokeWidth={1} strokeDasharray="3,4"/>
+            <line x1={xCenter} y1={SVG_H/2+30} x2={xCenter} y2={SVG_H-MARGIN_TOP}
+              stroke="rgba(212,168,67,.25)" strokeWidth={1} strokeDasharray="3,4"/>
 
-          {/* 가운데 결승 표시 */}
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minWidth:90,paddingTop:140,gap:8}}>
-            <div style={{fontSize:24}}>🏆</div>
-            <div style={{fontFamily:"'Teko',sans-serif",fontSize:13,color:"#D4A843",letterSpacing:".1em",textAlign:"center"}}>FINAL</div>
-            <div style={{width:1,flex:1,background:"linear-gradient(to bottom,rgba(212,168,67,.4),transparent)"}}/>
-          </div>
-
-          {/* 오른쪽 8경기 */}
-          {renderColumn(RIGHT, "right")}
+            {LEFT.map(function(m,i){ return renderMatch(m,i,true); })}
+            {RIGHT.map(function(m,i){ return renderMatch(m,i,false); })}
+          </svg>
         </div>
-
-        <div style={{textAlign:"center",marginTop:20,fontSize:10,color:"#3A5070"}}>
-          {lang==="ko"?"← 좌우로 스크롤 · 핀치줌 가능 →":"← scroll & pinch to zoom →"}
+        <div style={{textAlign:"center",padding:"4px 0 16px",fontSize:10,color:"#3A5070"}}>
+          {lang==="ko"?"← 좌우/위아래 스크롤 가능 →":"← scroll in any direction →"}
         </div>
       </div>
     </div>
