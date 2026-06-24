@@ -1414,8 +1414,10 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
       const newZoom = Math.max(0.5, Math.min(3, pinchRef.current.startZoom * scale));
       setZoom(newZoom);
     } else if(e.touches.length === 1 && panRef.current.active){
-      const dx = e.touches[0].clientX - panRef.current.startX;
-      const dy = e.touches[0].clientY - panRef.current.startY;
+      // transform 순서가 translate(pan) scale(zoom) 이므로,
+      // pan은 스케일 이전 좌표계 -> 화면상 dx/dy를 zoom으로 나눠야 손가락과 1:1로 맞음
+      const dx = (e.touches[0].clientX - panRef.current.startX) / zoom;
+      const dy = (e.touches[0].clientY - panRef.current.startY) / zoom;
       setPan({x:panRef.current.startPanX+dx, y:panRef.current.startPanY+dy});
     }
   };
