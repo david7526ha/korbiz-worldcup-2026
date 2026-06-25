@@ -1767,6 +1767,92 @@ function isOrderLocked(teamHigher, teamLower, group, tournament) {
   return false; // 마지막 경기 결과에 따라 순서가 바뀔 수 있음
 }
 
+
+// 8개 와일드카드 자리를 두고 12개 조 3위가 경쟁하는 구조를 "전역 최악의 시나리오"로 정확히 계산.
+// 각 미완료 조마다, 남은 한 경기의 모든 결과(승/무/패 x 다양한 골차)를 시도해서
+// "그 조에서 나올 수 있는 가장 강력한 3위 후보"의 (pts,gd,gf)를 구하고,
+// 이미 끝난 조의 3위들과 합쳐서 전체 12개를 정렬한 뒤 내 팀의 순위를 매김.
+// 순위가 8위 이내면 확정.
+function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
+  var gr = tournament.groupResults || {};
+  var mr = tournament.matchResults || {};
+  var allStats = computeAllGroupStats(mr);
+
+  function cmpRank(a, b) {
+    return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf);
+  }
+
+  // 각 조의 "현재 3위" 또는 "최악의 시나리오 3위" 계산
+  var entries = [];
+  Object.keys(GROUPS).forEach(function(grp) {
+    var teams = GROUPS[grp].teams;
+    var stats = allStats[grp] || {};
+    var maxPlayed = Math.max.apply(null, teams.map(function(t){ return (stats[t]||{played:0}).played; }));
+
+    if (gr[grp] || maxPlayed >= 3) {
+      // 조 완료 -> 3위 고정값 사용
+      var sorted = fifaSortGroup(teams, stats, grp, mr);
+      var third = sorted[2];
+      entries.push({grp: grp, team: third, pts: stats[third].pts, gd: stats[third].gd, gf: stats[third].gf});
+      return;
+    }
+
+    // 미완료 조 -> 남은 라운드를 모든 합리적 결과로 시도해서, 3위가 도달 가능한 "최강" 라인 찾기
+    var remainingMatches = MATCH_SCHEDULE.filter(function(m) {
+      return m.group === grp && !mr[m.id] && !mr[m.id + "a"];
+    });
+    if (remainingMatches.length === 0) {
+      var sorted2 = fifaSortGroup(teams, stats, grp, mr);
+      var third2 = sorted2[2];
+      entries.push({grp: grp, team: third2, pts: stats[third2].pts, gd: stats[third2].gd, gf: stats[third2].gf});
+      return;
+    }
+
+    var outcomes = ["home", "draw", "away"];
+    var margins = [0, 1, 2, 3, 4, 5];
+    var best = null;
+
+    function tryAllCombos(idx, simStats) {
+      if (idx >= remainingMatches.length) {
+        var teamList = Object.keys(simStats);
+        teamList.forEach(function(t){ simStats[t].gd = simStats[t].gf - simStats[t].ga; });
+        var sorted3 = teamList.slice().sort(function(a, b) { return cmpRank(simStats[a], simStats[b]); });
+        var thirdTeam = sorted3[2];
+        var cand = { team: thirdTeam, pts: simStats[thirdTeam].pts, gd: simStats[thirdTeam].gd, gf: simStats[thirdTeam].gf };
+        if (!best || cmpRank(best, cand) > 0) best = cand;
+        return;
+      }
+      var m = remainingMatches[idx];
+      outcomes.forEach(function(outcome) {
+        margins.forEach(function(margin) {
+          var copy = JSON.parse(JSON.stringify(simStats));
+          if (outcome === "home") {
+            var g = 1 + margin;
+            copy[m.home].pts += 3; copy[m.home].gf += g; copy[m.away].ga += g;
+          } else if (outcome === "away") {
+            var g2 = 1 + margin;
+            copy[m.away].pts += 3; copy[m.away].gf += g2; copy[m.home].ga += g2;
+          } else {
+            copy[m.home].pts += 1; copy[m.away].pts += 1;
+            copy[m.home].gf += 1; copy[m.home].ga += 1; copy[m.away].gf += 1; copy[m.away].ga += 1;
+          }
+          tryAllCombos(idx + 1, copy);
+        });
+      });
+    }
+
+    var initStats = {};
+    teams.forEach(function(t){ initStats[t] = { pts: stats[t].pts, gf: stats[t].gf, ga: stats[t].ga }; });
+    tryAllCombos(0, initStats);
+    entries.push({ grp: grp, team: best.team, pts: best.pts, gd: best.gd, gf: best.gf });
+  });
+
+  entries.sort(cmpRank);
+  var myEntry = entries.find(function(e){ return e.grp === myGroup; });
+  var rank = entries.indexOf(myEntry) + 1;
+  return rank; // 1~12
+}
+
 function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
   if(gr[group]) return gr[group].includes(team) ? 1 : 0;
@@ -1850,29 +1936,14 @@ function estimateAdvanceTo32(team, group, tournament) {
     return Math.max(0.05, Math.min(0.45, 0.3 - 0.1*progress4th - 0.03*gapBehind));
   }
 
-  // 4) 3위인 경우: 전체 12개조 3위들과 비교해서 상위 8개 안에 드는지 추정
-  var allThirdPlaces = [];
-  Object.keys(allStats).forEach(function(g){
-    var teams = (GROUPS[g]&&GROUPS[g].teams)||[];
-    var stats = allStats[g];
-    var sortedG = fifaSortGroup(teams, stats, g, mr);
-    var t3 = sortedG[2];
-    if(t3) allThirdPlaces.push({group:g, team:t3, pts:stats[t3].pts, gd:stats[t3].gd, gf:stats[t3].gf, played:stats[t3].played});
-  });
-  // 아직 다 안 끝난 조의 3위는 남은 경기 결과로 변동 가능 -> 현재 스냅샷 기준 비교 (보수적 추정)
-  allThirdPlaces.sort(function(a,b){
-    return (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf);
-  });
-  var myRankAmongThirds = allThirdPlaces.findIndex(function(x){ return x.group===group; });
-  if(myRankAmongThirds === -1) return 0.3;
-
-  // 상위 8위 안에 여유있게 들면 확률 높게, 8위 근처면 불확실
-  var distFromCutoff = 7 - myRankAmongThirds; // >0 이면 8위 안, <0 이면 밖
+  // 4) 3위인 경우: 다른 11개 조의 "각 조 최악의 시나리오(3위 후보가 도달 가능한 최강 라인)"까지
+  // 전부 반영한 전역 순위로 정확히 판정. 그 전역 순위가 8위 이내면 100% 확정(1), 8위 밖이면 탈락 위험.
+  var globalRank = computeGlobalThirdPlaceRank(team, group, tournament);
+  if(globalRank <= 8) return 1; // 모든 조가 최악으로 흘러가도 8위 안 -> 수학적 확정
+  // 8위 밖이면, 진행도 + 격차 기반 확률로 추정 (완전 탈락 단정은 아님)
   var progress = myStats[team].played / 3;
-  if(distFromCutoff >= 2) return Math.min(0.95, 0.6 + 0.1*progress + 0.05*distFromCutoff);
-  if(distFromCutoff <= -2) return Math.max(0.05, 0.3 - 0.1*progress);
-  // 컷오프 근처 (8위 경계) -> 불확실
-  return Math.max(0.15, Math.min(0.85, 0.5 + 0.15*distFromCutoff*progress));
+  var distOver = globalRank - 8; // 8위를 얼마나 넘었는지
+  return Math.max(0.05, Math.min(0.45, 0.3 - 0.05*distOver - 0.1*progress));
 }
 
 
