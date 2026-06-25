@@ -1879,10 +1879,22 @@ function estimateAdvanceTo32(team, group, tournament) {
     var others = myGroupTeams.filter(function(t){ return t !== team; });
 
     // 각 도전자가 "나를 추월할 수 있는지"만 우선 판정 (동률 시 맞대결 -> 그래도 동률이면 골득실/득점으로 확인)
+    // 단, 이미 나보다 위인 팀(1위 자리에서 나를 보는 경우의 상대 1위)은 "동료"로 취급해 카운트하지 않음:
+    // 그 팀과 내가 순서를 바꿔도 둘 다 1·2위 안에 남으므로 무해함.
     var canOvertakeCount = 0;
     others.forEach(function(other){
+      var otherRank = sortedInGroup.indexOf(other);
       var otherMax = myStats[other].pts + (3-myStats[other].played)*3;
       var otherFullyPlayed = myStats[other].played >= 3;
+
+      function flagOvertake(){
+        // other가 현재 1·2위 그룹(rank 0 또는 1) 안에 있다면, 나와 순서가 바뀌어도
+        // 둘 다 여전히 1·2위 안에 남으므로 무해(동료) -> 카운트하지 않음.
+        // other가 현재 3·4위(rank 2 또는 3)라면, 나를 밀어내고 들어오는 진짜 위협 -> 카운트.
+        if(otherRank <= 1) return; // 1·2위 동료 -> 무해
+        canOvertakeCount++;
+      }
+
       if(myStats[team].pts > otherMax) return; // 못 따라옴
       if(myStats[team].pts === otherMax) {
         var myH2H = (h2h[team]||{})[other];
@@ -1890,21 +1902,20 @@ function estimateAdvanceTo32(team, group, tournament) {
         var myH2HPts = myH2H ? myH2H.pts : null;
         var otherH2HPts = otherH2H ? otherH2H.pts : null;
         if(myH2HPts !== null && myH2HPts > (otherH2HPts||0)) return; // 맞대결 우위로 안전
-        // 맞대결도 동률(또는 안 만남) -> 상대 경기가 모두 끝났으면 전체 득실차/득점까지 최종 비교
         if(otherFullyPlayed) {
           if(myStats[team].gd > myStats[other].gd) return; // 득실차로 안전
           if(myStats[team].gd === myStats[other].gd && myStats[team].gf >= myStats[other].gf) return; // 득점까지 동률이상 안전
         }
-        canOvertakeCount++; // 동률 가능 + 우위 없음 -> 추월 가능으로 카운트
+        flagOvertake();
       } else {
-        canOvertakeCount++; // 확실히 추월 가능
+        flagOvertake();
       }
     });
 
-    // 나를 추월 가능한 팀이 1개 이하면 -> 최악의 경우에도 2위는 유지 -> 32강 확정
-    if(canOvertakeCount <= 1) return 1;
+    // 나를 밀어낼 수 있는 "3·4위 도전자"가 0명이면 -> 1·2위 둘 다 안전 -> 32강 확정
+    if(canOvertakeCount === 0) return 1;
 
-    // 2개 이상이 추월 가능하면 3위 이하로 밀릴 위험 있음 -> 진행도 기반 확률
+    // 1명 이상이 나를 밀어낼 수 있으면 -> 3위 이하로 떨어질 위험 있음 -> 진행도 기반 확률
     var thirdInGroup = sortedInGroup[2];
     var progress = myStats[team].played / 3;
     var gapToThird = myStats[team].pts - (thirdInGroup ? myStats[thirdInGroup].pts : 0);
