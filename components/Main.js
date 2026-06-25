@@ -1782,22 +1782,25 @@ function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
     return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf);
   }
 
-  // 각 조의 "현재 3위" 또는 "최악의 시나리오 3위" 계산
+  // 다른 11개 조: 각 조의 "최악의 시나리오 3위"(그 조에서 나올 수 있는 가장 강력한 3위 후보) 계산
+  // 내 조(myGroup): 위와 같은 방식이 아니라, "myTeam 자신이 3위가 되는 시나리오 중 myTeam에게 가장 유리한 라인"을 계산
+  // (myTeam의 글로벌 순위를 정확히 보려면 myTeam 본인의 최선 시나리오를 써야 함 - 다른 조는 "나를 위협하는 최악"을 쓰는 게 맞지만,
+  //  내 조 자체는 "내가 3위가 되는 경우 내가 어떤 라인으로 들어가는지"를 봐야 함)
   var entries = [];
+
   Object.keys(GROUPS).forEach(function(grp) {
     var teams = GROUPS[grp].teams;
     var stats = allStats[grp] || {};
     var maxPlayed = Math.max.apply(null, teams.map(function(t){ return (stats[t]||{played:0}).played; }));
+    var isMyGroup = (grp === myGroup);
 
     if (gr[grp] || maxPlayed >= 3) {
-      // 조 완료 -> 3위 고정값 사용
       var sorted = fifaSortGroup(teams, stats, grp, mr);
       var third = sorted[2];
       entries.push({grp: grp, team: third, pts: stats[third].pts, gd: stats[third].gd, gf: stats[third].gf});
       return;
     }
 
-    // 미완료 조 -> 남은 라운드를 모든 합리적 결과로 시도해서, 3위가 도달 가능한 "최강" 라인 찾기
     var remainingMatches = MATCH_SCHEDULE.filter(function(m) {
       return m.group === grp && !mr[m.id] && !mr[m.id + "a"];
     });
@@ -1810,7 +1813,8 @@ function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
 
     var outcomes = ["home", "draw", "away"];
     var margins = [0, 1, 2, 3, 4, 5];
-    var best = null;
+    var best = null; // 다른 조: "이 조의 3위가 가장 강력해지는" 시나리오
+    var bestForMyTeam = null; // 내 조일 때만: "myTeam이 3위가 되면서 myTeam에게 가장 좋은" 시나리오
 
     function tryAllCombos(idx, simStats) {
       if (idx >= remainingMatches.length) {
@@ -1820,6 +1824,11 @@ function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
         var thirdTeam = sorted3[2];
         var cand = { team: thirdTeam, pts: simStats[thirdTeam].pts, gd: simStats[thirdTeam].gd, gf: simStats[thirdTeam].gf };
         if (!best || cmpRank(best, cand) > 0) best = cand;
+
+        if (isMyGroup && thirdTeam === myTeam) {
+          // myTeam이 실제로 3위가 되는 시나리오 중, myTeam 입장에서 가장 유리한(=순위가 가장 높아지는) 라인을 채택
+          if (!bestForMyTeam || cmpRank(bestForMyTeam, cand) > 0) bestForMyTeam = cand;
+        }
         return;
       }
       var m = remainingMatches[idx];
@@ -1844,7 +1853,16 @@ function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
     var initStats = {};
     teams.forEach(function(t){ initStats[t] = { pts: stats[t].pts, gf: stats[t].gf, ga: stats[t].ga }; });
     tryAllCombos(0, initStats);
-    entries.push({ grp: grp, team: best.team, pts: best.pts, gd: best.gd, gf: best.gf });
+
+    if (isMyGroup) {
+      // myTeam이 3위가 되는 시나리오가 전혀 없으면(항상 1·2위거나 항상 4위면) -> 그 사실 그대로 사용
+      // (1·2위면 이 함수가 호출될 일이 없고, 항상 4위면 와일드카드 자체가 불가능하므로 매우 낮은 라인 부여)
+      entries.push(bestForMyTeam
+        ? { grp: grp, team: myTeam, pts: bestForMyTeam.pts, gd: bestForMyTeam.gd, gf: bestForMyTeam.gf }
+        : { grp: grp, team: myTeam, pts: -1, gd: -99, gf: -99 });
+    } else {
+      entries.push({ grp: grp, team: best.team, pts: best.pts, gd: best.gd, gf: best.gf });
+    }
   });
 
   entries.sort(cmpRank);
@@ -1852,6 +1870,7 @@ function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
   var rank = entries.indexOf(myEntry) + 1;
   return rank; // 1~12
 }
+
 
 function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
