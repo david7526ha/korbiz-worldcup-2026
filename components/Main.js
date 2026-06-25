@@ -1746,6 +1746,7 @@ function isOrderLocked(teamHigher, teamLower, group, tournament) {
 
   var higherMin = stats[teamHigher].pts; // 더 안 뛰어도 최소 보장 점수(현재값, 내려갈 일 없음)
   var lowerMax = stats[teamLower].pts + (3-stats[teamLower].played)*3; // 낮은팀 최대가능점수
+  var lowerFullyPlayed = stats[teamLower].played >= 3;
 
   if(higherMin > lowerMax) return true; // 낮은팀이 다 이겨도 못 따라옴 -> 순서 고정
 
@@ -1757,6 +1758,11 @@ function isOrderLocked(teamHigher, teamLower, group, tournament) {
     var higherPts = higherH2H ? higherH2H.pts : null;
     var lowerPts = lowerH2H ? lowerH2H.pts : 0;
     if(higherPts !== null && higherPts > lowerPts) return true; // 맞대결 우위 -> 순서 고정
+    // 맞대결도 동률(또는 안 만남) -> 상대 경기가 모두 끝났으면 전체 득실차/득점까지 최종 비교
+    if(lowerFullyPlayed) {
+      if(stats[teamHigher].gd > stats[teamLower].gd) return true;
+      if(stats[teamHigher].gd === stats[teamLower].gd && stats[teamHigher].gf >= stats[teamLower].gf) return true;
+    }
   }
   return false; // 마지막 경기 결과에 따라 순서가 바뀔 수 있음
 }
@@ -1786,10 +1792,11 @@ function estimateAdvanceTo32(team, group, tournament) {
     var h2h = buildHeadToHead(group, mr);
     var others = myGroupTeams.filter(function(t){ return t !== team; });
 
-    // 각 도전자가 "나를 추월할 수 있는지"만 우선 판정 (동률 시 맞대결로 우선권 확인)
+    // 각 도전자가 "나를 추월할 수 있는지"만 우선 판정 (동률 시 맞대결 -> 그래도 동률이면 골득실/득점으로 확인)
     var canOvertakeCount = 0;
     others.forEach(function(other){
       var otherMax = myStats[other].pts + (3-myStats[other].played)*3;
+      var otherFullyPlayed = myStats[other].played >= 3;
       if(myStats[team].pts > otherMax) return; // 못 따라옴
       if(myStats[team].pts === otherMax) {
         var myH2H = (h2h[team]||{})[other];
@@ -1797,7 +1804,12 @@ function estimateAdvanceTo32(team, group, tournament) {
         var myH2HPts = myH2H ? myH2H.pts : null;
         var otherH2HPts = otherH2H ? otherH2H.pts : null;
         if(myH2HPts !== null && myH2HPts > (otherH2HPts||0)) return; // 맞대결 우위로 안전
-        canOvertakeCount++; // 동률 가능 + 맞대결 우위 없음 -> 추월 가능으로 카운트
+        // 맞대결도 동률(또는 안 만남) -> 상대 경기가 모두 끝났으면 전체 득실차/득점까지 최종 비교
+        if(otherFullyPlayed) {
+          if(myStats[team].gd > myStats[other].gd) return; // 득실차로 안전
+          if(myStats[team].gd === myStats[other].gd && myStats[team].gf >= myStats[other].gf) return; // 득점까지 동률이상 안전
+        }
+        canOvertakeCount++; // 동률 가능 + 우위 없음 -> 추월 가능으로 카운트
       } else {
         canOvertakeCount++; // 확실히 추월 가능
       }
