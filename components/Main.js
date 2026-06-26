@@ -1727,7 +1727,18 @@ function isTeamEliminated(team, group, tournament) {
   // 단, 3위로라도 와일드카드 갈 가능성은 별도이므로, 완전 탈락은 "3위 와일드카드 가능성도 없을 때"만
   if(teamsAboveMeForSure < 2) return false;
 
-  // 3위가 확정이어도 와일드카드로 갈 수 있는지 추가 체크
+  // 안전장치: 다른 조들이 아직 안 끝났으면, 그 결과에 따라 와일드카드 컷오프 자체가 바뀔 수 있어
+  // "탈락 확정" 표시는 모든 12개 조가 다 끝났을 때만 보여줌 (애매한 조기 판정으로 오해를 주지 않도록)
+  var mr2 = tournament.matchResults || {};
+  var allGroupsFinished = Object.keys(GROUPS).every(function(g){
+    var gTeams = GROUPS[g].teams;
+    var gStats = computeAllGroupStats(mr2)[g] || {};
+    var gMaxPlayed = Math.max.apply(null, gTeams.map(function(t){ return (gStats[t]||{played:0}).played; }));
+    return gMaxPlayed >= 3;
+  });
+  if(!allGroupsFinished) return false; // 다른 조가 안 끝났으면 보수적으로 "탈락 아님"으로 표시
+
+  // 모든 조가 끝난 경우에만 와일드카드 가능성까지 확인
   var advProb = estimateAdvanceTo32(team, group, tournament);
   return advProb <= 0.03;
 }
