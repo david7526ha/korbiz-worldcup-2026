@@ -2000,13 +2000,15 @@ function estimateAdvanceTo32(team, group, tournament) {
 // 탈락 확정된 픽은 0, 그 외는 진출확률 기반 기대값 합산
 function calcRemainingPotential(user, tournament) {
   var gr = tournament.groupResults || {};
+  var mq = tournament.manualQualified || {};
+  var mo = tournament.manualOut || {};
   var potential = 0;
   Object.entries(user.groupPicks||{}).forEach(function(e){
     var grp = e[0], teams = e[1]||[];
     if(gr[grp]) return; // 이미 확정된 조는 total에 반영됨, 스킵
     teams.forEach(function(team){
-      var advProb = estimateAdvanceTo32(team, grp, tournament);
-      potential += advProb * 3; // 탈락확정(거의0)이면 거의 0, 진출확정(1)이면 +3 그대로
+      var advProb = mq[team] ? 1 : (mo[team] ? 0 : 0.5); // Admin이 직접 Q/OUT 체크한 값만 사용, 미정이면 중립(0.5)
+      potential += advProb * 3;
     });
   });
   return potential;
