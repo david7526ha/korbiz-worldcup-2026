@@ -2308,9 +2308,9 @@ function GroupStandings({users, tournament, currentUid, lang}){
                 const isMyPick = myGrpPicks.includes(t.name);
                 const inZone = i<2; // 현재 순위 기준 진출권
                 const gd = t.gf-t.ga;
-                const advProb = estimateAdvanceTo32(t.name, grp, tournament);
-                const isQualified = advProb === 1;
-                const isEliminated = isTeamEliminated(t.name, grp, tournament);
+                // 자동 추정 로직 대신 Admin이 직접 체크한 manualQualified만 사용 (혼란을 주는 자동판정 제거)
+                const isQualified = !!(tournament.manualQualified && tournament.manualQualified[t.name]);
+                const isEliminated = false;
                 return(
                   <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:isQualified?"rgba(34,197,94,.06)":isEliminated?"rgba(239,68,68,.04)":inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
