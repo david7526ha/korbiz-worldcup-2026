@@ -299,8 +299,8 @@ function calcScore(picks={}, tournament={}) {
     (picked||[]).forEach(t=>{
       if((gr[grp]||[]).includes(t)){
         total+=3;breakdown.push({l:`${grp}: ${t}`,p:3});
-      } else if(estimateAdvanceTo32(t, grp, tournament) === 1){
-        // 조 결과 미확정이지만 32강 진출이 수학적으로 확정된 팀 (1·2위 확정 또는 와일드카드 확정)
+      } else if(tournament.manualQualified && tournament.manualQualified[t]){
+        // 조 결과 미확정이지만 Admin이 직접 32강 진출 확정(Q)으로 체크한 팀
         total+=3;breakdown.push({l:`${grp}: ${t} (clinched)`,p:3});
       }
     });
