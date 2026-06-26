@@ -1692,167 +1692,289 @@ function computeAllGroupStats(matchResults) {
 
 // 전체 12개조 기준 "이 팀이 32강에 갈 수 있는가"를 0~1 확률로 추정
 // 32강 탈락이 수학적으로 확정된 팀인지 (3·4위 둘 다 + 자신 포함 4팀 중 최소 2팀이 확실히 위에 있음)
-// ═══ 32강 진출 확정 판정 - 단일 통합 로직 ═══════════════════════════════════
-// 원칙: "이 팀이 32강에 못 갈 수 있는 시나리오가 단 하나라도 존재하는가?"
-// - 존재하면 미확정, 절대 존재하지 않으면 확정.
-// - 1·2위 자동진출과 3위 와일드카드를 동일한 기준(공정한 8위 컷오프 라인)으로 일관되게 판정.
-//   (한 조의 3위가 와일드카드로 확정된다면, 같은 조 1·2위는 당연히 더 안전하므로 같이 확정 표시됨)
+function isTeamEliminated(team, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) return !gr[group].includes(team);
 
-// 한 조의 남은 모든 경기에 대해 가능한 모든 결과(승/무/패 x 골차 0~5)를 전수 시뮬레이션
-function generateGroupScenarios(group, matchResults) {
-  var teams = (GROUPS[group] && GROUPS[group].teams) || [];
-  var baseStats = {};
-  teams.forEach(function(t){ baseStats[t] = {pts:0, gf:0, ga:0, played:0}; });
+  var mr = tournament.matchResults || {};
+  var allStats = computeAllGroupStats(mr);
+  var myGroupTeams = (GROUPS[group]&&GROUPS[group].teams)||[];
+  var myStats = allStats[group] || {};
+  if(!myStats[team]) return false;
 
-  MATCH_SCHEDULE.forEach(function(m){
-    if(m.group !== group) return;
-    var r = matchResults[m.id] || matchResults[m.id+"a"];
-    if(!r) return;
-    var h = parseInt(r.home), a = parseInt(r.away);
-    if(isNaN(h) || isNaN(a)) return;
-    if(!baseStats[m.home] || !baseStats[m.away]) return;
-    baseStats[m.home].played++; baseStats[m.away].played++;
-    baseStats[m.home].gf+=h; baseStats[m.home].ga+=a;
-    baseStats[m.away].gf+=a; baseStats[m.away].ga+=h;
-    if(h>a) baseStats[m.home].pts+=3;
-    else if(h<a) baseStats[m.away].pts+=3;
-    else { baseStats[m.home].pts++; baseStats[m.away].pts++; }
-  });
+  var maxPlayed = Math.max.apply(null, myGroupTeams.map(function(t){ return (myStats[t]||{played:0}).played; }));
+  if(maxPlayed === 0) return false;
 
-  var remainingMatches = MATCH_SCHEDULE.filter(function(m){
-    return m.group === group && !matchResults[m.id] && !matchResults[m.id+"a"];
-  });
+  var h2h = buildHeadToHead(group, mr);
+  var myMax = myStats[team].pts + (3-myStats[team].played)*3; // 내가 남은 경기 다 이겨도 도달 가능한 최대 점수
+  var others = myGroupTeams.filter(function(t){ return t !== team; });
 
-  if(remainingMatches.length === 0) {
-    teams.forEach(function(t){ baseStats[t].gd = baseStats[t].gf - baseStats[t].ga; });
-    return [baseStats]; // 더 이상 변동 없음, 단일 시나리오
-  }
-
-  var outcomes = ["home", "draw", "away"];
-  var margins = [0, 1, 2, 3, 4, 5];
-  var scenarios = [];
-
-  function recurse(idx, stats) {
-    if(idx >= remainingMatches.length) {
-      var copy = {};
-      teams.forEach(function(t){
-        copy[t] = { pts: stats[t].pts, gf: stats[t].gf, ga: stats[t].ga, played: stats[t].played };
-        copy[t].gd = copy[t].gf - copy[t].ga;
-      });
-      scenarios.push(copy);
-      return;
+  var teamsAboveMeForSure = 0;
+  others.forEach(function(other){
+    if(myStats[other].pts > myMax) {
+      teamsAboveMeForSure++;
+    } else if(myStats[other].pts === myMax) {
+      // 동률 가능 -> 맞대결로 확정 우위 있는지 확인
+      var otherH2H = (h2h[other]||{})[team];
+      var myH2H = (h2h[team]||{})[other];
+      var otherPts = otherH2H ? otherH2H.pts : null;
+      var myPts = myH2H ? myH2H.pts : 0;
+      if(otherPts !== null && otherPts > myPts) teamsAboveMeForSure++;
     }
-    var m = remainingMatches[idx];
-    outcomes.forEach(function(outcome) {
-      margins.forEach(function(margin) {
-        var next = {};
-        teams.forEach(function(t){ next[t] = { pts: stats[t].pts, gf: stats[t].gf, ga: stats[t].ga, played: stats[t].played }; });
-        if(outcome === "home") {
-          var g = 1 + margin;
-          next[m.home].pts += 3; next[m.home].gf += g; next[m.away].ga += g;
-        } else if(outcome === "away") {
-          var g2 = 1 + margin;
-          next[m.away].pts += 3; next[m.away].gf += g2; next[m.home].ga += g2;
-        } else {
-          next[m.home].pts += 1; next[m.away].pts += 1;
-          next[m.home].gf += 1; next[m.home].ga += 1;
-          next[m.away].gf += 1; next[m.away].ga += 1;
-        }
-        recurse(idx + 1, next);
-      });
-    });
+  });
+
+  // 3개 팀 중 최소 2팀이 확실히 나보다 위 -> 나는 3위 이하로 확정 -> 32강(1·2위+WC) 중 1·2위는 탈락
+  // 단, 3위로라도 와일드카드 갈 가능성은 별도이므로, 완전 탈락은 "3위 와일드카드 가능성도 없을 때"만
+  if(teamsAboveMeForSure < 2) return false;
+
+  // 3위가 확정이어도 와일드카드로 갈 수 있는지 추가 체크
+  var advProb = estimateAdvanceTo32(team, group, tournament);
+  return advProb <= 0.03;
+}
+
+
+// 두 팀(현재 1위, 2위) 사이의 순서가 남은 경기 결과와 무관하게 100% 고정되는지 확인.
+// 둘 다 32강 진출은 확정이어도, "누가 1위/2위인지"는 마지막 경기로 바뀔 수 있음 -> 브래킷 시딩에 중요.
+function isOrderLocked(teamHigher, teamLower, group, tournament) {
+  var gr = tournament.groupResults || {};
+  if(gr[group]) return true; // 조 전체 확정이면 순서도 확정
+
+  var mr = tournament.matchResults || {};
+  var allStats = computeAllGroupStats(mr);
+  var stats = allStats[group] || {};
+  if(!stats[teamHigher] || !stats[teamLower]) return false;
+
+  var higherMin = stats[teamHigher].pts; // 더 안 뛰어도 최소 보장 점수(현재값, 내려갈 일 없음)
+  var lowerMax = stats[teamLower].pts + (3-stats[teamLower].played)*3; // 낮은팀 최대가능점수
+  var lowerFullyPlayed = stats[teamLower].played >= 3;
+
+  if(higherMin > lowerMax) return true; // 낮은팀이 다 이겨도 못 따라옴 -> 순서 고정
+
+  if(higherMin === lowerMax) {
+    // 동률 가능 -> 맞대결로 우선권 있는지 확인
+    var h2h = buildHeadToHead(group, mr);
+    var higherH2H = (h2h[teamHigher]||{})[teamLower];
+    var lowerH2H = (h2h[teamLower]||{})[teamHigher];
+    var higherPts = higherH2H ? higherH2H.pts : null;
+    var lowerPts = lowerH2H ? lowerH2H.pts : 0;
+    if(higherPts !== null && higherPts > lowerPts) return true; // 맞대결 우위 -> 순서 고정
+    // 맞대결도 동률(또는 안 만남) -> 상대 경기가 모두 끝났으면 전체 득실차/득점까지 최종 비교
+    if(lowerFullyPlayed) {
+      if(stats[teamHigher].gd > stats[teamLower].gd) return true;
+      if(stats[teamHigher].gd === stats[teamLower].gd && stats[teamHigher].gf >= stats[teamLower].gf) return true;
+    }
   }
-  recurse(0, baseStats);
-  return scenarios;
+  return false; // 마지막 경기 결과에 따라 순서가 바뀔 수 있음
 }
 
-function cmpStatRank(a, b) {
-  return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf);
-}
 
-// 전체 12개 조의 "공정한 8위 컷오프 라인" 계산: 모든 조에 동일 기준(그 조의 최강 3위)을 적용해서 산출.
-// matchResults가 바뀔 때마다 다시 계산해야 하므로 캐시는 호출부에서 짧게만 유지.
-function computeFairCutoffLine(tournament) {
+// 8개 와일드카드 자리를 두고 12개 조 3위가 경쟁하는 구조를 "전역 최악의 시나리오"로 정확히 계산.
+// 각 미완료 조마다, 남은 한 경기의 모든 결과(승/무/패 x 다양한 골차)를 시도해서
+// "그 조에서 나올 수 있는 가장 강력한 3위 후보"의 (pts,gd,gf)를 구하고,
+// 이미 끝난 조의 3위들과 합쳐서 전체 12개를 정렬한 뒤 내 팀의 순위를 매김.
+// 순위가 8위 이내면 확정.
+function computeGlobalThirdPlaceRank(myTeam, myGroup, tournament) {
   var gr = tournament.groupResults || {};
   var mr = tournament.matchResults || {};
-  var thirds = [];
+  var allStats = computeAllGroupStats(mr);
 
-  Object.keys(GROUPS).forEach(function(group) {
-    if(gr[group]) {
-      var advanced = gr[group];
-      var thirdTeam = advanced[2];
-      if(thirdTeam) {
-        var teams = GROUPS[group].teams;
-        var scenarios = generateGroupScenarios(group, mr);
-        var stats = scenarios[0];
-        thirds.push({pts: stats[thirdTeam].pts, gd: stats[thirdTeam].gd, gf: stats[thirdTeam].gf});
-      }
+  function cmpRank(a, b) {
+    return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf);
+  }
+
+  // 다른 11개 조: 각 조의 "최악의 시나리오 3위"(그 조에서 나올 수 있는 가장 강력한 3위 후보) 계산
+  // 내 조(myGroup): 위와 같은 방식이 아니라, "myTeam 자신이 3위가 되는 시나리오 중 myTeam에게 가장 유리한 라인"을 계산
+  // (myTeam의 글로벌 순위를 정확히 보려면 myTeam 본인의 최선 시나리오를 써야 함 - 다른 조는 "나를 위협하는 최악"을 쓰는 게 맞지만,
+  //  내 조 자체는 "내가 3위가 되는 경우 내가 어떤 라인으로 들어가는지"를 봐야 함)
+  var entries = [];
+
+  Object.keys(GROUPS).forEach(function(grp) {
+    var teams = GROUPS[grp].teams;
+    var stats = allStats[grp] || {};
+    var maxPlayed = Math.max.apply(null, teams.map(function(t){ return (stats[t]||{played:0}).played; }));
+    var isMyGroup = (grp === myGroup);
+
+    if (gr[grp] || maxPlayed >= 3) {
+      var sorted = fifaSortGroup(teams, stats, grp, mr);
+      var third = sorted[2];
+      entries.push({grp: grp, team: third, pts: stats[third].pts, gd: stats[third].gd, gf: stats[third].gf});
       return;
     }
-    var teams = GROUPS[group].teams;
-    var scenarios = generateGroupScenarios(group, mr);
-    var best = null;
-    scenarios.forEach(function(stats) {
-      var sorted = teams.slice().sort(function(a, b){ return cmpStatRank(stats[a], stats[b]); });
-      var third = sorted[2];
-      var cand = { pts: stats[third].pts, gd: stats[third].gd, gf: stats[third].gf };
-      if(!best || cmpStatRank(best, cand) > 0) best = cand;
+
+    var remainingMatches = MATCH_SCHEDULE.filter(function(m) {
+      return m.group === grp && !mr[m.id] && !mr[m.id + "a"];
     });
-    if(best) thirds.push(best);
+    if (remainingMatches.length === 0) {
+      var sorted2 = fifaSortGroup(teams, stats, grp, mr);
+      var third2 = sorted2[2];
+      entries.push({grp: grp, team: third2, pts: stats[third2].pts, gd: stats[third2].gd, gf: stats[third2].gf});
+      return;
+    }
+
+    var outcomes = ["home", "draw", "away"];
+    var margins = [0, 1, 2, 3, 4, 5];
+    var best = null; // 다른 조: "이 조의 3위가 가장 강력해지는" 시나리오
+    var bestForMyTeam = null; // 내 조일 때만: "myTeam이 3위가 되면서 myTeam에게 가장 좋은" 시나리오
+
+    function tryAllCombos(idx, simStats) {
+      if (idx >= remainingMatches.length) {
+        var teamList = Object.keys(simStats);
+        teamList.forEach(function(t){ simStats[t].gd = simStats[t].gf - simStats[t].ga; });
+        var sorted3 = teamList.slice().sort(function(a, b) { return cmpRank(simStats[a], simStats[b]); });
+        var thirdTeam = sorted3[2];
+        var cand = { team: thirdTeam, pts: simStats[thirdTeam].pts, gd: simStats[thirdTeam].gd, gf: simStats[thirdTeam].gf };
+        if (!best || cmpRank(best, cand) > 0) best = cand;
+
+        if (isMyGroup && thirdTeam === myTeam) {
+          // myTeam이 실제로 3위가 되는 시나리오 중, myTeam 입장에서 가장 유리한(=순위가 가장 높아지는) 라인을 채택
+          if (!bestForMyTeam || cmpRank(bestForMyTeam, cand) > 0) bestForMyTeam = cand;
+        }
+        return;
+      }
+      var m = remainingMatches[idx];
+      outcomes.forEach(function(outcome) {
+        margins.forEach(function(margin) {
+          var copy = JSON.parse(JSON.stringify(simStats));
+          if (outcome === "home") {
+            var g = 1 + margin;
+            copy[m.home].pts += 3; copy[m.home].gf += g; copy[m.away].ga += g;
+          } else if (outcome === "away") {
+            var g2 = 1 + margin;
+            copy[m.away].pts += 3; copy[m.away].gf += g2; copy[m.home].ga += g2;
+          } else {
+            copy[m.home].pts += 1; copy[m.away].pts += 1;
+            copy[m.home].gf += 1; copy[m.home].ga += 1; copy[m.away].gf += 1; copy[m.away].ga += 1;
+          }
+          tryAllCombos(idx + 1, copy);
+        });
+      });
+    }
+
+    var initStats = {};
+    teams.forEach(function(t){ initStats[t] = { pts: stats[t].pts, gf: stats[t].gf, ga: stats[t].ga }; });
+    tryAllCombos(0, initStats);
+
+    if (isMyGroup) {
+      // myTeam이 3위가 되는 시나리오가 전혀 없으면(항상 1·2위거나 항상 4위면) -> 그 사실 그대로 사용
+      // (1·2위면 이 함수가 호출될 일이 없고, 항상 4위면 와일드카드 자체가 불가능하므로 매우 낮은 라인 부여)
+      entries.push(bestForMyTeam
+        ? { grp: grp, team: myTeam, pts: bestForMyTeam.pts, gd: bestForMyTeam.gd, gf: bestForMyTeam.gf }
+        : { grp: grp, team: myTeam, pts: -1, gd: -99, gf: -99 });
+    } else {
+      entries.push({ grp: grp, team: best.team, pts: best.pts, gd: best.gd, gf: best.gf });
+    }
   });
 
-  thirds.sort(cmpStatRank);
-  return thirds[7] || { pts: -1, gd: -99, gf: -99 }; // 8위 라인 (조가 12개 미만이면 안전하게 매우 낮은 기본값)
+  entries.sort(cmpRank);
+  var myEntry = entries.find(function(e){ return e.grp === myGroup; });
+  var rank = entries.indexOf(myEntry) + 1;
+  return rank; // 1~12
 }
 
-// 핵심 함수: 이 팀이 32강에 가는 게 100% 확정인지 (1·2위 자동진출 + 3위 와일드카드 통합)
-// 반환값: 1 = 확정, 0 = 탈락 확정, 0.02~0.98 = 불확실(추정 확률)
-function isClinched(team, group, tournament) {
+
+function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
   if(gr[group]) return gr[group].includes(team) ? 1 : 0;
 
   var mr = tournament.matchResults || {};
-  var teams = (GROUPS[group] && GROUPS[group].teams) || [];
-  if(teams.indexOf(team) === -1) return 0.5;
+  var allStats = computeAllGroupStats(mr);
+  var myGroupTeams = (GROUPS[group]&&GROUPS[group].teams)||[];
+  var myStats = allStats[group] || {};
+  if(!myStats[team]) return 0.5;
 
-  var scenarios = generateGroupScenarios(group, mr);
-  var maxPlayed = Math.max.apply(null, scenarios[0] ? teams.map(function(t){ return scenarios[0][t].played; }) : [0]);
+  var maxPlayed = Math.max.apply(null, myGroupTeams.map(function(t){ return (myStats[t]||{played:0}).played; }));
+  if(maxPlayed === 0) return 0.5; // 조 시작 전
 
-  var cutoff = computeFairCutoffLine(tournament);
-  var safeCount = 0, dangerCount = 0;
+  // 1) 그룹 내 순위 (FIFA 헤드투헤드 타이브레이커 적용)
+  var sortedInGroup = fifaSortGroup(myGroupTeams, myStats, group, mr);
+  var rankInGroup = sortedInGroup.indexOf(team); // 0~3
 
-  scenarios.forEach(function(stats) {
-    var sorted = teams.slice().sort(function(a, b){ return cmpStatRank(stats[a], stats[b]); });
-    var rank = sorted.indexOf(team);
-    if(rank < 2) {
-      safeCount++; // 이 시나리오에서 1·2위 자동진출 -> 안전
-      return;
+  // 2) 1·2위면: 32강행 여부만 중요 (정확히 몇 위인지는 무관).
+  // 내가 3위 이하로 밀리려면 "다른 팀 중 최소 2팀"이 나를 동시에 추월해야 함
+  // (둘 중 하나만 추월해도 나는 2위로 밀릴 뿐, 32강은 여전히 확정).
+  // 단, 추월 가능한 팀이 1팀뿐이어도 "그 팀과의 직접 맞대결에서 내가 졌다면" 주의 필요 없음(이미 반영됨).
+  if(rankInGroup < 2) {
+    var h2h = buildHeadToHead(group, mr);
+    var others = myGroupTeams.filter(function(t){ return t !== team; });
+
+    // 각 도전자가 "나를 추월할 수 있는지"만 우선 판정 (동률 시 맞대결 -> 그래도 동률이면 골득실/득점으로 확인)
+    // 단, 이미 나보다 위인 팀(1위 자리에서 나를 보는 경우의 상대 1위)은 "동료"로 취급해 카운트하지 않음:
+    // 그 팀과 내가 순서를 바꿔도 둘 다 1·2위 안에 남으므로 무해함.
+    var canOvertakeCount = 0;
+    others.forEach(function(other){
+      var otherRank = sortedInGroup.indexOf(other);
+      var otherMax = myStats[other].pts + (3-myStats[other].played)*3;
+      var otherFullyPlayed = myStats[other].played >= 3;
+
+      function flagOvertake(){
+        // other가 현재 1·2위 그룹(rank 0 또는 1) 안에 있다면, 나와 순서가 바뀌어도
+        // 둘 다 여전히 1·2위 안에 남으므로 무해(동료) -> 카운트하지 않음.
+        // other가 현재 3·4위(rank 2 또는 3)라면, 나를 밀어내고 들어오는 진짜 위협 -> 카운트.
+        if(otherRank <= 1) return; // 1·2위 동료 -> 무해
+        canOvertakeCount++;
+      }
+
+      if(myStats[team].pts > otherMax) return; // 못 따라옴
+      if(myStats[team].pts === otherMax) {
+        var myH2H = (h2h[team]||{})[other];
+        var otherH2H = (h2h[other]||{})[team];
+        var myH2HPts = myH2H ? myH2H.pts : null;
+        var otherH2HPts = otherH2H ? otherH2H.pts : null;
+        if(myH2HPts !== null && myH2HPts > (otherH2HPts||0)) return; // 맞대결 우위로 안전
+        if(otherFullyPlayed) {
+          if(myStats[team].gd > myStats[other].gd) return; // 득실차로 안전
+          if(myStats[team].gd === myStats[other].gd && myStats[team].gf >= myStats[other].gf) return; // 득점까지 동률이상 안전
+        }
+        flagOvertake();
+      } else {
+        flagOvertake();
+      }
+    });
+
+    // 나를 밀어낼 수 있는 "3·4위 도전자"가 0명이면 -> 1·2위 둘 다 안전 -> 32강 확정
+    if(canOvertakeCount === 0) return 1;
+
+    // 1명 이상이 나를 밀어낼 수 있으면 -> 3위 이하로 떨어질 위험 있음 -> 진행도 기반 확률
+    var thirdInGroup = sortedInGroup[2];
+    var progress = myStats[team].played / 3;
+    var gapToThird = myStats[team].pts - (thirdInGroup ? myStats[thirdInGroup].pts : 0);
+    var conf = Math.min(1, gapToThird/6);
+    return Math.max(0.5, Math.min(0.98, 0.6 + 0.3*progress + 0.08*conf));
+  }
+
+  // 3) 4위인 경우: 먼저 "3위로 올라갈 수 있는지"부터 확인해야 함 (3위는 와일드카드 후보)
+  // 4위가 3위를 추월하려면, 현재 3위 팀의 최대가능점수를 내가 넘어서야 함
+  if(rankInGroup >= 3) {
+    var thirdPlaceTeam = sortedInGroup[2];
+    var myMaxAsFourth = myStats[team].pts + (3-myStats[team].played)*3;
+    if(!thirdPlaceTeam) return 0.05;
+    var thirdMaxAtMyRank = myStats[thirdPlaceTeam].pts; // 3위의 현재 점수 (이미 확정된 부분)
+    // 내가 3위를 절대 못 넘을 상황(남은경기 다 이겨도 3위 현재점수보다 낮음)이면 탈락 직전
+    if(myMaxAsFourth < thirdMaxAtMyRank) return 0.02;
+    if(myMaxAsFourth === thirdMaxAtMyRank) {
+      // 동률 가능 -> 맞대결 확인
+      var h2hVs3rd = buildHeadToHead(group, mr);
+      var my3rdH2H = (h2hVs3rd[team]||{})[thirdPlaceTeam];
+      var third4thH2H = (h2hVs3rd[thirdPlaceTeam]||{})[team];
+      var myPtsVs3rd = my3rdH2H ? my3rdH2H.pts : 0;
+      var thirdPtsVs4th = third4thH2H ? third4thH2H.pts : 0;
+      if(thirdPtsVs4th > myPtsVs3rd) return 0.03; // 맞대결도 불리 -> 거의 탈락
     }
-    // 3위/4위 -> 컷오프 라인보다 위인지(더 좋은지) 확인
-    if(cmpStatRank(stats[team], cutoff) < 0) {
-      safeCount++; // 컷오프보다 위 -> 와일드카드로 안전
-    } else {
-      dangerCount++; // 32강 실패 시나리오 존재
-    }
-  });
+    // 4위지만 아직 3위 추월 가능성이 남아있음 -> 진행도 기반 낮은 확률 (탈락 임박이지만 100%는 아님)
+    var progress4th = myStats[team].played / 3;
+    var gapBehind = thirdMaxAtMyRank - myStats[team].pts;
+    return Math.max(0.05, Math.min(0.45, 0.3 - 0.1*progress4th - 0.03*gapBehind));
+  }
 
-  if(dangerCount === 0) return 1; // 모든 시나리오에서 안전 -> 100% 확정
-  if(safeCount === 0) return 0.02; // 모든 시나리오에서 위험 -> 거의 탈락 확정
-
-  // 일부만 안전 -> 진행도 + 안전 비율 기반 확률 추정
-  var progress = maxPlayed / 3;
-  var safeRatio = safeCount / (safeCount + dangerCount);
-  return Math.max(0.05, Math.min(0.95, 0.1 + 0.8 * safeRatio + 0.1 * progress));
+  // 4) 3위인 경우: 다른 11개 조의 "각 조 최악의 시나리오(3위 후보가 도달 가능한 최강 라인)"까지
+  // 전부 반영한 전역 순위로 정확히 판정. 그 전역 순위가 8위 이내면 100% 확정(1), 8위 밖이면 탈락 위험.
+  var globalRank = computeGlobalThirdPlaceRank(team, group, tournament);
+  if(globalRank <= 8) return 1; // 모든 조가 최악으로 흘러가도 8위 안 -> 수학적 확정
+  // 8위 밖이면, 진행도 + 격차 기반 확률로 추정 (완전 탈락 단정은 아님)
+  var progress = myStats[team].played / 3;
+  var distOver = globalRank - 8; // 8위를 얼마나 넘었는지
+  return Math.max(0.05, Math.min(0.45, 0.3 - 0.05*distOver - 0.1*progress));
 }
-
-// 하위호환: 기존 함수명을 그대로 쓰는 호출부가 있으면 새 로직으로 연결
-function estimateAdvanceTo32(team, group, tournament) {
-  return isClinched(team, group, tournament);
-}
-function isTeamEliminated(team, group, tournament) {
-  return isClinched(team, group, tournament) === 0;
-}
-
 
 
 
