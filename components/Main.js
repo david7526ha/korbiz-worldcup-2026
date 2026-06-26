@@ -2308,9 +2308,9 @@ function GroupStandings({users, tournament, currentUid, lang}){
                 const isMyPick = myGrpPicks.includes(t.name);
                 const inZone = i<2; // 현재 순위 기준 진출권
                 const gd = t.gf-t.ga;
-                // 자동 추정 로직 대신 Admin이 직접 체크한 manualQualified만 사용 (혼란을 주는 자동판정 제거)
+                // 자동 추정 로직 대신 Admin이 직접 체크한 manualQualified/manualOut만 사용
                 const isQualified = !!(tournament.manualQualified && tournament.manualQualified[t.name]);
-                const isEliminated = false;
+                const isEliminated = !!(tournament.manualOut && tournament.manualOut[t.name]);
                 return(
                   <div key={t.name} style={{display:"grid",gridTemplateColumns:"1fr 28px 28px 28px 28px 32px",gap:2,padding:"5px 8px",background:isQualified?"rgba(34,197,94,.06)":isEliminated?"rgba(239,68,68,.04)":inZone?"rgba(34,197,94,.04)":"transparent",borderBottom:"0.5px solid rgba(255,255,255,.03)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
@@ -3582,6 +3582,18 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
     setSaving(false);
   };
   const toggleGroup=(grp,team)=>setSt(prev=>{const cur=prev.groupResults?.[grp]||[];const next=cur.includes(team)?cur.filter(x=>x!==team):[...cur,team];return{...prev,groupResults:{...prev.groupResults,[grp]:next}};});
+  const toggleManualQ=(team)=>setSt(prev=>{
+    const mq={...(prev.manualQualified||{})};
+    const mo={...(prev.manualOut||{})};
+    if(mq[team]){ delete mq[team]; } else { mq[team]=true; delete mo[team]; }
+    return{...prev,manualQualified:mq,manualOut:mo};
+  });
+  const toggleManualOut=(team)=>setSt(prev=>{
+    const mq={...(prev.manualQualified||{})};
+    const mo={...(prev.manualOut||{})};
+    if(mo[team]){ delete mo[team]; } else { mo[team]=true; delete mq[team]; }
+    return{...prev,manualQualified:mq,manualOut:mo};
+  });
   const setBR=(key,winner)=>setSt(prev=>({...prev,bracketResults:{...prev.bracketResults,[key]:prev.bracketResults?.[key]===winner?"":winner}}));
   const setTeam=(idx,val)=>setSt(prev=>{const arr=[...prev.bracketTeams];arr[idx]=val;return{...prev,bracketTeams:arr};});
   const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["matches",lang==="ko"?"경기결과":"MATCH RESULTS"],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab]];
@@ -3709,9 +3721,17 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 return(
                   <div key={grp} style={{background:"#111E2E",borderRadius:8,padding:10,border:"1px solid rgba(255,255,255,.07)"}}>
                     <div style={{fontFamily:"'Teko',sans-serif",color:"#f87171",marginBottom:6,fontSize:12}}>{t.group} {grp} <span style={{color:"#5A7090",fontSize:10}}>({adv.length} {t.advanced})</span></div>
-                    {teams.map((team,i)=>{const on=adv.includes(team);return(
-                      <div key={team} onClick={()=>toggleGroup(grp,team)} style={{display:"flex",alignItems:"center",gap:6,padding:"10px 10px",borderRadius:8,marginBottom:4,cursor:"pointer",touchAction:"manipulation",minHeight:40,background:on?"rgba(239,68,68,.12)":"transparent",border:`1px solid ${on?"rgba(239,68,68,.4)":"rgba(255,255,255,.07)"}`,color:on?"#f87171":"#5A7090",fontSize:11}}>
-                        <span>{flags[i]}</span><span style={{flex:1}}>{tn(team,lang)}</span>{on&&"✓"}
+                    {teams.map((team,i)=>{
+                      const on=adv.includes(team);
+                      const isQ=!!(st.manualQualified&&st.manualQualified[team]);
+                      const isOut=!!(st.manualOut&&st.manualOut[team]);
+                      return(
+                      <div key={team} style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                        <div onClick={()=>toggleGroup(grp,team)} style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"10px 10px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",minHeight:40,background:on?"rgba(239,68,68,.12)":"transparent",border:`1px solid ${on?"rgba(239,68,68,.4)":"rgba(255,255,255,.07)"}`,color:on?"#f87171":"#5A7090",fontSize:11}}>
+                          <span>{flags[i]}</span><span style={{flex:1}}>{tn(team,lang)}</span>{on&&"✓"}
+                        </div>
+                        <button onClick={(e)=>{e.stopPropagation();toggleManualQ(team);}} style={{minWidth:32,minHeight:40,borderRadius:6,border:`1px solid ${isQ?"rgba(34,197,94,.5)":"rgba(255,255,255,.1)"}`,background:isQ?"rgba(34,197,94,.18)":"transparent",color:isQ?"#22C55E":"#3A5070",fontSize:10,fontWeight:700,touchAction:"manipulation",cursor:"pointer"}}>Q</button>
+                        <button onClick={(e)=>{e.stopPropagation();toggleManualOut(team);}} style={{minWidth:36,minHeight:40,borderRadius:6,border:`1px solid ${isOut?"rgba(239,68,68,.5)":"rgba(255,255,255,.1)"}`,background:isOut?"rgba(239,68,68,.18)":"transparent",color:isOut?"#EF4444":"#3A5070",fontSize:9,fontWeight:700,touchAction:"manipulation",cursor:"pointer"}}>OUT</button>
                       </div>
                     );})}
                   </div>
