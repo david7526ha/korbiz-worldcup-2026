@@ -1876,6 +1876,10 @@ function estimateAdvanceTo32(team, group, tournament) {
   var gr = tournament.groupResults || {};
   if(gr[group]) return gr[group].includes(team) ? 1 : 0;
 
+  // 서버에서 미리 계산된 값이 있으면 그걸 그대로 사용 (없으면 기존 클라이언트 계산으로 안전하게 폴백)
+  var precomputed = tournament.clinchStatus;
+  if(precomputed && team in precomputed) return precomputed[team];
+
   var mr = tournament.matchResults || {};
   var allStats = computeAllGroupStats(mr);
   var myGroupTeams = (GROUPS[group]&&GROUPS[group].teams)||[];
