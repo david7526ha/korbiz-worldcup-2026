@@ -2753,8 +2753,8 @@ const MATCH_SCHEDULE = [
   {id:"L6c", iso:"2026-06-27T17:00:00-04:00", date:"Jun 27", time:"5:00 PM ET",  home:"Croatia",             away:"Ghana",               group:"L"},
   {id:"K5c", iso:"2026-06-27T19:30:00-04:00", date:"Jun 27", time:"7:30 PM ET",  home:"Colombia",            away:"Portugal",            group:"K"},
   {id:"K6c", iso:"2026-06-27T19:30:00-04:00", date:"Jun 27", time:"7:30 PM ET",  home:"Congo DR",            away:"Uzbekistan",          group:"K"},
-  {id:"J5c", iso:"2026-06-27T22:00:00-04:00", date:"Jun 27", time:"10:00 PM ET", home:"Algeria",             away:"Argentina",           group:"J"},
-  {id:"J6c", iso:"2026-06-27T22:00:00-04:00", date:"Jun 27", time:"10:00 PM ET", home:"Jordan",              away:"Austria",             group:"J"},
+  {id:"J5c", iso:"2026-06-27T22:00:00-04:00", date:"Jun 27", time:"10:00 PM ET", home:"Jordan",              away:"Argentina",           group:"J"},
+  {id:"J6c", iso:"2026-06-27T22:00:00-04:00", date:"Jun 27", time:"10:00 PM ET", home:"Algeria",             away:"Austria",             group:"J"},
 ];
 
 
