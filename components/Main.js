@@ -1261,10 +1261,12 @@ function BracketPreview({users, tournament, currentUid, lang}){
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(function(teams){ (teams||[]).forEach(function(t){myPicks.add(t);}); });
 
-  // 조 1위/2위 결정 - Admin 공식확정(groupResults) 우선, 없으면 수학적 확정(estimateAdvanceTo32)으로 자동 채움
+  // 조 1위/2위 결정 - Admin 공식확정(groupResults) 우선, 없으면 Admin이 직접 체크한 manualQualified로만 채움
+  // (자동 추정 로직은 더 이상 사용하지 않음 - Admin 수동 판단이 유일한 기준)
   const st = {};
   const third = []; // 3위팀 [팀명, 조] 목록
   const mr = tournament.matchResults || {};
+  const mq = tournament.manualQualified || {};
   Object.entries(GROUPS).forEach(function(e){
     var grp=e[0], info=e[1];
     var advanced = gr[grp]||[];
@@ -1272,24 +1274,20 @@ function BracketPreview({users, tournament, currentUid, lang}){
     if(advanced.length>=2) st[grp+"2"]=advanced[1];
     if(advanced.length>=3) third.push({team:advanced[2],grp:grp});
 
-    // Admin 미확정 조라도, 32강 진출이 확정된 두 팀 + 그 둘의 순서(1위/2위)까지 확정일 때만 슬롯 채움
+    // Admin 미확정 조라도, Admin이 직접 Q체크한 팀이 정확히 2명이면 그 둘을 1위/2위 슬롯에 배정
+    // (순서는 현재 승점/골득실 기준으로만 정렬 - 둘 다 진출이니 순서 오차는 무해)
     if(advanced.length < 2) {
       var teams = info.teams || [];
-      var clinchedTeams = teams.filter(function(t){
-        return estimateAdvanceTo32(t, grp, tournament) === 1;
-      });
+      var clinchedTeams = teams.filter(function(t){ return !!mq[t]; });
       if(clinchedTeams.length >= 2) {
         var statsForSort = (computeAllGroupStats(mr)[grp]) || {};
         var sortedClinched = fifaSortGroup(clinchedTeams, statsForSort, grp, mr);
         var first = sortedClinched[0], second = sortedClinched[1];
-        // 1위/2위 순서가 마지막 경기 결과와 무관하게 고정된 경우만 슬롯 배정
-        if(first && second && isOrderLocked(first, second, grp, tournament)) {
-          if(!st[grp+"1"]) st[grp+"1"] = first;
-          if(!st[grp+"2"]) st[grp+"2"] = second;
-        }
-      } else if(clinchedTeams.length === 1) {
-        // 32강 확정팀이 1명뿐이면, 그 팀의 자리(1위 or 2위)가 확정인지는
-        // 아직 2번째 확정팀이 없어 순서 비교 불가 -> 슬롯 비움 (보수적)
+        if(first && !st[grp+"1"]) st[grp+"1"] = first;
+        if(second && !st[grp+"2"]) st[grp+"2"] = second;
+      } else if(clinchedTeams.length === 1 && !st[grp+"1"] && !st[grp+"2"]) {
+        // 확정 1명뿐이면 1위 슬롯에만 임시 배정 (2위는 아직 안 정해짐)
+        st[grp+"1"] = clinchedTeams[0];
       }
     }
   });
