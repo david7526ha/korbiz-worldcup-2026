@@ -1450,12 +1450,12 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
   // 32강 매치업
   var R32 = {
     L: [
-      {a:"A2",b:"B2"},{a:"C1",b:"F2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},
-      {a:"E2",b:"I2"},{a:"I1",b:"WC2"},{a:"A1",b:"WC3"},{a:"B1",b:"D2"},
+      {a:"A2",b:"B2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},{a:"C1",b:"F2"},
+      {a:"I1",b:"WC2"},{a:"E2",b:"I2"},{a:"A1",b:"WC3"},{a:"L1",b:"WC4"},
     ],
     R: [
-      {a:"L1",b:"WC4"},{a:"G1",b:"WC5"},{a:"D1",b:"WC6"},{a:"J1",b:"H2"},
-      {a:"K1",b:"WC7"},{a:"H1",b:"G2"},{a:"L2",b:"K2"},{a:"J2",b:"WC8"},
+      {a:"D1",b:"WC5"},{a:"G1",b:"WC6"},{a:"K2",b:"L2"},{a:"H1",b:"J2"},
+      {a:"B1",b:"WC7"},{a:"J1",b:"H2"},{a:"K1",b:"WC8"},{a:"D2",b:"G2"},
     ],
   };
 
