@@ -5,9 +5,8 @@ export async function GET() {
   const doc = await ref.get();
   const data = doc.data() || {};
   return new Response(JSON.stringify({
-    groupResults: data.groupResults || {},
-    manualQualified: data.manualQualified || {},
     bracketTeams: data.bracketTeams || [],
+    groupResults: data.groupResults || {},
   }, null, 1), {
     headers: {'Content-Type':'application/json'}
   });
