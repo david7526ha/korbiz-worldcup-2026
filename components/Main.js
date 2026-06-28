@@ -3543,9 +3543,14 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   const [saving,setSaving]=useState(false);
   const [justSaved,setJustSaved]=useState(false);
   const [hasLoadedInitial,setHasLoadedInitial]=useState(false);
+  const [editMode,setEditMode]=useState(false);
   const locked=tournament.bracketLocked;
   const bracketTeams=tournament.bracketTeams||[];
   const actual=tournament.bracketResults||{};
+  const TOTAL_MATCHES_ALL = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
+  // 이미 31개 다 채워서 저장된 상태면, editMode를 켜지 않은 한 읽기 전용으로 표시
+  const isFullySaved = hasLoadedInitial && myPicks && Object.keys(myPicks).length >= TOTAL_MATCHES_ALL;
+  const readOnly = isFullySaved && !editMode;
   // 최초 1회만 myPicks(서버 저장값)로 picks를 채움. 이후에는 로컬 클릭 상태(picks)를 그대로 신뢰하고
   // 부모에서 내려오는 myPicks로 절대 덮어쓰지 않음 (덮어쓰면 방금 클릭한 픽이 순간적으로 사라지는/겹쳐보이는 현상 발생)
   useEffect(()=>{
@@ -3560,11 +3565,11 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
     const prev=ROUNDS[ri-1];
     return{t1:actual[`${prev}_${i*2}`]||picks[`${prev}_${i*2}`]||"TBD",t2:actual[`${prev}_${i*2+1}`]||picks[`${prev}_${i*2+1}`]||"TBD"};
   };
-  const doPick=(key,team)=>{if(locked||actual[key])return;setPicks(prev=>({...prev,[key]:team}));};
+  const doPick=(key,team)=>{if(locked||actual[key]||readOnly)return;setPicks(prev=>({...prev,[key]:team}));};
   // 31경기(R32 16 + R16 8 + QF 4 + SF 2 + F 1) 전부 픽해야만 저장 가능
   // 단순히 picks 객체에 키가 있는지가 아니라, getTeams로 그 매치에 실제 두 팀이 다 채워져 있고(TBD 아님),
   // 그 중 하나를 실제로 클릭해서 골랐는지까지 정확히 검증함 (이전 라운드 미선택으로 인한 잘못된 카운트 방지)
-  const TOTAL_MATCHES = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
+  const TOTAL_MATCHES = TOTAL_MATCHES_ALL;
   const pickedCount = ROUNDS.reduce((sum,round)=>{
     const {matches} = ROUND_META[round];
     for(let i=0;i<matches;i++){
@@ -3585,6 +3590,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
       await saveBracketPicks(uid,picks);
       showToast(t.savePicks+" ✓");
       setJustSaved(true);
+      setEditMode(false); // 저장 완료 -> 다시 읽기 전용 상태로
       setTimeout(()=>setJustSaved(false), 2000);
     }catch{showToast("Error","error");}
     setSaving(false);
@@ -3606,11 +3612,20 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
         </div>
         {!locked&&(
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-            <button onClick={handleSave} disabled={saving||!allPicked} style={{padding:"8px 18px",borderRadius:9,border:"none",background:!allPicked?"rgba(255,255,255,.08)":justSaved?"linear-gradient(135deg,#22C55E,#15803d)":"linear-gradient(135deg,#D4A843,#8B6914)",color:!allPicked?"#5A7090":justSaved?"#fff":"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:allPicked?"pointer":"not-allowed",opacity:saving?0.7:1,transition:"background .2s"}}>
-              {justSaved?(lang==="ko"?"저장됨 ✓":lang==="es"?"Guardado ✓":"Saved ✓"):(saving?t.saving:`${t.savePicks} (${pickedCount}/${TOTAL_MATCHES})`)}
-            </button>
-            {!allPicked&&<div style={{fontSize:10,color:"#EF4444"}}>
+            {readOnly?(
+              <button onClick={()=>setEditMode(true)} style={{padding:"8px 18px",borderRadius:9,border:"1px solid rgba(212,168,67,.4)",background:"transparent",color:"#D4A843",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>
+                ✏️ {lang==="ko"?"수정하기":lang==="es"?"Editar":"EDIT"}
+              </button>
+            ):(
+              <button onClick={handleSave} disabled={saving||!allPicked} style={{padding:"8px 18px",borderRadius:9,border:"none",background:!allPicked?"rgba(255,255,255,.08)":justSaved?"linear-gradient(135deg,#22C55E,#15803d)":"linear-gradient(135deg,#D4A843,#8B6914)",color:!allPicked?"#5A7090":justSaved?"#fff":"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:allPicked?"pointer":"not-allowed",opacity:saving?0.7:1,transition:"background .2s"}}>
+                {justSaved?(lang==="ko"?"저장됨 ✓":lang==="es"?"Guardado ✓":"Saved ✓"):(saving?t.saving:`${t.savePicks} (${pickedCount}/${TOTAL_MATCHES})`)}
+              </button>
+            )}
+            {!readOnly&&!allPicked&&<div style={{fontSize:10,color:"#EF4444"}}>
               {lang==="ko"?"모든 경기를 선택해야 저장할 수 있습니다":lang==="es"?"Debes elegir todos los partidos para guardar":"Pick every match to enable saving"}
+            </div>}
+            {readOnly&&<div style={{fontSize:10,color:"#5A7090"}}>
+              {lang==="ko"?"제출 완료 · 수정하려면 EDIT":lang==="es"?"Enviado · Editar para cambiar":"Submitted · Tap EDIT to change"}
             </div>}
           </div>
         )}
@@ -3634,7 +3649,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
                       if(!team||team==="TBD")return<div key={"tbd-"+slotIdx} style={{padding:"5px 7px",borderRadius:5,marginBottom:2,background:"#111E2E",color:"#5A7090",fontSize:11}}>TBD</div>;
                       const isPick=myPick===team;const correct=done&&actualW===team&&isPick;const wrong=done&&actualW!==team&&isPick;const isW=done&&actualW===team;
                       return(
-                        <div key={team} onClick={()=>doPick(matchKey,team)} style={{padding:"5px 7px",borderRadius:5,marginBottom:2,cursor:locked||done?"default":"pointer",background:correct?"rgba(34,197,94,.13)":wrong?"rgba(239,68,68,.11)":isPick?"rgba(212,168,67,.1)":"transparent",border:`1px solid ${correct?"rgba(34,197,94,.4)":wrong?"rgba(239,68,68,.38)":isPick?"rgba(212,168,67,.28)":"rgba(255,255,255,.07)"}`,color:correct?"#22C55E":wrong?"#EF4444":isPick?"#D4A843":isW?"#fff":"#9CA3AF",fontSize:11,fontWeight:isPick||isW?600:400,display:"flex",alignItems:"center",gap:4,transition:"all .1s"}}>
+                        <div key={team} onClick={()=>doPick(matchKey,team)} style={{padding:"5px 7px",borderRadius:5,marginBottom:2,cursor:locked||done||readOnly?"default":"pointer",background:correct?"rgba(34,197,94,.13)":wrong?"rgba(239,68,68,.11)":isPick?"rgba(212,168,67,.1)":"transparent",border:`1px solid ${correct?"rgba(34,197,94,.4)":wrong?"rgba(239,68,68,.38)":isPick?"rgba(212,168,67,.28)":"rgba(255,255,255,.07)"}`,color:correct?"#22C55E":wrong?"#EF4444":isPick?"#D4A843":isW?"#fff":"#9CA3AF",fontSize:11,fontWeight:isPick||isW?600:400,display:"flex",alignItems:"center",gap:4,transition:"all .1s"}}>
                           <span style={{flex:1}}>{tn(team,lang)}</span>
                           {correct&&"✅"}{wrong&&"❌"}
                           {!done&&isPick&&<span style={{fontSize:9,color:"#D4A843"}}>✓</span>}
