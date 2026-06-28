@@ -581,9 +581,12 @@ function BracketSubmissionStatus({users, tournament, lang}){
   const [expanded, setExpanded] = useState(false);
   if(tournament.phase !== "bracket") return null;
 
+  // 31경기(R32 16 + R16 8 + QF 4 + SF 2 + F 1) 전부 채운 사람만 "제출완료"로 인정
+  // (BracketView의 저장 잠금 조건과 동일한 기준 - 일부만 채운 경우는 제출완료로 카운트하지 않음)
+  const TOTAL_BRACKET_MATCHES = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
   const approved = Object.values(users).filter(u => u.approved && u.paid);
-  const submitted = approved.filter(u => u.bracketPicks && Object.keys(u.bracketPicks).length > 0);
-  const notSubmitted = approved.filter(u => !u.bracketPicks || Object.keys(u.bracketPicks).length === 0);
+  const submitted = approved.filter(u => u.bracketPicks && Object.keys(u.bracketPicks).length >= TOTAL_BRACKET_MATCHES);
+  const notSubmitted = approved.filter(u => !u.bracketPicks || Object.keys(u.bracketPicks).length < TOTAL_BRACKET_MATCHES);
 
   const pct = approved.length > 0 ? Math.round((submitted.length / approved.length) * 100) : 0;
 
