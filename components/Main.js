@@ -2910,7 +2910,21 @@ function InfoTab({users, tournament, currentUid, lang}){
         </div>
         {(function(){
           var st2={};
-          Object.entries(GROUPS).forEach(function(e){var g=e[0],adv=gr[g]||[];if(adv[0])st2[g+"1"]=adv[0];if(adv[1])st2[g+"2"]=adv[1];});
+          var wcMap={};
+          // bracketTeams(이미 자동채우기로 정확히 계산된 값)가 있으면 최우선 사용
+          var bt2 = tournament.bracketTeams||[];
+          if(bt2.some(function(x){return x;})){
+            R32_MATCHUPS.forEach(function(seed,i){
+              var team=bt2[i];
+              if(!team) return;
+              if(seed.indexOf("WC")===0){ wcMap[seed]=team; return; }
+              var g=seed[0], pos=seed[1];
+              if(pos==="1") st2[g+"1"]=team;
+              if(pos==="2") st2[g+"2"]=team;
+            });
+          }
+          // bracketTeams에 없는 조는 groupResults 폴백
+          Object.entries(GROUPS).forEach(function(e){var g=e[0],adv=gr[g]||[];if(!st2[g+"1"]&&adv[0])st2[g+"1"]=adv[0];if(!st2[g+"2"]&&adv[1])st2[g+"2"]=adv[1];});
           var rSrc=function(src,wc){
             if(src==="WC") return wc?("3rd·"+wc):"3rd WC";
             return src[0]+(src[1]==="1"?" Win":" R-up");
@@ -2918,22 +2932,22 @@ function InfoTab({users, tournament, currentUid, lang}){
           var LEFT=[
             {a:"A2",b:"B2",date:"Jun 28"},
             {a:"C1",b:"F2",date:"Jun 29"},
-            {a:"E1",b:"WC",wc:"ABCDF",date:"Jun 29"},
+            {a:"E1",b:"WC",wc:"ABCDF",wcKey:"WC1",date:"Jun 29"},
             {a:"F1",b:"C2",date:"Jun 29"},
             {a:"E2",b:"I2",date:"Jun 30"},
-            {a:"I1",b:"WC",wc:"CDFGH",date:"Jun 30"},
-            {a:"A1",b:"WC",wc:"CEFHI",date:"Jun 30"},
+            {a:"I1",b:"WC",wc:"CDFGH",wcKey:"WC2",date:"Jun 30"},
+            {a:"A1",b:"WC",wc:"CEFHI",wcKey:"WC3",date:"Jun 30"},
             {a:"B1",b:"D2",date:"Jul 2"},
           ];
           var RIGHT=[
-            {a:"L1",b:"WC",wc:"EHIJK",date:"Jul 1"},
-            {a:"G1",b:"WC",wc:"AEHIJ",date:"Jul 1"},
-            {a:"D1",b:"WC",wc:"BEFIJ",date:"Jul 1"},
+            {a:"L1",b:"WC",wc:"EHIJK",wcKey:"WC4",date:"Jul 1"},
+            {a:"G1",b:"WC",wc:"AEHIJ",wcKey:"WC6",date:"Jul 1"},
+            {a:"D1",b:"WC",wc:"BEFIJ",wcKey:"WC5",date:"Jul 1"},
             {a:"J1",b:"H2",date:"Jul 1"},
-            {a:"K1",b:"WC",wc:"DEIJL",date:"Jul 1"},
+            {a:"K1",b:"WC",wc:"DEIJL",wcKey:"WC7",date:"Jul 1"},
             {a:"H1",b:"G2",date:"Jul 2"},
             {a:"L2",b:"K2",date:"Jul 2"},
-            {a:"J2",b:"WC",wc:"last",date:"Jul 2"},
+            {a:"J2",b:"WC",wc:"last",wcKey:"WC8",date:"Jul 2"},
           ];
 
           var TH=28, GAP=8, ROW=TH*2+GAP, ROWS=8;
@@ -2959,7 +2973,7 @@ function InfoTab({users, tournament, currentUid, lang}){
           };
 
           var MatchCard=function(m,i,side){
-            var tA=st2[m.a]||null, tB=m.b==="WC"?null:(st2[m.b]||null);
+            var tA=st2[m.a]||null, tB=m.b==="WC"?(wcMap[m.wcKey]||null):(st2[m.b]||null);
             var aMe=tA&&myPicks.has(tA), bMe=tB&&myPicks.has(tB);
             var y=8+i*ROW;
             var x=side==="left"?0:W-CW;
