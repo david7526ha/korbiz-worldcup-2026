@@ -1403,7 +1403,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
         })}
       </div>
 
-      {hasResults&&third.length>0&&(
+      {third.length>0&&(
         <div style={{marginTop:10,padding:"8px 10px",background:"rgba(96,165,250,.06)",border:"0.5px solid rgba(96,165,250,.2)",borderRadius:8}}>
           <div style={{fontSize:10,color:"#60a5fa",marginBottom:5,letterSpacing:".08em"}}>3위 와일드카드 ({third.length}/8)</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
