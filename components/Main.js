@@ -412,7 +412,7 @@ const WC_MATCHES = [
   {date:"2026-06-17T19:00:00-04:00",teams:"Ghana vs Panama",group:"L",time:"7:00 PM ET"},
   {date:"2026-06-17T22:00:00-04:00",teams:"Uzbekistan vs Colombia",group:"K",time:"10:00 PM ET"},
   // Round of 32 시작
-  {date:"2026-06-28T13:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-06-28T15:00:00-04:00",teams:"South Africa vs Canada",group:"R32",time:"3:00 PM ET"},
 ];
 function NextMatchBanner({lang}){
   const [timeLeft,setTimeLeft]=useState("");
@@ -1020,7 +1020,7 @@ function NextMatchCard({lang}){
     {date:"2026-06-17T19:00:00-04:00",teams:"Ghana vs Panama",group:"L",time:"7:00 PM ET"},
     {date:"2026-06-17T22:00:00-04:00",teams:"Uzbekistan vs Colombia",group:"K",time:"10:00 PM ET"},
     // Round of 32
-    {date:"2026-06-28T13:00:00-04:00",teams:"Round of 32 begins",group:"R32",time:"1:00 PM ET"},
+    {date:"2026-06-28T15:00:00-04:00",teams:"South Africa vs Canada",group:"R32",time:"3:00 PM ET"},
   ];  const [tl, setTl] = useState({d:0,h:0,m:0,s:0});
   const [next, setNext] = useState(null);
 
