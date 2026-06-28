@@ -1262,8 +1262,10 @@ const WC_SLOTS = [
 function BracketPreview({users, tournament, currentUid, lang}){
   const [fullscreen, setFullscreen] = useState(false);
   const gr = tournament.groupResults||{};
+  const bracketTeamsArrCheck = tournament.bracketTeams||[];
+  const bracketHasData = bracketTeamsArrCheck.some(function(x){return x;});
   const doneCount = Object.keys(gr).length;
-  const hasResults = doneCount >= 12;
+  const hasResults = doneCount >= 12 || bracketHasData;
 
   // 내 픽 팀 목록
   const me = Object.values(users).find(u=>u.uid===currentUid);
@@ -1367,40 +1369,50 @@ function BracketPreview({users, tournament, currentUid, lang}){
         </div>
       </div>
 
-      {!hasResults&&doneCount===0&&(
+      {!hasResults&&doneCount===0&&!bracketHasData&&(
         <div style={{textAlign:"center",color:"#5A7090",fontSize:12,padding:"20px 0"}}>
           {lang==="ko"?"조별 결과가 모두 확정되면 공개됩니다":lang==="es"?"Se revela tras confirmar los 12 grupos":"Revealed after all 12 group results are confirmed"}
         </div>
       )}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:6}}>
-        {R32_MATCHUPS_OFFICIAL.map(function(pair,i){
-          var srcA=pair[0], srcB=pair[1];
-          var teamA=st[srcA], teamB=srcB==="WC"?null:st[srcB];
-          var aMe=teamA&&myPicks.has(teamA);
-          var bMe=teamB&&myPicks.has(teamB);
-          var matchLabel = "M"+(73+i);
+        {(function(){
+          var wcUsed=0;
+          return R32_MATCHUPS_OFFICIAL.map(function(pair,i){
+            var srcA=pair[0], srcB=pair[1];
+            var teamA=st[srcA];
+            var teamB, wcOwnerGrp=null;
+            if(srcB==="WC"){
+              var w=third[wcUsed]; wcUsed++;
+              teamB=w?w.team:null; wcOwnerGrp=w?w.grp:null;
+            } else {
+              teamB=st[srcB];
+            }
+            var aMe=teamA&&myPicks.has(teamA);
+            var bMe=teamB&&myPicks.has(teamB);
+            var matchLabel = "M"+(73+i);
 
-          return(
-            <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.25)":"rgba(255,255,255,.07)"),borderRadius:8,overflow:"hidden"}}>
-              <div style={{fontSize:9,color:"#5A7090",padding:"3px 10px",borderBottom:"0.5px solid rgba(255,255,255,.05)",letterSpacing:".08em"}}>{matchLabel}</div>
-              {[{src:srcA,team:teamA,isMe:aMe},{src:srcB,team:teamB,isMe:bMe}].map(function(slot,j){
-                var isWC = slot.src==="WC";
-                return(
-                  <div key={j} style={{padding:"5px 10px",background:slot.isMe?"rgba(212,168,67,.12)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
-                    {slot.isMe&&<span style={{fontSize:9}}>⭐</span>}
-                    <span style={{fontSize:11,color:slot.isMe?"#D4A843":slot.team?"#E0E8F0":"#5A7090",flex:1}}>
-                      {slot.team?tn(slot.team,lang):(isWC?"3위 WC":slot.src)}
-                    </span>
-                    <span style={{fontSize:9,color:"#3A5070",flexShrink:0}}>
-                      {isWC?"WC":(slot.src.length===2?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):slot.src)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+            return(
+              <div key={i} style={{background:"rgba(255,255,255,.03)",border:"0.5px solid "+(aMe||bMe?"rgba(212,168,67,.25)":"rgba(255,255,255,.07)"),borderRadius:8,overflow:"hidden"}}>
+                <div style={{fontSize:9,color:"#5A7090",padding:"3px 10px",borderBottom:"0.5px solid rgba(255,255,255,.05)",letterSpacing:".08em"}}>{matchLabel}</div>
+                {[{src:srcA,team:teamA,isMe:aMe,wcGrp:null},{src:srcB,team:teamB,isMe:bMe,wcGrp:wcOwnerGrp}].map(function(slot,j){
+                  var isWC = slot.src==="WC";
+                  return(
+                    <div key={j} style={{padding:"5px 10px",background:slot.isMe?"rgba(212,168,67,.12)":"transparent",borderBottom:j===0?"0.5px solid rgba(255,255,255,.05)":"none",display:"flex",alignItems:"center",gap:5}}>
+                      {slot.isMe&&<span style={{fontSize:9}}>⭐</span>}
+                      <span style={{fontSize:11,color:slot.isMe?"#D4A843":slot.team?"#E0E8F0":"#5A7090",flex:1}}>
+                        {slot.team?tn(slot.team,lang):(isWC?"3위 WC":slot.src)}
+                      </span>
+                      <span style={{fontSize:9,color:"#3A5070",flexShrink:0}}>
+                        {isWC?(slot.wcGrp?(slot.wcGrp+"조 3위"):"WC"):(slot.src.length===2?(slot.src[0]+"조"+(slot.src[1]==="1"?"1위":"2위")):slot.src)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {third.length>0&&(
