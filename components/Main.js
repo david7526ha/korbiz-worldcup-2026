@@ -1270,34 +1270,47 @@ function BracketPreview({users, tournament, currentUid, lang}){
   const myPicks = new Set();
   Object.values(me?.groupPicks||{}).forEach(function(teams){ (teams||[]).forEach(function(t){myPicks.add(t);}); });
 
-  // 조 1위/2위 결정 - Admin 공식확정(groupResults) 우선, 없으면 Admin이 직접 체크한 manualQualified로만 채움
-  // (자동 추정 로직은 더 이상 사용하지 않음 - Admin 수동 판단이 유일한 기준)
+  // 조 1위/2위 결정 - Admin이 "32강 자동 채우기"로 이미 저장한 bracketTeams가 있으면 그걸 최우선 사용
+  // (R32_MATCHUPS 시드 순서에 정확히 맞춰 계산된 값이라 가장 신뢰도 높음. 없으면 폴백 로직 사용.)
   const st = {};
   const third = []; // 3위팀 [팀명, 조] 목록
   const mr = tournament.matchResults || {};
   const mq = tournament.manualQualified || {};
+  const bracketTeamsArr = tournament.bracketTeams || [];
+
+  // R32_MATCHUPS 시드(A1,A2,B1...,WCn)와 bracketTeamsArr 인덱스를 매칭해서
+  // 조별 1위/2위를 역으로 추출 (이미 정확하게 계산된 값이므로 재계산 불필요)
+  if(bracketTeamsArr.some(function(x){return x;})){
+    R32_MATCHUPS.forEach(function(seed, i){
+      var team = bracketTeamsArr[i];
+      if(!team) return;
+      if(seed.indexOf("WC")===0) return; // 와일드카드는 st에 안 넣음(3위는 별도 표시)
+      var g = seed[0], pos = seed[1];
+      if(pos==="1") st[g+"1"] = team;
+      if(pos==="2") st[g+"2"] = team;
+    });
+  }
+
   Object.entries(GROUPS).forEach(function(e){
     var grp=e[0], info=e[1];
     var advanced = gr[grp]||[];
-    if(advanced.length>=1) st[grp+"1"]=advanced[0];
-    if(advanced.length>=2) st[grp+"2"]=advanced[1];
+    if(advanced.length>=1 && !st[grp+"1"]) st[grp+"1"]=advanced[0];
+    if(advanced.length>=2 && !st[grp+"2"]) st[grp+"2"]=advanced[1];
     if(advanced.length>=3) third.push({team:advanced[2],grp:grp});
 
-    // Admin 미확정 조라도, Admin이 직접 Q체크한 팀이 정확히 2명이면 그 둘을 1위/2위 슬롯에 배정
-    // (순서는 현재 승점/골득실 기준으로만 정렬 - 둘 다 진출이니 순서 오차는 무해)
-    if(advanced.length < 2) {
+    // bracketTeams도 groupResults도 없는 조만 폴백: Q체크된 팀이 정확히 2명일 때만 배정
+    if(!st[grp+"1"] && !st[grp+"2"]) {
       var teams = info.teams || [];
       var clinchedTeams = teams.filter(function(t){ return !!mq[t]; });
-      if(clinchedTeams.length >= 2) {
+      if(clinchedTeams.length === 2) {
         var statsForSort = (computeAllGroupStats(mr)[grp]) || {};
         var sortedClinched = fifaSortGroup(clinchedTeams, statsForSort, grp, mr);
-        var first = sortedClinched[0], second = sortedClinched[1];
-        if(first && !st[grp+"1"]) st[grp+"1"] = first;
-        if(second && !st[grp+"2"]) st[grp+"2"] = second;
-      } else if(clinchedTeams.length === 1 && !st[grp+"1"] && !st[grp+"2"]) {
-        // 확정 1명뿐이면 1위 슬롯에만 임시 배정 (2위는 아직 안 정해짐)
+        st[grp+"1"] = sortedClinched[0];
+        st[grp+"2"] = sortedClinched[1];
+      } else if(clinchedTeams.length === 1) {
         st[grp+"1"] = clinchedTeams[0];
       }
+      // 3명 이상이면 1·2위와 3위 와일드카드가 섞여있을 수 있어 자동 배정 안 함 (Admin이 자동채우기 버튼 사용 권장)
     }
   });
 
