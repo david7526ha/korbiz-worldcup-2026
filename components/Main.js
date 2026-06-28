@@ -3538,6 +3538,7 @@ function GroupPicks({uid,myPicks,tournament,showToast,t,lang}){
 function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   const [picks,setPicks]=useState(myPicks||{});
   const [saving,setSaving]=useState(false);
+  const [justSaved,setJustSaved]=useState(false);
   const locked=tournament.bracketLocked;
   const bracketTeams=tournament.bracketTeams||[];
   const actual=tournament.bracketResults||{};
@@ -3549,7 +3550,16 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
     return{t1:actual[`${prev}_${i*2}`]||picks[`${prev}_${i*2}`]||"TBD",t2:actual[`${prev}_${i*2+1}`]||picks[`${prev}_${i*2+1}`]||"TBD"};
   };
   const doPick=(key,team)=>{if(locked||actual[key])return;setPicks(prev=>({...prev,[key]:team}));};
-  const handleSave=async()=>{setSaving(true);try{await saveBracketPicks(uid,picks);showToast(t.savePicks+" ✓");}catch{showToast("Error","error");}setSaving(false);};
+  const handleSave=async()=>{
+    setSaving(true);
+    try{
+      await saveBracketPicks(uid,picks);
+      showToast(t.savePicks+" ✓");
+      setJustSaved(true);
+      setTimeout(()=>setJustSaved(false), 2000);
+    }catch{showToast("Error","error");}
+    setSaving(false);
+  };
   if(!bracketTeams.some(x=>x))return(
     <div style={{textAlign:"center",padding:"80px 20px"}}>
       <div style={{fontSize:52,marginBottom:10}}>⏳</div>
@@ -3565,7 +3575,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase2Header}</div>
           <div style={{color:"#5A7090",fontSize:13,marginTop:2}}>{t.phase2Sub}</div>
         </div>
-        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#D4A843,#8B6914)",color:"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1}}>{saving?t.saving:t.savePicks}</button>}
+        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:justSaved?"linear-gradient(135deg,#22C55E,#15803d)":"linear-gradient(135deg,#D4A843,#8B6914)",color:justSaved?"#fff":"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1,transition:"background .2s"}}>{justSaved?(lang==="ko"?"저장됨 ✓":lang==="es"?"Guardado ✓":"Saved ✓"):(saving?t.saving:t.savePicks)}</button>}
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         {ROUNDS.map(r=><div key={r} style={{padding:"3px 9px",borderRadius:6,background:"#111E2E",border:"1px solid rgba(255,255,255,.07)",fontSize:11,color:"#5A7090"}}>{ROUND_META[r].label[lang]}: <span style={{color:"#D4A843",fontWeight:700}}>+{ROUND_META[r].pts}</span></div>)}
