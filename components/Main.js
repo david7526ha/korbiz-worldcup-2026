@@ -3839,7 +3839,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
     setSt(function(prev){ return {...prev, bracketTeams:arr}; });
     showToast(lang==="ko"?"32강 자동 채우기 완료 ✓":"Round of 32 auto-filled ✓");
   };
-  const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["matches",lang==="ko"?"경기결과":"MATCH RESULTS"],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab]];
+  const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["matches",lang==="ko"?"경기결과":"MATCH RESULTS"],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab],["userpicks",lang==="ko"?"사용자 픽 현황":"USER PICKS"]];
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#0C1620",border:"1px solid rgba(239,68,68,.22)",borderRadius:18,padding:"20px 18px",maxWidth:860,width:"96vw",maxHeight:"91vh",overflowY:"auto"}}>
@@ -4032,6 +4032,53 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 </div>
               );
             })}
+{tab==="userpicks"&&(
+          <div>
+            <p style={{color:"#5A7090",fontSize:13,marginBottom:10}}>
+              {lang==="ko"?"각 사용자의 브래킷 픽(32강~결승)을 확인합니다. 31/31이 아니면 아직 제출 전입니다.":"View each user's full bracket picks (R32-Final). Anything below 31/31 has not been submitted yet."}
+            </p>
+            {Object.values(users).filter(u=>u.approved&&u.paid).map(u=>{
+              const bp = u.bracketPicks||{};
+              const pickedKeys = Object.keys(bp);
+              const TOTAL = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
+              const isFull = pickedKeys.length >= TOTAL;
+              return(
+                <details key={u.uid} style={{background:"#111E2E",borderRadius:8,marginBottom:6,border:"1px solid rgba(255,255,255,.07)"}}>
+                  <summary style={{padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",touchAction:"manipulation"}}>
+                    <span style={{fontSize:13,color:"#E0E8F0"}}>{u.name}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:isFull?"#22C55E":"#EF4444"}}>{pickedKeys.length}/{TOTAL}</span>
+                  </summary>
+                  <div style={{padding:"0 12px 12px"}}>
+                    {pickedKeys.length===0?(
+                      <div style={{fontSize:12,color:"#5A7090",padding:"6px 0"}}>{lang==="ko"?"아직 픽하지 않음":"No picks yet"}</div>
+                    ):(
+                      ROUNDS.map(round=>{
+                        const {matches} = ROUND_META[round];
+                        const roundPicks = [];
+                        for(let i=0;i<matches;i++){
+                          const key = `${round}_${i}`;
+                          if(bp[key]) roundPicks.push({key, team:bp[key]});
+                        }
+                        if(roundPicks.length===0) return null;
+                        return(
+                          <div key={round} style={{marginBottom:8}}>
+                            <div style={{fontSize:10,color:"#5A7090",marginBottom:3,letterSpacing:".06em"}}>{ROUND_META[round].label[lang]}</div>
+                            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                              {roundPicks.map(rp=>(
+                                <span key={rp.key} style={{fontSize:11,padding:"3px 8px",borderRadius:6,background:"rgba(212,168,67,.1)",color:"#D4A843"}}>{tn(rp.team,lang)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
+
           </div>
         )}
 
