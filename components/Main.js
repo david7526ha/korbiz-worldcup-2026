@@ -3539,10 +3539,18 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   const [picks,setPicks]=useState(myPicks||{});
   const [saving,setSaving]=useState(false);
   const [justSaved,setJustSaved]=useState(false);
+  const [hasLoadedInitial,setHasLoadedInitial]=useState(false);
   const locked=tournament.bracketLocked;
   const bracketTeams=tournament.bracketTeams||[];
   const actual=tournament.bracketResults||{};
-  useEffect(()=>{setPicks(myPicks||{});},[JSON.stringify(myPicks)]);
+  // 최초 1회만 myPicks(서버 저장값)로 picks를 채움. 이후에는 로컬 클릭 상태(picks)를 그대로 신뢰하고
+  // 부모에서 내려오는 myPicks로 절대 덮어쓰지 않음 (덮어쓰면 방금 클릭한 픽이 순간적으로 사라지는/겹쳐보이는 현상 발생)
+  useEffect(()=>{
+    if(!hasLoadedInitial && myPicks && Object.keys(myPicks).length>0){
+      setPicks(myPicks);
+      setHasLoadedInitial(true);
+    }
+  },[myPicks]);
   const getTeams=(round,i)=>{
     const ri=ROUNDS.indexOf(round);
     if(round==="R32")return{t1:bracketTeams[i*2]||"TBD",t2:bracketTeams[i*2+1]||"TBD"};
@@ -3592,8 +3600,8 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
                     const matchKey=`${round}_${i}`;
                     const{t1,t2}=getTeams(round,i);
                     const myPick=picks[matchKey];const actualW=actual[matchKey];const done=!!actualW;
-                    const row=(team)=>{
-                      if(!team||team==="TBD")return<div key="tbd" style={{padding:"5px 7px",borderRadius:5,marginBottom:2,background:"#111E2E",color:"#5A7090",fontSize:11}}>TBD</div>;
+                    const row=(team,slotIdx)=>{
+                      if(!team||team==="TBD")return<div key={"tbd-"+slotIdx} style={{padding:"5px 7px",borderRadius:5,marginBottom:2,background:"#111E2E",color:"#5A7090",fontSize:11}}>TBD</div>;
                       const isPick=myPick===team;const correct=done&&actualW===team&&isPick;const wrong=done&&actualW!==team&&isPick;const isW=done&&actualW===team;
                       return(
                         <div key={team} onClick={()=>doPick(matchKey,team)} style={{padding:"5px 7px",borderRadius:5,marginBottom:2,cursor:locked||done?"default":"pointer",background:correct?"rgba(34,197,94,.13)":wrong?"rgba(239,68,68,.11)":isPick?"rgba(212,168,67,.1)":"transparent",border:`1px solid ${correct?"rgba(34,197,94,.4)":wrong?"rgba(239,68,68,.38)":isPick?"rgba(212,168,67,.28)":"rgba(255,255,255,.07)"}`,color:correct?"#22C55E":wrong?"#EF4444":isPick?"#D4A843":isW?"#fff":"#9CA3AF",fontSize:11,fontWeight:isPick||isW?600:400,display:"flex",alignItems:"center",gap:4,transition:"all .1s"}}>
@@ -3607,7 +3615,7 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
                     return(
                       <div key={matchKey} style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.07)",borderRadius:7,padding:"7px 8px"}}>
                         <div style={{fontSize:9,color:"#5A7090",marginBottom:4}}>+{pts}</div>
-                        {row(t1)}{row(t2)}
+                        {row(t1,0)}{row(t2,1)}
                       </div>
                     );
                   })}
