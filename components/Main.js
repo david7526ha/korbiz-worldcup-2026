@@ -111,6 +111,15 @@ const TEAM_NAMES = {
   },
 };
 
+// 32강 공식 매치업 시드 순서 (FIFA Regulations Annex 기준, bracketTeams 배열 인덱스 0~31에 대응)
+// 짝수 인덱스(0,2,4...) vs 다음 인덱스(1,3,5...)가 한 경기
+const R32_MATCHUPS = [
+  "A2","B2", "E1","WC1", "F1","C2", "C1","F2",
+  "I1","WC2", "E2","I2", "A1","WC3", "L1","WC4",
+  "D1","WC5", "G1","WC6", "K2","L2", "H1","J2",
+  "B1","WC7", "J1","H2", "K1","WC8", "D2","G2",
+];
+
 const GROUPS = {
   A:{teams:["Mexico","South Africa","South Korea","Czechia"],flags:["🇲🇽","🇿🇦","🇰🇷","🇨🇿"]},
   B:{teams:["Canada","Bosnia-Herzegovina","Qatar","Switzerland"],flags:["🇨🇦","🇧🇦","🇶🇦","🇨🇭"]},
@@ -3596,6 +3605,66 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
   });
   const setBR=(key,winner)=>setSt(prev=>({...prev,bracketResults:{...prev.bracketResults,[key]:prev.bracketResults?.[key]===winner?"":winner}}));
   const setTeam=(idx,val)=>setSt(prev=>{const arr=[...prev.bracketTeams];arr[idx]=val;return{...prev,bracketTeams:arr};});
+  // 32강 시드 자동 채우기: groupResults(확정된 1·2위) + manualQualified(Q체크) 기반으로
+  // R32_MATCHUPS 순서(A2,B2,E1,WC1...)에 맞춰 32칸을 한 번에 채움. 와일드카드(3위)는 골득실 순으로 자동 배정.
+  const autoFillBracket=()=>{
+    const gr=st.groupResults||{};
+    const mq=st.manualQualified||{};
+    const mr=st.matchResults||{};
+
+    // 각 조의 1위/2위 확정값 (groupResults 우선)
+    const winner={}, runnerUp={};
+    Object.keys(GROUPS).forEach(function(g){
+      const adv=gr[g]||[];
+      if(adv[0]) winner[g]=adv[0];
+      if(adv[1]) runnerUp[g]=adv[1];
+    });
+
+    // manualQualified로 체크된 팀 중, groupResults에 없는 조의 1위/2위 추정
+    // (Q체크된 팀이 2명이면 골득실 순으로 1위/2위 배정, 1명이면 1위만)
+    Object.keys(GROUPS).forEach(function(g){
+      if(winner[g]&&runnerUp[g]) return; // 이미 확정됨
+      const teams=GROUPS[g].teams||[];
+      const qTeams=teams.filter(function(tm){return !!mq[tm];});
+      if(qTeams.length>=2){
+        const stats=(computeAllGroupStats(mr)[g])||{};
+        const sorted=fifaSortGroup(qTeams,stats,g,mr);
+        if(!winner[g]) winner[g]=sorted[0];
+        if(!runnerUp[g]) runnerUp[g]=sorted[1];
+      } else if(qTeams.length===1&&!winner[g]){
+        winner[g]=qTeams[0];
+      }
+    });
+
+    // 와일드카드(3위) 후보: 각 조 3위 중 Q체크된 팀들을 골득실 순으로 정렬해 WC1~WC8 배정
+    const thirdCandidates=[];
+    Object.keys(GROUPS).forEach(function(g){
+      const teams=GROUPS[g].teams||[];
+      const stats=(computeAllGroupStats(mr)[g])||{};
+      const sorted=fifaSortGroup(teams,stats,g,mr);
+      const third=sorted[2];
+      if(third&&mq[third]&&third!==winner[g]&&third!==runnerUp[g]){
+        thirdCandidates.push({team:third,stats:stats[third]||{pts:0,gd:0,gf:0}});
+      }
+    });
+    thirdCandidates.sort(function(a,b){
+      return (b.stats.pts-a.stats.pts)||(b.stats.gd-a.stats.gd)||(b.stats.gf-a.stats.gf);
+    });
+    const wildcards={};
+    thirdCandidates.slice(0,8).forEach(function(c,i){ wildcards["WC"+(i+1)]=c.team; });
+
+    function resolveSeed(seed){
+      if(seed.indexOf("WC")===0) return wildcards[seed]||"";
+      const g=seed[0], pos=seed[1];
+      if(pos==="1") return winner[g]||"";
+      if(pos==="2") return runnerUp[g]||"";
+      return "";
+    }
+
+    const arr=R32_MATCHUPS.map(resolveSeed);
+    setSt(function(prev){ return {...prev, bracketTeams:arr}; });
+    showToast(lang==="ko"?"32강 자동 채우기 완료 ✓":"Round of 32 auto-filled ✓");
+  };
   const TABS=[["approvals",t.approvals+(pending.length>0?` (${pending.length})`:"")] ,["payments",t.payments],["phase",t.phase],["matches",lang==="ko"?"경기결과":"MATCH RESULTS"],["group",t.group_tab],["teams",t.teams_tab],["bracket",t.bracket_tab]];
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)"}}>
@@ -3744,6 +3813,9 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
         {tab==="teams"&&(
           <div>
             <p style={{color:"#5A7090",fontSize:13,marginBottom:9}}>{t.bracketTeamDesc}</p>
+            <button onClick={autoFillBracket} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",padding:"12px 16px",borderRadius:10,border:"1px solid rgba(212,168,67,.4)",background:"rgba(212,168,67,.1)",color:"#D4A843",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:12,touchAction:"manipulation",minHeight:44}}>
+              ⚡ {lang==="ko"?"Q체크 팀으로 32강 자동 채우기":"Auto-fill from Q-checked teams"}
+            </button>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:5}}>
               {Array.from({length:32},(_,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:5}}>
