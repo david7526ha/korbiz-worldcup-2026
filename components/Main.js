@@ -576,6 +576,58 @@ function PicksModal({user,tournament,lang,onClose}){
 
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
+// Phase2(브래킷) 픽 제출 현황 - 누가 했고 안 했는지 한눈에 보여주는 위젯 (Admin/Dave 리마인드용)
+function BracketSubmissionStatus({users, tournament, lang}){
+  const [expanded, setExpanded] = useState(false);
+  if(tournament.phase !== "bracket") return null;
+
+  const approved = Object.values(users).filter(u => u.approved && u.paid);
+  const submitted = approved.filter(u => u.bracketPicks && Object.keys(u.bracketPicks).length > 0);
+  const notSubmitted = approved.filter(u => !u.bracketPicks || Object.keys(u.bracketPicks).length === 0);
+
+  const pct = approved.length > 0 ? Math.round((submitted.length / approved.length) * 100) : 0;
+
+  return(
+    <div style={{background:"rgba(212,168,67,.06)",border:"1px solid rgba(212,168,67,.2)",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+      <div onClick={()=>setExpanded(!expanded)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",touchAction:"manipulation"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:16}}>🏆</span>
+          <span style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",letterSpacing:".06em"}}>
+            {lang==="ko"?"브래킷 픽 제출 현황":lang==="es"?"Estado de Picks de Bracket":"BRACKET PICK STATUS"}
+          </span>
+        </div>
+        <span style={{fontSize:11,color:"#5A7090"}}>{expanded?"▲":"▼"}</span>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+        <div style={{flex:1,height:8,background:"rgba(255,255,255,.08)",borderRadius:4,overflow:"hidden"}}>
+          <div style={{width:pct+"%",height:"100%",background:"#D4A843",borderRadius:4}}/>
+        </div>
+        <span style={{fontSize:12,color:"#D4A843",fontWeight:700,whiteSpace:"nowrap"}}>{submitted.length}/{approved.length}</span>
+      </div>
+      {expanded&&(
+        <div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div>
+            <div style={{fontSize:10,color:"#22C55E",marginBottom:5,letterSpacing:".06em"}}>
+              ✓ {lang==="ko"?"제출완료":lang==="es"?"Enviado":"SUBMITTED"} ({submitted.length})
+            </div>
+            {submitted.map(u=>(
+              <div key={u.uid} style={{fontSize:11,color:"#9CA3AF",padding:"2px 0"}}>{u.name}</div>
+            ))}
+          </div>
+          <div>
+            <div style={{fontSize:10,color:"#EF4444",marginBottom:5,letterSpacing:".06em"}}>
+              ✗ {lang==="ko"?"미제출":lang==="es"?"Pendiente":"NOT YET"} ({notSubmitted.length})
+            </div>
+            {notSubmitted.map(u=>(
+              <div key={u.uid} style={{fontSize:11,color:"#f87171",padding:"2px 0"}}>{u.name}</div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({users, tournament, currentUid, lang}){
   const MAX_PTS = 438;
   const gr = tournament.groupResults || {};
@@ -601,6 +653,8 @@ function Dashboard({users, tournament, currentUid, lang}){
 
   return (
     <div style={{paddingBottom:24}}>
+
+      <BracketSubmissionStatus users={users} tournament={tournament} lang={lang}/>
 
       {/* 상단 3카드 - 모바일: 1열, 데스크탑: 3열 */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:10,marginBottom:12}}>
