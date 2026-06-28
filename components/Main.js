@@ -1284,7 +1284,16 @@ function BracketPreview({users, tournament, currentUid, lang}){
     R32_MATCHUPS.forEach(function(seed, i){
       var team = bracketTeamsArr[i];
       if(!team) return;
-      if(seed.indexOf("WC")===0) return; // 와일드카드는 st에 안 넣음(3위는 별도 표시)
+      if(seed.indexOf("WC")===0) {
+        // 와일드카드(3위) 팀 - 어느 조 소속인지 찾아서 third 배열에 추가
+        var ownerGroup = Object.keys(GROUPS).find(function(g){
+          return (GROUPS[g].teams||[]).indexOf(team) !== -1;
+        });
+        if(ownerGroup && !third.some(function(w){return w.team===team;})){
+          third.push({team:team, grp:ownerGroup});
+        }
+        return;
+      }
       var g = seed[0], pos = seed[1];
       if(pos==="1") st[g+"1"] = team;
       if(pos==="2") st[g+"2"] = team;
