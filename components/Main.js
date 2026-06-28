@@ -3558,7 +3558,16 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
     return{t1:actual[`${prev}_${i*2}`]||picks[`${prev}_${i*2}`]||"TBD",t2:actual[`${prev}_${i*2+1}`]||picks[`${prev}_${i*2+1}`]||"TBD"};
   };
   const doPick=(key,team)=>{if(locked||actual[key])return;setPicks(prev=>({...prev,[key]:team}));};
+  // 31경기(R32 16 + R16 8 + QF 4 + SF 2 + F 1) 전부 픽해야만 저장 가능
+  const TOTAL_MATCHES = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
+  const pickedCount = ROUNDS.reduce((sum,round)=>{
+    const {matches} = ROUND_META[round];
+    for(let i=0;i<matches;i++){ if(picks[`${round}_${i}`]) sum++; }
+    return sum;
+  },0);
+  const allPicked = pickedCount >= TOTAL_MATCHES;
   const handleSave=async()=>{
+    if(!allPicked) return; // 안전장치: 다 안 채워지면 저장 자체를 막음
     setSaving(true);
     try{
       await saveBracketPicks(uid,picks);
@@ -3583,7 +3592,16 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
           <div style={{fontFamily:"'Teko',sans-serif",fontSize:24,color:"#D4A843",lineHeight:1}}>{t.phase2Header}</div>
           <div style={{color:"#5A7090",fontSize:13,marginTop:2}}>{t.phase2Sub}</div>
         </div>
-        {!locked&&<button onClick={handleSave} disabled={saving} style={{padding:"8px 18px",borderRadius:9,border:"none",background:justSaved?"linear-gradient(135deg,#22C55E,#15803d)":"linear-gradient(135deg,#D4A843,#8B6914)",color:justSaved?"#fff":"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:"pointer",opacity:saving?0.7:1,transition:"background .2s"}}>{justSaved?(lang==="ko"?"저장됨 ✓":lang==="es"?"Guardado ✓":"Saved ✓"):(saving?t.saving:t.savePicks)}</button>}
+        {!locked&&(
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+            <button onClick={handleSave} disabled={saving||!allPicked} style={{padding:"8px 18px",borderRadius:9,border:"none",background:!allPicked?"rgba(255,255,255,.08)":justSaved?"linear-gradient(135deg,#22C55E,#15803d)":"linear-gradient(135deg,#D4A843,#8B6914)",color:!allPicked?"#5A7090":justSaved?"#fff":"#000",fontFamily:"'Teko',sans-serif",fontSize:15,fontWeight:700,cursor:allPicked?"pointer":"not-allowed",opacity:saving?0.7:1,transition:"background .2s"}}>
+              {justSaved?(lang==="ko"?"저장됨 ✓":lang==="es"?"Guardado ✓":"Saved ✓"):(saving?t.saving:`${t.savePicks} (${pickedCount}/${TOTAL_MATCHES})`)}
+            </button>
+            {!allPicked&&<div style={{fontSize:10,color:"#EF4444"}}>
+              {lang==="ko"?"모든 경기를 선택해야 저장할 수 있습니다":lang==="es"?"Debes elegir todos los partidos para guardar":"Pick every match to enable saving"}
+            </div>}
+          </div>
+        )}
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         {ROUNDS.map(r=><div key={r} style={{padding:"3px 9px",borderRadius:6,background:"#111E2E",border:"1px solid rgba(255,255,255,.07)",fontSize:11,color:"#5A7090"}}>{ROUND_META[r].label[lang]}: <span style={{color:"#D4A843",fontWeight:700}}>+{ROUND_META[r].pts}</span></div>)}
