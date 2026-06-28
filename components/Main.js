@@ -4032,6 +4032,9 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 </div>
               );
             })}
+          </div>
+        )}
+
 {tab==="userpicks"&&(
           <div>
             <p style={{color:"#5A7090",fontSize:13,marginBottom:10}}>
@@ -4076,9 +4079,6 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                 </details>
               );
             })}
-          </div>
-        )}
-
           </div>
         )}
 
