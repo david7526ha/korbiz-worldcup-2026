@@ -113,11 +113,12 @@ const TEAM_NAMES = {
 
 // 32강 공식 매치업 시드 순서 (FIFA Regulations Annex 기준, bracketTeams 배열 인덱스 0~31에 대응)
 // 짝수 인덱스(0,2,4...) vs 다음 인덱스(1,3,5...)가 한 경기
+// 2026 FIFA 공식 확정 32강 매치업 (Yahoo Sports 확정 보도, 2026-06-28 기준 검증)
 const R32_MATCHUPS = [
-  "A2","B2", "E1","WC1", "F1","C2", "C1","F2",
-  "I1","WC2", "E2","I2", "A1","WC3", "L1","WC4",
-  "D1","WC5", "G1","WC6", "K2","L2", "H1","J2",
-  "B1","WC7", "J1","H2", "K1","WC8", "D2","G2",
+  "A2","B2", "C1","F2", "E1","WC1", "F1","C2",
+  "E2","I2", "I1","WC2", "A1","WC3", "L1","WC4",
+  "G1","WC5", "D1","WC6", "H1","J2", "K2","L2",
+  "B1","WC7", "D2","G2", "J1","H2", "K1","WC8",
 ];
 
 const GROUPS = {
@@ -321,6 +322,11 @@ function calcScore(picks={}, tournament={}) {
       total+=pts;breakdown.push({l:key,p:pts});
     }
   });
+  // 우승자 예측 보너스: 결승(F_0) 픽이 실제 우승팀과 일치하면 +40점 추가
+  // (결승 승자 맞추기 +30점과는 별개로, "이 팀이 우승한다"는 예측 자체에 주는 보너스)
+  if(picks.bracketPicks && br["F_0"] && picks.bracketPicks["F_0"]===br["F_0"]){
+    total+=40;breakdown.push({l:"Champion Pick",p:40});
+  }
   return {total,breakdown};
 }
 
@@ -1228,23 +1234,24 @@ const R32_FIXED = [
 ];
 
 // 실제 공식 대진 (1위/2위 확정된 것만, 3위는 별도 처리)
+// 2026 FIFA 공식 확정 32강 매치업 (R32_MATCHUPS와 동일 순서, WC는 third[] 배열과 순서 매칭)
 const R32_MATCHUPS_OFFICIAL = [
-  ["A2","B2"],   // M73
-  ["C1","F2"],   // M74
-  ["E1","WC"],   // M75 - E1 vs 3위(A/B/C/D/F)
-  ["F1","C2"],   // M76
-  ["E2","I2"],   // M77
-  ["I1","WC"],   // M78 - I1 vs 3위(C/D/F/G/H)
-  ["A1","WC"],   // M79 - A1 vs 3위(C/E/F/H/I)
-  ["L1","WC"],   // M80 - L1 vs 3위(E/H/I/J/K)
-  ["G1","WC"],   // M81 - G1 vs 3위(A/E/H/I/J)
-  ["D1","WC"],   // M82 - D1 vs 3위(B/E/F/I/J)
-  ["J1","H2"],   // M83
-  ["K1","WC"],   // M84 - K1 vs 3위(D/E/I/J/L)
-  ["B1","D2"],   // M85 (추정, ESPN 기준)
-  ["H1","G2"],   // M86
-  ["L2","K2"],   // M87
-  ["J2","WC"],   // M88 - J2 vs 나머지 3위
+  ["A2","B2"],
+  ["C1","F2"],
+  ["E1","WC"],   // E1 vs Paraguay(D3)
+  ["F1","C2"],
+  ["E2","I2"],
+  ["I1","WC"],   // I1 vs Sweden(F3)
+  ["A1","WC"],   // A1 vs Ecuador(E3)
+  ["L1","WC"],   // L1 vs Congo DR(K3)
+  ["G1","WC"],   // G1 vs Senegal(I3)
+  ["D1","WC"],   // D1 vs Bosnia(B3)
+  ["H1","J2"],
+  ["K2","L2"],
+  ["B1","WC"],   // B1 vs Algeria(J3)
+  ["D2","G2"],
+  ["J1","H2"],
+  ["K1","WC"],   // K1 vs Ghana(L3)
 ];
 
 // 3위팀 출처 정보 (각 와일드카드 슬롯별 허용 조 목록)
@@ -1493,12 +1500,12 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
   // 32강 매치업
   var R32 = {
     L: [
-      {a:"A2",b:"B2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},{a:"C1",b:"F2"},
-      {a:"I1",b:"WC2"},{a:"E2",b:"I2"},{a:"A1",b:"WC3"},{a:"L1",b:"WC4"},
+      {a:"A2",b:"B2"},{a:"C1",b:"F2"},{a:"E1",b:"WC1"},{a:"F1",b:"C2"},
+      {a:"E2",b:"I2"},{a:"I1",b:"WC2"},{a:"A1",b:"WC3"},{a:"L1",b:"WC4"},
     ],
     R: [
-      {a:"D1",b:"WC5"},{a:"G1",b:"WC6"},{a:"K2",b:"L2"},{a:"H1",b:"J2"},
-      {a:"B1",b:"WC7"},{a:"J1",b:"H2"},{a:"K1",b:"WC8"},{a:"D2",b:"G2"},
+      {a:"G1",b:"WC5"},{a:"D1",b:"WC6"},{a:"H1",b:"J2"},{a:"K2",b:"L2"},
+      {a:"B1",b:"WC7"},{a:"D2",b:"G2"},{a:"J1",b:"H2"},{a:"K1",b:"WC8"},
     ],
   };
 
