@@ -3559,10 +3559,19 @@ function BracketView({uid,myPicks,tournament,showToast,t,lang}){
   };
   const doPick=(key,team)=>{if(locked||actual[key])return;setPicks(prev=>({...prev,[key]:team}));};
   // 31경기(R32 16 + R16 8 + QF 4 + SF 2 + F 1) 전부 픽해야만 저장 가능
+  // 단순히 picks 객체에 키가 있는지가 아니라, getTeams로 그 매치에 실제 두 팀이 다 채워져 있고(TBD 아님),
+  // 그 중 하나를 실제로 클릭해서 골랐는지까지 정확히 검증함 (이전 라운드 미선택으로 인한 잘못된 카운트 방지)
   const TOTAL_MATCHES = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
   const pickedCount = ROUNDS.reduce((sum,round)=>{
     const {matches} = ROUND_META[round];
-    for(let i=0;i<matches;i++){ if(picks[`${round}_${i}`]) sum++; }
+    for(let i=0;i<matches;i++){
+      const key = `${round}_${i}`;
+      const myPick = picks[key];
+      if(!myPick) continue; // 안 고름
+      const {t1,t2} = getTeams(round,i);
+      // 고른 값이 실제 그 매치의 유효한 두 팀(t1 또는 t2) 중 하나이고, TBD가 아닐 때만 유효한 픽으로 카운트
+      if(myPick!=="TBD" && (myPick===t1||myPick===t2) && t1!=="TBD" && t2!=="TBD"){ sum++; }
+    }
     return sum;
   },0);
   const allPicked = pickedCount >= TOTAL_MATCHES;
