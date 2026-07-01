@@ -2744,6 +2744,7 @@ function ResultsTab({users, tournament, currentUid, lang}){
   // bracketResults 기반으로 st 구성 (모달에 전달용)
   const btArr = tournament.bracketTeams||[];
   const bRes = tournament.bracketResults||{};
+  const bScores = tournament.bracketScores||{};
   const stForModal = {};
   R32_MATCHUPS.forEach(function(seed,i){
     if(btArr[i]) stForModal[seed]=btArr[i];
@@ -2780,12 +2781,21 @@ function ResultsTab({users, tournament, currentUid, lang}){
                   {lang==="ko"?round:{"32강":"ROUND OF 32","16강":"ROUND OF 16","8강":"QUARTERFINALS","4강":"SEMIFINALS","결승":"FINAL"}[round]||round}
                 </div>
                 {roundMatches.map(m=>(
-                  <div key={m.key} style={{background:m.done?"rgba(255,255,255,.03)":"rgba(212,168,67,.04)",border:"0.5px solid "+(m.done?"rgba(255,255,255,.07)":"rgba(212,168,67,.15)"),borderRadius:9,padding:"9px 12px",display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                    <div style={{flex:1,textAlign:"right",fontSize:12,color:m.winner===m.home?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.home?700:400}}>{tn(m.home,lang)}</div>
-                    <div style={{textAlign:"center",flexShrink:0,width:28,fontSize:10,color:"#5A7090"}}>
-                      vs
+                  <div key={m.key} style={{background:m.done?"rgba(255,255,255,.03)":"rgba(212,168,67,.04)",border:"0.5px solid "+(m.done?"rgba(255,255,255,.07)":"rgba(212,168,67,.15)"),borderRadius:9,padding:"9px 12px",marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{flex:1,textAlign:"right",fontSize:12,color:m.winner===m.home?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.home?700:400}}>{tn(m.home,lang)}</div>
+                      <div style={{textAlign:"center",flexShrink:0,minWidth:44}}>
+                        {bScores[m.key]&&bScores[m.key].home!==""&&bScores[m.key].away!==""?(
+                          <span style={{fontSize:14,fontWeight:700,color:"#E0E8F0",fontFamily:"'Teko',sans-serif"}}>{bScores[m.key].home} - {bScores[m.key].away}</span>
+                        ):(
+                          <span style={{fontSize:10,color:"#5A7090"}}>vs</span>
+                        )}
+                      </div>
+                      <div style={{flex:1,textAlign:"left",fontSize:12,color:m.winner===m.away?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.away?700:400}}>{tn(m.away,lang)}</div>
                     </div>
-                    <div style={{flex:1,textAlign:"left",fontSize:12,color:m.winner===m.away?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.away?700:400}}>{tn(m.away,lang)}</div>
+                    {bScores[m.key]&&bScores[m.key].pen&&(
+                      <div style={{textAlign:"center",fontSize:10,color:"#D4A843",marginTop:3}}>PEN {bScores[m.key].pen}</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -3907,7 +3917,7 @@ function Leaderboard({users,currentUid,tournament,t,lang}){
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
 function AdminPanel({tournament,users,onClose,showToast,t,lang}){
-  const [st,setSt]=useState({...tournament,bracketTeams:[...(tournament.bracketTeams||Array(32).fill(""))],groupResults:{...(tournament.groupResults||{})},bracketResults:{...(tournament.bracketResults||{})},matchResults:{...(tournament.matchResults||{})}});
+  const [st,setSt]=useState({...tournament,bracketTeams:[...(tournament.bracketTeams||Array(32).fill(""))],groupResults:{...(tournament.groupResults||{})},bracketResults:{...(tournament.bracketResults||{})},bracketScores:{...(tournament.bracketScores||{})},matchResults:{...(tournament.matchResults||{})}});
   const [tab,setTab]=useState("approvals");
   const [saving,setSaving]=useState(false);
   const pending=Object.values(users).filter(u=>!u.approved);
@@ -3960,6 +3970,7 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
     return{...prev,manualQualified:mq,manualOut:mo};
   });
   const setBR=(key,winner)=>setSt(prev=>({...prev,bracketResults:{...prev.bracketResults,[key]:prev.bracketResults?.[key]===winner?"":winner}}));
+  const setScore=(key,field,val)=>setSt(prev=>({...prev,bracketScores:{...prev.bracketScores,[key]:{...(prev.bracketScores?.[key]||{}),[field]:val}}}));
   const setTeam=(idx,val)=>setSt(prev=>{const arr=[...prev.bracketTeams];arr[idx]=val;return{...prev,bracketTeams:arr};});
   // 32강 시드 자동 채우기: groupResults(확정된 1·2위) + manualQualified(Q체크) 기반으로
   // R32_MATCHUPS 순서(A2,B2,E1,WC1...)에 맞춰 32칸을 한 번에 채움. 와일드카드(3위)는 골득실 순으로 자동 배정.
@@ -4201,12 +4212,24 @@ function AdminPanel({tournament,users,onClose,showToast,t,lang}){
                       return(
                         <div key={matchKey} style={{background:"#111E2E",borderRadius:7,padding:8,border:"1px solid rgba(255,255,255,.07)"}}>
                           <div style={{fontSize:9,color:"#5A7090",marginBottom:4}}>{t.match} {i+1}: {tn(t1,lang)} vs {tn(t2,lang)}</div>
-                          <div style={{display:"flex",gap:4}}>
+                          <div style={{display:"flex",gap:4,marginBottom:4}}>
                             {[t1,t2].map(team=>(
                               <button key={team} onClick={()=>setBR(matchKey,team)} style={{flex:1,padding:"5px",borderRadius:5,fontSize:10,cursor:"pointer",border:`1px solid ${winner===team?"rgba(239,68,68,.5)":"rgba(255,255,255,.09)"}`,background:winner===team?"rgba(239,68,68,.15)":"transparent",color:winner===team?"#f87171":"#5A7090"}}>{tn(team,lang)}</button>
                             ))}
                             {winner&&<button onClick={()=>setBR(matchKey,"")} style={{padding:"5px 6px",borderRadius:5,border:"1px solid rgba(255,255,255,.09)",background:"transparent",color:"#5A7090",fontSize:9,cursor:"pointer"}}>✕</button>}
                           </div>
+                          {winner&&(
+                            <div style={{display:"flex",gap:3,alignItems:"center"}}>
+                              <input placeholder="홈" value={(st.bracketScores?.[matchKey]?.home)||""} onChange={e=>setScore(matchKey,"home",e.target.value)}
+                                style={{width:32,padding:"3px 4px",borderRadius:4,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.05)",color:"#E0E8F0",fontSize:11,textAlign:"center"}}/>
+                              <span style={{fontSize:9,color:"#5A7090"}}>-</span>
+                              <input placeholder="어웨" value={(st.bracketScores?.[matchKey]?.away)||""} onChange={e=>setScore(matchKey,"away",e.target.value)}
+                                style={{width:32,padding:"3px 4px",borderRadius:4,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.05)",color:"#E0E8F0",fontSize:11,textAlign:"center"}}/>
+                              <span style={{fontSize:9,color:"#5A7090",marginLeft:2}}>PEN:</span>
+                              <input placeholder="4-3" value={(st.bracketScores?.[matchKey]?.pen)||""} onChange={e=>setScore(matchKey,"pen",e.target.value)}
+                                style={{width:38,padding:"3px 4px",borderRadius:4,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.05)",color:"#D4A843",fontSize:11,textAlign:"center"}}/>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
