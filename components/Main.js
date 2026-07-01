@@ -1212,7 +1212,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     const result = {};
     probList.forEach(p=>{ result[p.uid]=p.prob; });
     setWinProbs(result);
-  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
+  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{}), JSON.stringify(tournament.bracketResults||{})]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
@@ -2183,61 +2183,61 @@ function calcRemainingPotential(user, tournament) {
   var gr = tournament.groupResults || {};
   var mq = tournament.manualQualified || {};
   var mo = tournament.manualOut || {};
+  var br = tournament.bracketResults || {};
   var potential = 0;
+
+  // Phase 1: 그룹 픽 잠재력 (아직 확정 안 된 조만)
   Object.entries(user.groupPicks||{}).forEach(function(e){
     var grp = e[0], teams = e[1]||[];
-    if(gr[grp]) return; // 이미 확정된 조는 total에 반영됨, 스킵
+    if(gr[grp]) return;
     teams.forEach(function(team){
-      var advProb = mq[team] ? 1 : (mo[team] ? 0 : 0.5); // Admin이 직접 Q/OUT 체크한 값만 사용, 미정이면 중립(0.5)
-      potential += advProb * 3;
+      potential += (mq[team] ? 1 : (mo[team] ? 0 : 0.5)) * 3;
     });
   });
-  return potential;
-}
 
-function calcWinProbs(ranked, tournament) {
-  var N = ranked ? ranked.length : 0;
-  if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
+  // Phase 2: 브래킷 픽 잠재력
+  // 결과 확정된 경기는 스킵(calcScore가 처리), 아직 없는 경기만 계산
+  // 이전 라운드에서 탈락한 팀을 픽했으면 0점 처리
+  var ROUNDS = ["R32","R16","QF","SF","F"];
+  var ROUND_PTS = {R32:5,R16:10,QF:15,SF:20,F:30};
+  var ROUND_MATCHES = {R32:16,R16:8,QF:4,SF:2,F:1};
 
-  var totalScore = ranked.reduce(function(s,u){return s+(u.total||0);},0);
+  ROUNDS.forEach(function(round){
+    var pts = ROUND_PTS[round];
+    var matches = ROUND_MATCHES[round];
+    var ri = ROUNDS.indexOf(round);
+    for(var i=0;i<matches;i++){
+      var key = round+"_"+i;
+      var myPick = user.bracketPicks && user.bracketPicks[key];
+      if(!myPick) continue;
+      if(br[key] !== undefined) continue; // 이미 결과 확정 → 스킵
 
-  // 전원 점수 0 (경기 전) -> 완전 균등
-  if(totalScore === 0) {
-    var eq = Math.round(100/N);
-    return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
+      // 이전 라운드에서 myPick이 탈락했는지 확인
+      if(ri > 0){
+        var prev = ROUNDS[ri-1];
+        var prevA = prev+"_"+(i*2);
+        var prevB = prev+"_"+(i*2+1);
+        // 이전 라운드 두 경기 중 하나에서 결과가 있는데 myPick이 아니면 탈락
+        var elimA = br[prevA] !== undefined && br[prevA] !== myPick;
+        var elimB = br[prevB] !== undefined && br[prevB] !== myPick;
+        // 두 경기 다 결과 있는데 둘 다 myPick이 아니면 완전 탈락
+        if((br[prevA] !== undefined || br[prevB] !== undefined) && elimA && elimB){
+          continue; // 탈락 확정 → 0
+        }
+        // 한 경기만 결과 있고 그것도 아니면 탈락 (single match feed-in)
+        if(ri === 1 && (elimA || elimB)) continue;
+      }
+      potential += pts * 0.5;
+    }
+  });
+
+  // 우승자 보너스 잠재력 (결승 아직 미확정이면 50% 기대값)
+  if(user.bracketPicks && user.bracketPicks["F_0"] && br["F_0"] === undefined){
+    potential += 40 * 0.5;
   }
 
-  // "현재확정점수 + 남은픽 기대값"을 잠재력으로 사용.
-  // 확정점수만 같아도, 탈락확정 픽이 많은 사람은 잠재력이 낮아져 확률도 낮아짐.
-  var withPotential = ranked.map(function(u){
-    var potential = u.total||0;
-    potential += calcRemainingPotential(u, tournament);
-    return {uid:u.uid, cur:u.total||0, potential:potential};
-  });
-
-  var maxPotential = Math.max.apply(null, withPotential.map(function(p){ return p.potential; }));
-  var minPotential = Math.min.apply(null, withPotential.map(function(p){ return p.potential; }));
-  var range = Math.max(1, maxPotential - minPotential); // 실제 발생한 격차 범위로 정규화 (0 나누기 방지)
-
-  // 잠재력에 비례해서 가중치 부여 (선형, 격차가 클수록 부드럽게 차등)
-  // 최저~최고 잠재력을 0.1~1.0 가중치로 매핑 (완전히 0이 되지 않게 최소값 보장)
-  var weights = withPotential.map(function(p){
-    var normalized = (p.potential - minPotential) / range; // 0~1
-    var weight = 0.15 + 0.85*normalized; // 0.15~1.0 범위 (가장 낮아도 완전히 0은 아님)
-    return {uid:p.uid, weight:weight};
-  });
-  var weightSum = weights.reduce(function(s,w){return s+w.weight;}, 0);
-
-  var result = {};
-  weights.forEach(function(w){
-    result[w.uid] = Math.round(100 * (w.weight/weightSum));
-  });
-
-  return ranked.map(function(u){
-    return {uid:u.uid, prob: result[u.uid] !== undefined ? result[u.uid] : 0};
-  });
+  return potential;
 }
-
 
 
 // ─── TODAY'S MATCHES + SCORE PREDICTION ──────────────────────────────────────
