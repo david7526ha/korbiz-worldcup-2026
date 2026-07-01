@@ -2195,20 +2195,51 @@ function calcRemainingPotential(user, tournament) {
     });
   });
 
-  // Phase 2: 브래킷 픽 잠재력 (미확정 경기만, 50% 기대값)
+  // Phase 2: 브래킷 픽 잠재력
+  // - 결과 확정된 경기: 스킵 (calcScore가 처리)
+  // - 미확정 경기: 픽한 팀이 직전 라운드에서 살아있으면 50% 기대값, 탈락했으면 0
+  var ROUNDS = ["R32","R16","QF","SF","F"];
   var ROUND_PTS = {R32:5,R16:10,QF:15,SF:20,F:30};
-  Object.entries(user.bracketPicks||{}).forEach(function(e){
-    var key = e[0], myPick = e[1];
-    if(!myPick) return;
-    if(br[key] !== undefined) return; // 이미 확정 → calcScore가 처리
-    var round = key.split("_")[0];
-    var pts = ROUND_PTS[round] || 5;
-    potential += pts * 0.5;
+  var ROUND_MATCHES = {R32:16,R16:8,QF:4,SF:2,F:1};
+
+  // 탈락 확정된 팀 목록 구성: br에서 winner가 아닌 참가팀
+  // 브래킷Teams 없이도: 이전 라운드 결과에서 winner가 있으면 그 상대가 탈락
+  // 각 경기 key → winner 매핑에서, 픽한 팀이 그 라운드 i번 경기 winner인지 확인
+  ROUNDS.forEach(function(round){
+    var ri = ROUNDS.indexOf(round);
+    var pts = ROUND_PTS[round];
+    var matches = ROUND_MATCHES[round];
+    for(var i=0;i<matches;i++){
+      var key = round+"_"+i;
+      var myPick = user.bracketPicks && user.bracketPicks[key];
+      if(!myPick) continue;
+      if(br[key] !== undefined) continue; // 이미 확정 → 스킵
+
+      // 이전 라운드에서 myPick이 살아있는지 확인
+      var alive = true;
+      if(ri > 0){
+        var prev = ROUNDS[ri-1];
+        // 이 round i번 경기에 feeder: prev_(i*2) 와 prev_(i*2+1)
+        var slotA = prev+"_"+(i*2);
+        var slotB = prev+"_"+(i*2+1);
+        var winA = br[slotA]; // undefined=미확정, string=확정승자
+        var winB = br[slotB];
+        // slotA 결과 확정됐는데 myPick이 아님 → myPick이 slotA에서 졌을 가능성
+        // slotB 결과 확정됐는데 myPick이 아님 → myPick이 slotB에서 졌을 가능성
+        // 둘 다 확정됐고 둘 다 myPick이 아니면 → 이 round에 myPick이 올라올 방법 없음
+        var lostA = winA !== undefined && winA !== myPick;
+        var lostB = winB !== undefined && winB !== myPick;
+        if(lostA && lostB) { alive = false; } // 두 feeder 모두 다른 팀이 이김
+        else if(ri === 1 && (lostA || lostB)) { alive = false; } // R16은 feeder가 R32 1경기뿐
+      }
+      if(alive) potential += pts * 0.5;
+    }
   });
 
   // 우승 보너스 잠재력
-  var fp = user.bracketPicks && user.bracketPicks["F_0"];
-  if(fp && br["F_0"] === undefined) potential += 20; // 40 * 0.5
+  if(user.bracketPicks && user.bracketPicks["F_0"] && br["F_0"] === undefined){
+    potential += 20; // 40점 * 0.5
+  }
 
   return potential;
 }
