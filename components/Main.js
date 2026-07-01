@@ -2782,8 +2782,8 @@ function ResultsTab({users, tournament, currentUid, lang}){
                 {roundMatches.map(m=>(
                   <div key={m.key} style={{background:m.done?"rgba(255,255,255,.03)":"rgba(212,168,67,.04)",border:"0.5px solid "+(m.done?"rgba(255,255,255,.07)":"rgba(212,168,67,.15)"),borderRadius:9,padding:"9px 12px",display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                     <div style={{flex:1,textAlign:"right",fontSize:12,color:m.winner===m.home?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.home?700:400}}>{tn(m.home,lang)}</div>
-                    <div style={{textAlign:"center",flexShrink:0,width:28,fontSize:10,color:m.done?"#D4A843":"#5A7090",fontWeight:700}}>
-                      {m.done?"WIN":"vs"}
+                    <div style={{textAlign:"center",flexShrink:0,width:28,fontSize:10,color:"#5A7090"}}>
+                      vs
                     </div>
                     <div style={{flex:1,textAlign:"left",fontSize:12,color:m.winner===m.away?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.away?700:400}}>{tn(m.away,lang)}</div>
                   </div>
