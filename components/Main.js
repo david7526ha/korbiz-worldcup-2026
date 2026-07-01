@@ -2654,8 +2654,96 @@ function ProphetTab({users, tournament, currentUid, lang}){
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
   const matchResults = tournament.matchResults || {};
+  const bracketResults = tournament.bracketResults || {};
+  const bracketTeams = tournament.bracketTeams || [];
+  const phase = tournament.phase || "group";
+
+  // 조별리그 경기 (matchResults 기반)
   const played = MATCH_SCHEDULE.filter(m => matchResults[m.id]||matchResults[m.id+"a"]||matchResults[m.id.replace(/[abc]$/,"")]);
-  const upcoming = MATCH_SCHEDULE.filter(m => !matchResults[m.id]);
+  const upcoming = phase==="group" ? MATCH_SCHEDULE.filter(m => !matchResults[m.id]) : [];
+
+  // 32강 이후 브래킷 경기 생성 (bracketTeams + R32_MATCHUPS 기반)
+  const bracketSchedule = [];
+  if(phase==="bracket" && bracketTeams.length>0){
+    const seeds = {};
+    R32_MATCHUPS.forEach((seed,i)=>{
+      if(bracketTeams[i]) seeds[seed]=bracketTeams[i];
+    });
+    // R32 경기
+    for(let i=0;i<16;i++){
+      const key="R32_"+i;
+      const home=bracketTeams[i*2]||"TBD";
+      const away=bracketTeams[i*2+1]||"TBD";
+      const winner=bracketResults[key];
+      bracketSchedule.push({key,round:"32강",home,away,winner,done:!!winner});
+    }
+    // R16 경기
+    for(let i=0;i<8;i++){
+      const key="R16_"+i;
+      const home=bracketResults["R32_"+(i*2)]||"TBD";
+      const away=bracketResults["R32_"+(i*2+1)]||"TBD";
+      const winner=bracketResults[key];
+      if(home!=="TBD"||away!=="TBD") bracketSchedule.push({key,round:"16강",home,away,winner,done:!!winner});
+    }
+    // QF 경기
+    for(let i=0;i<4;i++){
+      const key="QF_"+i;
+      const home=bracketResults["R16_"+(i*2)]||"TBD";
+      const away=bracketResults["R16_"+(i*2+1)]||"TBD";
+      const winner=bracketResults[key];
+      if(home!=="TBD"||away!=="TBD") bracketSchedule.push({key,round:"8강",home,away,winner,done:!!winner});
+    }
+    // SF
+    for(let i=0;i<2;i++){
+      const key="SF_"+i;
+      const home=bracketResults["QF_"+(i*2)]||"TBD";
+      const away=bracketResults["QF_"+(i*2+1)]||"TBD";
+      const winner=bracketResults[key];
+      if(home!=="TBD"||away!=="TBD") bracketSchedule.push({key,round:"4강",home,away,winner,done:!!winner});
+    }
+    // Final
+    const fHome=bracketResults["SF_0"]||"TBD";
+    const fAway=bracketResults["SF_1"]||"TBD";
+    const fWinner=bracketResults["F_0"];
+    if(fHome!=="TBD"||fAway!=="TBD") bracketSchedule.push({key:"F_0",round:"결승",home:fHome,away:fAway,winner:fWinner,done:!!fWinner});
+  }
+
+  // 브래킷 phase면 bracketSchedule을 보여줌
+  if(phase==="bracket") return(
+    <div style={{paddingBottom:24}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
+        {lang==="ko"?"⚔️ 토너먼트 결과":"⚔️ TOURNAMENT RESULTS"}
+      </div>
+      {bracketSchedule.length===0?(
+        <div style={{textAlign:"center",padding:"40px 20px",color:"#5A7090",fontSize:13}}>
+          {lang==="ko"?"Admin이 32강 결과를 입력하면 표시됩니다":"Results will appear after Admin enters R32 scores"}
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {["32강","16강","8강","4강","결승"].map(round=>{
+            const roundMatches = bracketSchedule.filter(m=>m.round===round);
+            if(roundMatches.length===0) return null;
+            return(
+              <div key={round} style={{marginBottom:8}}>
+                <div style={{fontSize:11,color:"#5A7090",letterSpacing:".08em",marginBottom:6,fontFamily:"'Teko',sans-serif"}}>
+                  {lang==="ko"?round:{"32강":"ROUND OF 32","16강":"ROUND OF 16","8강":"QUARTERFINALS","4강":"SEMIFINALS","결승":"FINAL"}[round]||round}
+                </div>
+                {roundMatches.map(m=>(
+                  <div key={m.key} style={{background:m.done?"rgba(255,255,255,.03)":"rgba(212,168,67,.04)",border:"0.5px solid "+(m.done?"rgba(255,255,255,.07)":"rgba(212,168,67,.15)"),borderRadius:9,padding:"9px 12px",display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                    <div style={{flex:1,textAlign:"right",fontSize:12,color:m.winner===m.home?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.home?700:400}}>{tn(m.home,lang)}</div>
+                    <div style={{textAlign:"center",flexShrink:0,width:28,fontSize:10,color:m.done?"#D4A843":"#5A7090",fontWeight:700}}>
+                      {m.done?"WIN":"vs"}
+                    </div>
+                    <div style={{flex:1,textAlign:"left",fontSize:12,color:m.winner===m.away?"#22C55E":"#E0E8F0",fontWeight:m.winner===m.away?700:400}}>{tn(m.away,lang)}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   if(played.length === 0) return(
     <div style={{textAlign:"center",padding:"60px 20px",color:"#5A7090"}}>
@@ -4222,7 +4310,7 @@ export default function Main(){
     {id:"results",label:lang==="ko"?"결과/일정":lang==="es"?"RESULTADOS":"RESULTS & SCHEDULE"},
     {id:"prophet",label:"🔮 PROPHET"},
     {id:"leaderboard",label:t.standings},
-    {id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"},
+    ...(phase!=="bracket"?[{id:"stats",label:lang==="ko"?"통계":lang==="es"?"STATS":"STATS"}]:[]),
     {id:"info",label:lang==="ko"?"정보":"INFO 🌍"},
     {id:"rules",label:t.howToPlay},
   ];
