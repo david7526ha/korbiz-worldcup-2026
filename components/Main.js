@@ -1544,6 +1544,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
         <BracketFullscreenModal
           onClose={()=>setFullscreen(false)}
           st={st} myPicks={myPicks} lang={lang}
+          bracketResults={tournament.bracketResults||{}}
         />
       )}
     </div>
@@ -1551,7 +1552,7 @@ function BracketPreview({users, tournament, currentUid, lang}){
 }
 
 // ─── BRACKET FULLSCREEN MODAL (March Madness style) ─────────────────────────
-function BracketFullscreenModal({onClose, st, myPicks, lang}){
+function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
   useEffect(()=>{
     var prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1648,19 +1649,24 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     SVG_W-20-COL_W-3*(COL_W+ROUND_GAP),
   ];
 
-  var renderSlot = function(src, x, y, team){
+  var br = bracketResults || {};
+  var renderSlot = function(src, x, y, team, matchKey){
     var isMe = team && myPicks.has(team);
+    var actualWinner = matchKey ? br[matchKey] : null;
+    var isWinner = team && actualWinner && actualWinner === team;
+    var isLoser = team && actualWinner && actualWinner !== team;
     var label = team ? tn(team,lang) : (src?srcLabel(src):"TBD");
     if(label.length>13) label = label.slice(0,12)+"…";
     return(
-      <g key={x+"-"+y+"-"+(src||"x")}>
+      <g key={x+"-"+y+"-"+(src||"x")} opacity={isLoser?0.4:1}>
         <rect x={x} y={y} width={BOX_W} height={BOX_H-2} rx={3}
-          fill={isMe?"rgba(212,168,67,.22)":"rgba(255,255,255,.045)"}
-          stroke={isMe?"#D4A843":"rgba(255,255,255,.1)"} strokeWidth={isMe?1.1:0.5}/>
+          fill={isWinner?"rgba(34,197,94,.2)":isLoser?"rgba(239,68,68,.08)":isMe?"rgba(212,168,67,.22)":"rgba(255,255,255,.045)"}
+          stroke={isWinner?"rgba(34,197,94,.6)":isLoser?"rgba(239,68,68,.2)":isMe?"#D4A843":"rgba(255,255,255,.1)"}
+          strokeWidth={isWinner||isMe?1.2:0.5}/>
         <text x={x+6} y={y+BOX_H/2+2} fontSize={9.5}
-          fill={isMe?"#D4A843":(team?"#E0E8F0":"#46566e")}
-          fontWeight={isMe?700:400}>
-          {isMe?"★ ":""}{label}
+          fill={isWinner?"#22C55E":isLoser?"#6B7280":isMe?"#D4A843":(team?"#E0E8F0":"#46566e")}
+          fontWeight={isWinner||isMe?700:400}>
+          {isWinner?"✓ ":isMe?"★ ":""}{label}
         </text>
       </g>
     );
@@ -1675,8 +1681,8 @@ function BracketFullscreenModal({onClose, st, myPicks, lang}){
     var nextX = isLeftSide ? xCol+BOX_W+ROUND_GAP : xCol-ROUND_GAP;
     return(
       <g key={(isLeftSide?"L0-":"R0-")+i}>
-        {renderSlot(m.a, xCol, y, teamA)}
-        {renderSlot(m.b, xCol, y+BOX_H, teamB)}
+        {renderSlot(m.a, xCol, y, teamA, "R32_"+i)}
+        {renderSlot(m.b, xCol, y+BOX_H, teamB, "R32_"+i)}
         <line x1={connX} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H/2-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
         <line x1={connX} y1={y+BOX_H*1.5-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
         <line x1={isLeftSide?connX+14:connX-14} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(212,168,67,.28)" strokeWidth={1}/>
@@ -2653,6 +2659,7 @@ function ProphetTab({users, tournament, currentUid, lang}){
 
 // ─── RESULTS TAB ─────────────────────────────────────────────────────────────
 function ResultsTab({users, tournament, currentUid, lang}){
+  const [showBracket, setShowBracket] = useState(false);
   const matchResults = tournament.matchResults || {};
   const bracketResults = tournament.bracketResults || {};
   const bracketTeams = tournament.bracketTeams || [];
@@ -2709,8 +2716,27 @@ function ResultsTab({users, tournament, currentUid, lang}){
   }
 
   // 브래킷 phase면 bracketSchedule을 보여줌
+  // bracketResults 기반으로 st 구성 (모달에 전달용)
+  const btArr = tournament.bracketTeams||[];
+  const bRes = tournament.bracketResults||{};
+  const stForModal = {};
+  R32_MATCHUPS.forEach(function(seed,i){
+    if(btArr[i]) stForModal[seed]=btArr[i];
+  });
+  const myPicksSet = new Set();
+
   if(phase==="bracket") return(
     <div style={{paddingBottom:24}}>
+      {showBracket&&(
+        <BracketFullscreenModal
+          onClose={()=>setShowBracket(false)}
+          st={stForModal} myPicks={myPicksSet} lang={lang}
+          bracketResults={bRes}
+        />
+      )}
+      <button onClick={()=>setShowBracket(true)} style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid rgba(212,168,67,.3)",background:"rgba(212,168,67,.08)",color:"#D4A843",fontFamily:"'Teko',sans-serif",fontSize:16,fontWeight:700,cursor:"pointer",marginBottom:14,touchAction:"manipulation",letterSpacing:".06em"}}>
+        ⚔️ {lang==="ko"?"브래킷 전체 보기 (가로 뷰)":"VIEW FULL BRACKET →"}
+      </button>
       <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:12}}>
         {lang==="ko"?"⚔️ 토너먼트 결과":"⚔️ TOURNAMENT RESULTS"}
       </div>
