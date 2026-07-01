@@ -418,8 +418,23 @@ const WC_MATCHES = [
   {date:"2026-06-17T16:00:00-04:00",teams:"England vs Croatia",group:"L",time:"4:00 PM ET"},
   {date:"2026-06-17T19:00:00-04:00",teams:"Ghana vs Panama",group:"L",time:"7:00 PM ET"},
   {date:"2026-06-17T22:00:00-04:00",teams:"Uzbekistan vs Colombia",group:"K",time:"10:00 PM ET"},
-  // Round of 32 시작
+  // Round of 32 (확정 매치업)
   {date:"2026-06-28T15:00:00-04:00",teams:"South Africa vs Canada",group:"R32",time:"3:00 PM ET"},
+  {date:"2026-06-28T19:00:00-04:00",teams:"Netherlands vs Morocco",group:"R32",time:"7:00 PM ET"},
+  {date:"2026-06-29T13:00:00-04:00",teams:"Germany vs Paraguay",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-06-29T17:00:00-04:00",teams:"France vs Sweden",group:"R32",time:"5:00 PM ET"},
+  {date:"2026-06-29T21:00:00-04:00",teams:"Brazil vs Japan",group:"R32",time:"9:00 PM ET"},
+  {date:"2026-06-30T13:00:00-04:00",teams:"Ivory Coast vs Norway",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-06-30T17:00:00-04:00",teams:"Mexico vs Ecuador",group:"R32",time:"5:00 PM ET"},
+  {date:"2026-06-30T21:00:00-04:00",teams:"England vs Congo DR",group:"R32",time:"9:00 PM ET"},
+  {date:"2026-07-01T13:00:00-04:00",teams:"Spain vs Austria",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-07-01T17:00:00-04:00",teams:"Portugal vs Croatia",group:"R32",time:"5:00 PM ET"},
+  {date:"2026-07-01T21:00:00-04:00",teams:"Belgium vs Senegal",group:"R32",time:"9:00 PM ET"},
+  {date:"2026-07-02T13:00:00-04:00",teams:"USA vs Bosnia-Herzegovina",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-07-02T17:00:00-04:00",teams:"Australia vs Egypt",group:"R32",time:"5:00 PM ET"},
+  {date:"2026-07-02T21:00:00-04:00",teams:"Argentina vs Cape Verde",group:"R32",time:"9:00 PM ET"},
+  {date:"2026-07-03T13:00:00-04:00",teams:"Switzerland vs Algeria",group:"R32",time:"1:00 PM ET"},
+  {date:"2026-07-03T17:00:00-04:00",teams:"Colombia vs Ghana",group:"R32",time:"5:00 PM ET"},
 ];
 function NextMatchBanner({lang}){
   const [timeLeft,setTimeLeft]=useState("");
@@ -1690,20 +1705,27 @@ function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
     );
   };
 
-  // 빈 라운드(16강~결승, 아직 팀 미정) 렌더 - TBD 박스만
-  var renderEmptyRound = function(roundIdx, numMatches, xCol, isLeftSide, baseRowH){
+  // 16강~4강 렌더 - bracketResults에서 실제 승자 표시 (없으면 TBD)
+  // roundKey: "R16"|"QF"|"SF", prevKey: 직전 라운드 키
+  var renderLiveRound = function(roundKey, prevKey, roundIdx, numMatches, xCol, isLeftSide, baseRowH){
     var boxes = [];
     for(var i=0;i<numMatches;i++){
       var y = TOP_MARGIN + i*baseRowH + baseRowH/2 - BOX_H;
       var connX = isLeftSide ? xCol+BOX_W : xCol;
+      var teamA = br[prevKey+"_"+(i*2)] || null;
+      var teamB = br[prevKey+"_"+(i*2+1)] || null;
+      var matchKey = roundKey+"_"+i;
+      var winner = br[matchKey] || null;
+      // 사용자 픽 체크
+      var myPickForMatch = myPicks && myPicks.has ? (myPicks.has(teamA)?teamA:myPicks.has(teamB)?teamB:null) : null;
       boxes.push(
         <g key={"R"+roundIdx+"-"+i}>
-          {renderSlot(null, xCol, y, null)}
-          {renderSlot(null, xCol, y+BOX_H, null)}
+          {renderSlot(null, xCol, y, teamA, matchKey)}
+          {renderSlot(null, xCol, y+BOX_H, teamB, matchKey)}
           {roundIdx<3&&<>
-            <line x1={connX} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H/2-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
-            <line x1={connX} y1={y+BOX_H*1.5-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
-            <line x1={isLeftSide?connX+14:connX-14} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke="rgba(255,255,255,.1)" strokeWidth={0.8}/>
+            <line x1={connX} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H/2-1} stroke={winner?"rgba(212,168,67,.3)":"rgba(255,255,255,.1)"} strokeWidth={0.8}/>
+            <line x1={connX} y1={y+BOX_H*1.5-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke={winner?"rgba(212,168,67,.3)":"rgba(255,255,255,.1)"} strokeWidth={0.8}/>
+            <line x1={isLeftSide?connX+14:connX-14} y1={y+BOX_H/2-1} x2={isLeftSide?connX+14:connX-14} y2={y+BOX_H*1.5-1} stroke={winner?"rgba(212,168,67,.3)":"rgba(255,255,255,.1)"} strokeWidth={0.8}/>
           </>}
         </g>
       );
@@ -1779,17 +1801,17 @@ function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
 
             {/* 32강 (실데이터) - 왼쪽 */}
             {R32.L.map(function(m,i){ return renderR32(m,i,xColL[0],true); })}
-            {/* 16강,8강,4강 빈 박스 - 왼쪽 */}
-            {renderEmptyRound(1,4,xColL[1],true,(BOX_H*2+PAIR_GAP)*2)}
-            {renderEmptyRound(2,2,xColL[2],true,(BOX_H*2+PAIR_GAP)*4)}
-            {renderEmptyRound(3,1,xColL[3],true,(BOX_H*2+PAIR_GAP)*8)}
+            {/* 16강,8강,4강 실데이터 - 왼쪽 */}
+            {renderLiveRound("R16","R32",1,4,xColL[1],true,(BOX_H*2+PAIR_GAP)*2)}
+            {renderLiveRound("QF","R16",2,2,xColL[2],true,(BOX_H*2+PAIR_GAP)*4)}
+            {renderLiveRound("SF","QF",3,1,xColL[3],true,(BOX_H*2+PAIR_GAP)*8)}
 
             {/* 32강 (실데이터) - 오른쪽 */}
             {R32.R.map(function(m,i){ return renderR32(m,i,xColRFixed[0],false); })}
-            {/* 16강,8강,4강 빈 박스 - 오른쪽 */}
-            {renderEmptyRound(1,4,xColRFixed[1],false,(BOX_H*2+PAIR_GAP)*2)}
-            {renderEmptyRound(2,2,xColRFixed[2],false,(BOX_H*2+PAIR_GAP)*4)}
-            {renderEmptyRound(3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8)}
+            {/* 16강,8강,4강 실데이터 - 오른쪽 */}
+            {renderLiveRound("R16","R32",1,4,xColRFixed[1],false,(BOX_H*2+PAIR_GAP)*2)}
+            {renderLiveRound("QF","R16",2,2,xColRFixed[2],false,(BOX_H*2+PAIR_GAP)*4)}
+            {renderLiveRound("SF","QF",3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8)}
           </svg>
         </div>
 
