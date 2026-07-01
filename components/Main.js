@@ -631,6 +631,90 @@ function BracketSubmissionStatus({users, tournament, lang}){
   );
 }
 
+// 브래킷 픽 공개 컴포넌트 - 모든 참가자의 픽을 라운드별로 볼 수 있음 (투명성)
+function PublicBracketPicks({users, tournament, currentUid, lang}){
+  const [selectedUser, setSelectedUser] = useState(null);
+  if(tournament.phase !== "bracket") return null;
+
+  const TOTAL = Object.values(ROUND_META).reduce((s,m)=>s+m.matches,0);
+  const approved = Object.values(users).filter(u=>u.approved&&u.paid);
+  const withPicks = approved.filter(u=>u.bracketPicks&&Object.keys(u.bracketPicks).length>=TOTAL);
+  const withoutPicks = approved.filter(u=>!u.bracketPicks||Object.keys(u.bracketPicks).length<TOTAL);
+
+  const lbl = (ko,en) => lang==="ko"?ko:en;
+
+  return(
+    <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
+      <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
+        🏆 {lbl("브래킷 픽 현황","BRACKET PICKS")}
+      </div>
+
+      {/* 제출 현황 */}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+        {withPicks.map(u=>(
+          <button key={u.uid} onClick={()=>setSelectedUser(selectedUser===u.uid?null:u.uid)}
+            style={{padding:"5px 10px",borderRadius:20,border:`1px solid ${selectedUser===u.uid?"rgba(212,168,67,.5)":u.uid===currentUid?"rgba(212,168,67,.3)":"rgba(255,255,255,.1)"}`,
+            background:selectedUser===u.uid?"rgba(212,168,67,.15)":u.uid===currentUid?"rgba(212,168,67,.07)":"transparent",
+            color:selectedUser===u.uid?"#D4A843":u.uid===currentUid?"#D4A843":"#9CA3AF",
+            fontSize:11,cursor:"pointer",touchAction:"manipulation"}}>
+            {u.uid===currentUid?"⭐ ":""}{(u.name||"?").split(" ")[0]}
+          </button>
+        ))}
+        {withoutPicks.map(u=>(
+          <span key={u.uid} style={{padding:"5px 10px",borderRadius:20,border:"1px solid rgba(255,255,255,.05)",
+            background:"transparent",color:"#3A5070",fontSize:11,opacity:0.6}}>
+            {(u.name||"?").split(" ")[0]}
+          </span>
+        ))}
+      </div>
+
+      {/* 선택된 사용자의 픽 상세 */}
+      {selectedUser&&(()=>{
+        const u = approved.find(x=>x.uid===selectedUser);
+        if(!u||!u.bracketPicks) return null;
+        const bp = u.bracketPicks;
+        return(
+          <div style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:"12px"}}>
+            <div style={{fontFamily:"'Teko',sans-serif",fontSize:14,color:"#D4A843",marginBottom:10}}>
+              {u.uid===currentUid?"⭐ ":""}{u.name}
+            </div>
+            {ROUNDS.map(round=>{
+              const {matches} = ROUND_META[round];
+              const picks = [];
+              for(let i=0;i<matches;i++){
+                const key=`${round}_${i}`;
+                if(bp[key]) picks.push({key, team:bp[key]});
+              }
+              if(picks.length===0) return null;
+              return(
+                <div key={round} style={{marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#5A7090",letterSpacing:".06em",marginBottom:4}}>
+                    {ROUND_META[round].label[lang]} ({picks.length}/{ROUND_META[round].matches})
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {picks.map(p=>(
+                      <span key={p.key} style={{fontSize:11,padding:"3px 8px",borderRadius:6,
+                        background:"rgba(212,168,67,.1)",color:"#D4A843",border:"0.5px solid rgba(212,168,67,.2)"}}>
+                        {tn(p.team,lang)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {withPicks.length===0&&(
+        <div style={{fontSize:12,color:"#5A7090",textAlign:"center",padding:"12px 0"}}>
+          {lbl("아직 제출된 픽이 없습니다","No picks submitted yet")}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({users, tournament, currentUid, lang}){
   const MAX_PTS = 438;
   const gr = tournament.groupResults || {};
@@ -790,50 +874,14 @@ function Dashboard({users, tournament, currentUid, lang}){
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
-      {/* 오늘의 경기 스코어 예측 - 도박사 배팅확률 바로 아래 */}
-      <TodayMatches users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
-
-      {/* 조별 순위 */}
-      <GroupStandings users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
-
-      {/* 스프린트 레이스 */}
+      {/* 스프린트 레이스 (Phase 1+2 종합 순위) */}
       <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
 
       {/* 32강 대진표 */}
       <BracketPreview users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
-      {/* 최근 결과 */}
-      {recentResults.length > 0 && (
-        <div style={{background:"#0C1620",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"14px 16px",marginTop:12}}>
-          <div style={{fontFamily:"'Teko',sans-serif",fontSize:16,color:"#D4A843",letterSpacing:".1em",marginBottom:10}}>
-            {lbl("최근 결과","RESULTADOS","RECENT RESULTS")}
-          </div>
-          <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-            {recentResults.map(([grp, teams])=>(
-              <div key={grp} style={{flexShrink:0,border:"0.5px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",minWidth:130}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <div style={{fontSize:10,color:"#5A7090",letterSpacing:".08em"}}>GROUP {grp}</div>
-                  <a href={"https://www.youtube.com/results?search_query=FIFA+World+Cup+2026+Group+"+grp+"+highlights"} target="_blank" rel="noopener noreferrer"
-                    style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:"#f87171",textDecoration:"none",padding:"2px 7px",borderRadius:10,background:"rgba(248,113,113,.1)"}}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-                    HL
-                  </a>
-                </div>
-                {(teams||[]).map(team=>(
-                  <div key={team} style={{fontSize:12,color:"#22C55E",marginBottom:2}}>✓ {tn(team,lang)}</div>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:10,textAlign:"right"}}>
-            <a href="https://www.youtube.com/@FIFAWorldCup/videos" target="_blank" rel="noopener noreferrer"
-              style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#f87171",textDecoration:"none",padding:"3px 10px",borderRadius:20,border:"0.5px solid rgba(248,113,113,.3)"}}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="#f87171"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-              FIFA Official Channel
-            </a>
-          </div>
-        </div>
-      )}
+      {/* 브래킷 픽 공개 - 투명성을 위해 모든 사용자의 픽을 볼 수 있음 */}
+      <PublicBracketPicks users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
     </div>
   );
