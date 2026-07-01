@@ -1212,7 +1212,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     const result = {};
     probList.forEach(p=>{ result[p.uid]=p.prob; });
     setWinProbs(result);
-  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
+  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{}), JSON.stringify(tournament.bracketResults||{})]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
@@ -2183,15 +2183,33 @@ function calcRemainingPotential(user, tournament) {
   var gr = tournament.groupResults || {};
   var mq = tournament.manualQualified || {};
   var mo = tournament.manualOut || {};
+  var br = tournament.bracketResults || {};
   var potential = 0;
+
+  // Phase 1: 그룹 픽 잠재력
   Object.entries(user.groupPicks||{}).forEach(function(e){
     var grp = e[0], teams = e[1]||[];
-    if(gr[grp]) return; // 이미 확정된 조는 total에 반영됨, 스킵
+    if(gr[grp]) return;
     teams.forEach(function(team){
-      var advProb = mq[team] ? 1 : (mo[team] ? 0 : 0.5); // Admin이 직접 Q/OUT 체크한 값만 사용, 미정이면 중립(0.5)
-      potential += advProb * 3;
+      potential += (mq[team] ? 1 : (mo[team] ? 0 : 0.5)) * 3;
     });
   });
+
+  // Phase 2: 브래킷 픽 잠재력 (미확정 경기만, 50% 기대값)
+  var ROUND_PTS = {R32:5,R16:10,QF:15,SF:20,F:30};
+  Object.entries(user.bracketPicks||{}).forEach(function(e){
+    var key = e[0], myPick = e[1];
+    if(!myPick) return;
+    if(br[key] !== undefined) return; // 이미 확정 → calcScore가 처리
+    var round = key.split("_")[0];
+    var pts = ROUND_PTS[round] || 5;
+    potential += pts * 0.5;
+  });
+
+  // 우승 보너스 잠재력
+  var fp = user.bracketPicks && user.bracketPicks["F_0"];
+  if(fp && br["F_0"] === undefined) potential += 20; // 40 * 0.5
+
   return potential;
 }
 
