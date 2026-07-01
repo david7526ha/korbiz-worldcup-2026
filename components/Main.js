@@ -1410,8 +1410,10 @@ function BracketPreview({users, tournament, currentUid, lang}){
     R32_MATCHUPS.forEach(function(seed, i){
       var team = bracketTeamsArr[i];
       if(!team) return;
+      // st에 시드 키로 직접 저장 (WC 포함) - 모달의 renderR32가 st[seed]로 팀을 찾기 때문
+      st[seed] = team;
       if(seed.indexOf("WC")===0) {
-        // 와일드카드(3위) 팀 - 어느 조 소속인지 찾아서 third 배열에 추가
+        // 와일드카드(3위) 팀 - 어느 조 소속인지 찾아서 third 배열에도 추가
         var ownerGroup = Object.keys(GROUPS).find(function(g){
           return (GROUPS[g].teams||[]).indexOf(team) !== -1;
         });
@@ -1690,7 +1692,7 @@ function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
   // round0 (32강) 매치 렌더 - 실제 데이터 있음
   var renderR32 = function(m, i, xCol, isLeftSide){
     var y = TOP_MARGIN + i*(BOX_H*2+PAIR_GAP);
-    var teamA = st[m.a], teamB = m.b.indexOf("WC")===0?null:st[m.b];
+    var teamA = st[m.a], teamB = st[m.b]||null;  // WC 시드도 st에 포함돼 있으므로 그대로 lookup
     var midY = y + BOX_H - 1;
     var connX = isLeftSide ? xCol+BOX_W : xCol;
     var nextX = isLeftSide ? xCol+BOX_W+ROUND_GAP : xCol-ROUND_GAP;
@@ -1707,14 +1709,15 @@ function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
 
   // 16강~4강 렌더 - bracketResults에서 실제 승자 표시 (없으면 TBD)
   // roundKey: "R16"|"QF"|"SF", prevKey: 직전 라운드 키
-  var renderLiveRound = function(roundKey, prevKey, roundIdx, numMatches, xCol, isLeftSide, baseRowH){
+  var renderLiveRound = function(roundKey, prevKey, roundIdx, numMatches, xCol, isLeftSide, baseRowH, offset){
+    var off = offset || 0;
     var boxes = [];
     for(var i=0;i<numMatches;i++){
       var y = TOP_MARGIN + i*baseRowH + baseRowH/2 - BOX_H;
       var connX = isLeftSide ? xCol+BOX_W : xCol;
-      var teamA = br[prevKey+"_"+(i*2)] || null;
-      var teamB = br[prevKey+"_"+(i*2+1)] || null;
-      var matchKey = roundKey+"_"+i;
+      var teamA = br[prevKey+"_"+(off+i*2)] || null;
+      var teamB = br[prevKey+"_"+(off+i*2+1)] || null;
+      var matchKey = roundKey+"_"+(off/2+i);
       var winner = br[matchKey] || null;
       // 사용자 픽 체크
       var myPickForMatch = myPicks && myPicks.has ? (myPicks.has(teamA)?teamA:myPicks.has(teamB)?teamB:null) : null;
@@ -1801,17 +1804,17 @@ function BracketFullscreenModal({onClose, st, myPicks, lang, bracketResults}){
 
             {/* 32강 (실데이터) - 왼쪽 */}
             {R32.L.map(function(m,i){ return renderR32(m,i,xColL[0],true); })}
-            {/* 16강,8강,4강 실데이터 - 왼쪽 */}
-            {renderLiveRound("R16","R32",1,4,xColL[1],true,(BOX_H*2+PAIR_GAP)*2)}
-            {renderLiveRound("QF","R16",2,2,xColL[2],true,(BOX_H*2+PAIR_GAP)*4)}
-            {renderLiveRound("SF","QF",3,1,xColL[3],true,(BOX_H*2+PAIR_GAP)*8)}
+            {/* 16강,8강,4강 실데이터 - 왼쪽 (R32 0~7 기반) */}
+            {renderLiveRound("R16","R32",1,4,xColL[1],true,(BOX_H*2+PAIR_GAP)*2,0)}
+            {renderLiveRound("QF","R16",2,2,xColL[2],true,(BOX_H*2+PAIR_GAP)*4,0)}
+            {renderLiveRound("SF","QF",3,1,xColL[3],true,(BOX_H*2+PAIR_GAP)*8,0)}
 
             {/* 32강 (실데이터) - 오른쪽 */}
             {R32.R.map(function(m,i){ return renderR32(m,i,xColRFixed[0],false); })}
-            {/* 16강,8강,4강 실데이터 - 오른쪽 */}
-            {renderLiveRound("R16","R32",1,4,xColRFixed[1],false,(BOX_H*2+PAIR_GAP)*2)}
-            {renderLiveRound("QF","R16",2,2,xColRFixed[2],false,(BOX_H*2+PAIR_GAP)*4)}
-            {renderLiveRound("SF","QF",3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8)}
+            {/* 16강,8강,4강 실데이터 - 오른쪽 (R32 8~15 기반) */}
+            {renderLiveRound("R16","R32",1,4,xColRFixed[1],false,(BOX_H*2+PAIR_GAP)*2,8)}
+            {renderLiveRound("QF","R16",2,2,xColRFixed[2],false,(BOX_H*2+PAIR_GAP)*4,8)}
+            {renderLiveRound("SF","QF",3,1,xColRFixed[3],false,(BOX_H*2+PAIR_GAP)*8,4)}
           </svg>
         </div>
 
