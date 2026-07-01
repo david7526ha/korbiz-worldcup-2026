@@ -741,8 +741,6 @@ function Dashboard({users, tournament, currentUid, lang}){
   return (
     <div style={{paddingBottom:24}}>
 
-      <BracketSubmissionStatus users={users} tournament={tournament} lang={lang}/>
-
       {/* 상단 3카드 - 모바일: 1열, 데스크탑: 3열 */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:10,marginBottom:12}}>
 
@@ -874,14 +872,11 @@ function Dashboard({users, tournament, currentUid, lang}){
         <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
       </div>
 
-      {/* 스프린트 레이스 (Phase 1+2 종합 순위) */}
-      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
-
-      {/* 32강 대진표 */}
-      <BracketPreview users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
-
       {/* 브래킷 픽 공개 - 투명성을 위해 모든 사용자의 픽을 볼 수 있음 */}
       <PublicBracketPicks users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
+
+      {/* 스프린트 레이스 (Phase 1+2 종합 순위) */}
+      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
 
     </div>
   );
