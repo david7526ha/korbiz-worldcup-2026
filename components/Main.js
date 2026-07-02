@@ -437,32 +437,51 @@ const WC_MATCHES = [
   {date:"2026-07-03T17:00:00-04:00",teams:"Colombia vs Ghana",group:"R32",time:"5:00 PM ET"},
 ];
 function NextMatchBanner({lang}){
-  const [timeLeft,setTimeLeft]=useState("");
+  const [timeLeft,setTimeLeft]=useState("...");
   const [next,setNext]=useState(null);
+
   useEffect(()=>{
     const findNext=()=>{
       const now=Date.now();
       const m=WC_MATCHES.find(x=>new Date(x.date).getTime()>now);
       setNext(m||null);
+      return m||null;
     };
-    findNext();
+
+    const calcTime=(match)=>{
+      if(!match) return "";
+      const ms=new Date(match.date).getTime()-Date.now();
+      if(ms<=0) return "";
+      const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),mm=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
+      return d>0?d+"d "+h+"h "+mm+"m":h>0?h+"h "+mm+"m "+s+"s":mm+"m "+s+"s";
+    };
+
+    const m = findNext();
+    if(m) setTimeLeft(calcTime(m));
+
     const iv=setInterval(()=>{
-      if(!next)return;
-      const ms=new Date(next.date).getTime()-Date.now();
-      if(ms<=0){findNext();return;}
-      const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
-      setTimeLeft(d>0?d+"d "+h+"h "+m+"m":h>0?h+"h "+m+"m "+s+"s":m+"m "+s+"s");
+      const cur = WC_MATCHES.find(x=>new Date(x.date).getTime()>Date.now());
+      if(!cur){ setNext(null); return; }
+      if(!next || cur.date!==next.date) setNext(cur);
+      const t = calcTime(cur);
+      if(!t){ setNext(WC_MATCHES.find(x=>new Date(x.date).getTime()>Date.now()+1000)||null); }
+      else setTimeLeft(t);
     },1000);
     return()=>clearInterval(iv);
-  },[next?.date]);
-  if(!next||!timeLeft)return null;
+  },[]);
+
+  if(!next) return null;
+
+  const roundLabel = next.group==="R32"?"Round of 32":next.group==="R16"?"Round of 16":next.group==="QF"?"Quarterfinal":next.group==="SF"?"Semifinal":next.group==="F"?"Final":"Group "+next.group;
   const lbl=lang==="ko"?"다음 경기":lang==="es"?"Próximo partido":"Next match";
+
   return(
     <div style={{background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
       <span style={{fontSize:16}}>⚽</span>
       <div style={{flex:1}}>
-        <div style={{fontSize:10,color:"#5A7090",letterSpacing:".1em"}}>{lbl} · Group {next.group}</div>
+        <div style={{fontSize:10,color:"#5A7090",letterSpacing:".1em"}}>{lbl} · {roundLabel}</div>
         <div style={{fontSize:13,color:"#E0E8F0",fontWeight:600}}>{next.teams}</div>
+        <div style={{fontSize:10,color:"#5A7090"}}>{next.time}</div>
       </div>
       <div style={{fontFamily:"'Teko',sans-serif",fontSize:20,color:"#60a5fa",lineHeight:1}}>{timeLeft}</div>
     </div>
