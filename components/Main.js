@@ -2359,13 +2359,29 @@ function calcWinProbs(ranked, tournament) {
     top3.forEach(function(u){winCounts[u.uid].p3+=1/top3.length;});
   }
 
+  // 각 사용자의 수학적 최대 가능 점수 계산
+  // (브래킷 트리 의존성 무시하고 단순 합산 - 상한값으로만 사용)
+  var maxLeaderScore = Math.max.apply(null, ranked.map(function(u){return u.total||0;}));
+  var remainingMax = 0;
+  ROUNDS.forEach(function(rnd){
+    for(var i=0;i<ROUND_MATCHES[rnd];i++){
+      if(br[rnd+"_"+i]===undefined) remainingMax += (ROUND_PTS[rnd]||5);
+    }
+  });
+  if(!br["F_0"]) remainingMax += 40; // 우승 보너스
+
   return ranked.map(function(u){
-    return {
-      uid:u.uid,
-      prob:Math.round(100*winCounts[u.uid].p1/N_SIM),
-      prob2:Math.round(100*winCounts[u.uid].p2/N_SIM),
-      prob3:Math.round(100*winCounts[u.uid].p3/N_SIM),
-    };
+    var p1 = Math.round(100*winCounts[u.uid].p1/N_SIM);
+    var p2 = Math.round(100*winCounts[u.uid].p2/N_SIM);
+    var p3 = Math.round(100*winCounts[u.uid].p3/N_SIM);
+    // 수학적으로 역전 가능하면(최대점수 > 현재 1등) 최소 1% 보장
+    var canWin = (u.total||0) + remainingMax > maxLeaderScore;
+    if(canWin && p1===0) p1=1;
+    if(canWin && p2===0) p2=1;
+    if(canWin && p3===0) p3=1;
+    // p1<=p2<=p3 보장
+    p2=Math.max(p1,p2); p3=Math.max(p2,p3);
+    return {uid:u.uid, prob:p1, prob2:p2, prob3:p3};
   });
 }
 
