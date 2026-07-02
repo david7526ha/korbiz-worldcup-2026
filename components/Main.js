@@ -1090,12 +1090,10 @@ function WinProbWidget({users, tournament, currentUid, lang}){
             {prob===null?"...":prob+"%"}
           </text>
         </svg>
-          {(prob2>0||prob3>0)&&(
-            <div style={{display:"flex",gap:6,justifyContent:"center",marginTop:2}}>
-              {prob2>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>TOP2 {prob2}%</span>}
-              {prob3>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>TOP3 {prob3}%</span>}
-            </div>
-          )}
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:3}}>
+              {prob2>0&&<span style={{fontSize:10,color:"#5A7090"}}>T2 <b style={{color:"#9CA3AF"}}>{prob2}%</b></span>}
+              {prob3>0&&<span style={{fontSize:10,color:"#5A7090"}}>T3 <b style={{color:"#9CA3AF"}}>{prob3}%</b></span>}
+          </div>
 
         {/* 설명 */}
         <div style={{flex:1}}>
@@ -1324,15 +1322,11 @@ width:28,height:28,borderRadius:"50%",
             </div>
 
             {/* 점수 + 확률 */}
-            <div style={{textAlign:"right",flexShrink:0}}>
-              <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</div>
-              {winProbs[u.uid]!==undefined&&(
-                <div style={{display:"flex",gap:3,justifyContent:"flex-end",flexWrap:"nowrap"}}>
-                  <span style={{fontSize:9,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",whiteSpace:"nowrap"}}>🥇{winProbs[u.uid].p1}%</span>
-                  {winProbs[u.uid].p2>0&&<span style={{fontSize:9,color:"#5A7090",whiteSpace:"nowrap"}}>T2:{winProbs[u.uid].p2}%</span>}
-                  {winProbs[u.uid].p3>0&&<span style={{fontSize:9,color:"#5A7090",whiteSpace:"nowrap"}}>T3:{winProbs[u.uid].p3}%</span>}
-                </div>
-              )}
+            <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
+              <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
+              {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:5}}>🥇{winProbs[u.uid].p1}%</span>}
+              {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#5A7090",marginLeft:3}}>·{winProbs[u.uid].p2}%</span>}
+              {winProbs[u.uid]?.p3>0&&<span style={{fontSize:9,color:"#5A7090",marginLeft:2}}>·{winProbs[u.uid].p3}%</span>}
             </div>
           </div>
         );
