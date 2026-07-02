@@ -1271,7 +1271,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
               {/* 트랙 배경 */}
               <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.04)",borderRadius:18,border:"0.5px solid rgba(255,255,255,.06)"}}/>
 
-              {/* 달리는 바 - 아이콘 없이 순수 바만 */}
+              {/* 달리는 바 + 바 끝에 아이콘 (maxPts 기준으로 스케일되니 랭킹대로 정렬됨) */}
               <div style={{
                 position:"absolute",top:0,left:0,height:"100%",
 width: finalPct + "%",
@@ -1282,26 +1282,27 @@ borderRadius:16,
                   : "rgba(255,255,255,.06)",
                 border: isMe ? "1px solid rgba(212,168,67,.4)" : "0.5px solid rgba(255,255,255,.08)",
                 transition: animated ? "width 1.2s cubic-bezier(.34,1.2,.64,1)" : "none",
-                overflow:"hidden",
-              }}/>
-              {/* 프로필 사진 원 - 트랙 컨테이너 기준 오른쪽 고정 (랭킹과 항상 일치) */}
-              <div style={{
-                position:"absolute",right:-14,top:"50%",transform:"translateY(-50%)",
-width:28,height:28,borderRadius:"50%",
-                border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
-                overflow:"hidden",flexShrink:0,
-                background:"#1a2840",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                boxShadow: isMe ? "0 0 0 3px rgba(212,168,67,.2)" : "none",
-                zIndex:2,
+                overflow:"visible",
               }}>
-                {u.photoURL ? (
-                  <img src={u.photoURL} alt={u.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
-                ) : (
-                  <span style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>
-                    {(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2)}
-                  </span>
-                )}
+                {/* 프로필 사진 원 - 바 끝에 위치 */}
+                <div style={{
+                  position:"absolute",right:-14,top:"50%",transform:"translateY(-50%)",
+width:28,height:28,borderRadius:"50%",
+                  border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
+                  overflow:"hidden",flexShrink:0,
+                  background:"#1a2840",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  boxShadow: isMe ? "0 0 0 3px rgba(212,168,67,.2)" : "none",
+                  zIndex:2,
+                }}>
+                  {u.photoURL ? (
+                    <img src={u.photoURL} alt={u.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                  ) : (
+                    <span style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>
+                      {(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* 이름 (바 안에) */}
@@ -1315,7 +1316,7 @@ width:28,height:28,borderRadius:"50%",
             </div>
 
             {/* 점수 + 확률 */}
-            <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
+            <div style={{flexShrink:0,textAlign:"right",minWidth:90,paddingLeft:18}}>
               <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
               {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>}
               {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2}%</span>}
