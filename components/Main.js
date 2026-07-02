@@ -1255,7 +1255,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
 
       {displayOrder.map((u, i) => {
         const isMe = u.uid === currentUid;
-        const pct = topScore > 0 ? (u.total / topScore) * 88 : 0;
+        const pct = (maxPts||topScore) > 0 ? (u.total / (maxPts||topScore)) * 88 : 0;
         const finalPct = animated ? pct : 0;
         const medals = ["🥇","🥈","🥉"];
 
