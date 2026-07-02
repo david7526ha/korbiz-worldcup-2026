@@ -1105,18 +1105,16 @@ function WinProbWidget({users, tournament, currentUid, lang, sharedWinProbs}){
             {prob===null?"...":prob+"%"}
           </text>
         </svg>
-          {(prob2>0||prob3>0)&&(
-            <div style={{display:"flex",justifyContent:"center",gap:10,marginTop:4}}>
-              {prob2>0&&<div style={{textAlign:"center"}}>
-                <div style={{fontSize:14}}>🥈</div>
-                <div style={{fontSize:10,color:"#C0C0C0",fontWeight:700}}>{prob2}%</div>
-              </div>}
-              {prob3>0&&<div style={{textAlign:"center"}}>
-                <div style={{fontSize:14}}>🥉</div>
-                <div style={{fontSize:10,color:"#CD7F32",fontWeight:700}}>{prob3}%</div>
-              </div>}
+          <div style={{display:"flex",justifyContent:"center",gap:10,marginTop:4}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14}}>🥈</div>
+              <div style={{fontSize:10,color:"#C0C0C0",fontWeight:700}}>{prob2||0}%</div>
             </div>
-          )}
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14}}>🥉</div>
+              <div style={{fontSize:10,color:"#CD7F32",fontWeight:700}}>{prob3||0}%</div>
+            </div>
+          </div>
 
         {/* 설명 */}
         <div style={{flex:1}}>
@@ -1340,9 +1338,11 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
             {/* 점수 + 확률 */}
             <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
               <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
-              {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>}
-              {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2}%</span>}
-              {winProbs[u.uid]?.p3>0&&<span style={{fontSize:9,color:"#CD7F32",marginLeft:2}}>🥉{winProbs[u.uid].p3}%</span>}
+              {winProbs[u.uid]!==undefined&&<>
+                <span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>
+                <span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2||0}%</span>
+                <span style={{fontSize:9,color:"#CD7F32",marginLeft:2}}>🥉{winProbs[u.uid].p3||0}%</span>
+              </>}
             </div>
           </div>
         );
