@@ -1049,8 +1049,6 @@ function WinProbWidget({users, tournament, currentUid, lang, sharedWinProbs}){
     prevProbRef.current = prob;
   }, [prob]);
 
-  // 확률 표시 일시 숨김
-  return null;
   const lbl = lang==="ko"?"🥇 우승 확률":lang==="es"?"🥇 Mi probabilidad":"🥇 Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
 
@@ -1323,7 +1321,9 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
             {/* 점수 + 확률 */}
             <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
               <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
-{/* 확률 표시 일시 숨김 */}
+              {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>}
+              {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2}%</span>}
+              {winProbs[u.uid]?.p3>0&&<span style={{fontSize:9,color:"#CD7F32",marginLeft:2}}>🥉{winProbs[u.uid].p3}%</span>}
             </div>
           </div>
         );
