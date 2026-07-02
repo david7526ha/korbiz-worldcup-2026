@@ -2303,7 +2303,7 @@ function calcWinProbs(ranked, tournament) {
 
   var winCounts = {};
   ranked.forEach(function(u){ winCounts[u.uid]={p1:0,p2:0,p3:0}; });
-  var N_SIM = 3000;
+  var N_SIM = 5000;
 
   for(var sim=0;sim<N_SIM;sim++){
     // 브래킷 트리를 R32→R16→QF→SF→F 순서대로 시뮬
@@ -2359,27 +2359,52 @@ function calcWinProbs(ranked, tournament) {
     top3.forEach(function(u){winCounts[u.uid].p3+=1/top3.length;});
   }
 
-  // 각 사용자의 수학적 최대 가능 점수 계산
-  // (브래킷 트리 의존성 무시하고 단순 합산 - 상한값으로만 사용)
+  // 브래킷 트리 의존성 반영한 각 사용자 최대 가능 점수 계산
   var maxLeaderScore = Math.max.apply(null, ranked.map(function(u){return u.total||0;}));
-  var remainingMax = 0;
-  ROUNDS.forEach(function(rnd){
-    for(var i=0;i<ROUND_MATCHES[rnd];i++){
-      if(br[rnd+"_"+i]===undefined) remainingMax += (ROUND_PTS[rnd]||5);
+
+  function calcMaxPossible(u){
+    var extra = 0;
+    for(var ri=0;ri<ROUNDS.length;ri++){
+      var rnd=ROUNDS[ri];
+      for(var i=0;i<ROUND_MATCHES[rnd];i++){
+        var key=rnd+"_"+i;
+        if(br[key]!==undefined) continue;
+        var myPick=(u.bracketPicks||{})[key];
+        if(!myPick) continue;
+        var alive=true;
+        if(ri>0){
+          var prev=ROUNDS[ri-1];
+          var winA=br[prev+"_"+(i*2)], winB=br[prev+"_"+(i*2+1)];
+          var lostA=winA!==undefined&&winA!==myPick;
+          var lostB=winB!==undefined&&winB!==myPick;
+          if(lostA&&lostB) alive=false;
+          else if(ri===1&&(lostA||lostB)) alive=false;
+        }
+        if(alive) extra+=ROUND_PTS[rnd]||5;
+      }
     }
-  });
-  if(!br["F_0"]) remainingMax += 40; // 우승 보너스
+    // F_0 보너스
+    if(!br["F_0"]){
+      var fPick=(u.bracketPicks||{})["F_0"];
+      if(fPick){
+        var sf0=br["SF_0"],sf1=br["SF_1"];
+        var fAlive=!(sf0!==undefined&&sf1!==undefined&&sf0!==fPick&&sf1!==fPick);
+        if(fAlive) extra+=40;
+      }
+    }
+    return extra;
+  }
 
   return ranked.map(function(u){
     var p1 = Math.round(100*winCounts[u.uid].p1/N_SIM);
     var p2 = Math.round(100*winCounts[u.uid].p2/N_SIM);
     var p3 = Math.round(100*winCounts[u.uid].p3/N_SIM);
-    // 수학적으로 역전 가능하면(최대점수 > 현재 1등) 최소 1% 보장
-    var canWin = (u.total||0) + remainingMax > maxLeaderScore;
+    // 브래킷 트리 반영 최대 가능 점수로 역전 가능 여부 판단
+    var maxPossible = (u.total||0) + calcMaxPossible(u);
+    var canWin = maxPossible > maxLeaderScore || (u.total||0)===maxLeaderScore;
     if(canWin && p1===0) p1=1;
     if(canWin && p2===0) p2=1;
     if(canWin && p3===0) p3=1;
-    // p1<=p2<=p3 보장
     p2=Math.max(p1,p2); p3=Math.max(p2,p3);
     return {uid:u.uid, prob:p1, prob2:p2, prob3:p3};
   });
