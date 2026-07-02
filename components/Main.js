@@ -437,42 +437,31 @@ const WC_MATCHES = [
   {date:"2026-07-03T17:00:00-04:00",teams:"Colombia vs Ghana",group:"R32",time:"5:00 PM ET"},
 ];
 function NextMatchBanner({lang}){
-  const [timeLeft,setTimeLeft]=useState("...");
-  const [next,setNext]=useState(null);
+  const calcTime=(date)=>{
+    const ms=new Date(date).getTime()-Date.now();
+    if(ms<=0) return "";
+    const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),mm=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
+    return d>0?d+"d "+h+"h "+mm+"m":h>0?h+"h "+mm+"m "+s+"s":mm+"m "+s+"s";
+  };
+  const findNext=()=>WC_MATCHES.find(x=>new Date(x.date).getTime()>Date.now())||null;
+
+  // 초기값부터 계산 (useEffect 전에도 바로 렌더됨)
+  const [next,setNext]=useState(()=>findNext());
+  const [timeLeft,setTimeLeft]=useState(()=>{ const m=findNext(); return m?calcTime(m.date):""; });
 
   useEffect(()=>{
-    const findNext=()=>{
-      const now=Date.now();
-      const m=WC_MATCHES.find(x=>new Date(x.date).getTime()>now);
-      setNext(m||null);
-      return m||null;
-    };
-
-    const calcTime=(match)=>{
-      if(!match) return "";
-      const ms=new Date(match.date).getTime()-Date.now();
-      if(ms<=0) return "";
-      const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),mm=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
-      return d>0?d+"d "+h+"h "+mm+"m":h>0?h+"h "+mm+"m "+s+"s":mm+"m "+s+"s";
-    };
-
-    const m = findNext();
-    if(m) setTimeLeft(calcTime(m));
-
     const iv=setInterval(()=>{
-      const cur = WC_MATCHES.find(x=>new Date(x.date).getTime()>Date.now());
-      if(!cur){ setNext(null); return; }
-      if(!next || cur.date!==next.date) setNext(cur);
-      const t = calcTime(cur);
-      if(!t){ setNext(WC_MATCHES.find(x=>new Date(x.date).getTime()>Date.now()+1000)||null); }
-      else setTimeLeft(t);
+      const cur=findNext();
+      if(!cur){ setNext(null); setTimeLeft(""); return; }
+      setNext(cur);
+      setTimeLeft(calcTime(cur.date));
     },1000);
     return()=>clearInterval(iv);
   },[]);
 
-  if(!next) return null;
+  if(!next||!timeLeft) return null;
 
-  const roundLabel = next.group==="R32"?"Round of 32":next.group==="R16"?"Round of 16":next.group==="QF"?"Quarterfinal":next.group==="SF"?"Semifinal":next.group==="F"?"Final":"Group "+next.group;
+  const roundLabel=next.group==="R32"?"Round of 32":next.group==="R16"?"Round of 16":next.group==="QF"?"Quarterfinal":next.group==="SF"?"Semifinal":next.group==="F"?"Final":"Group "+next.group;
   const lbl=lang==="ko"?"다음 경기":lang==="es"?"Próximo partido":"Next match";
 
   return(
