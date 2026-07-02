@@ -773,8 +773,14 @@ function Dashboard({users, tournament, currentUid, lang}){
   // 승률 한 번만 계산 (SprintRace + WinProbWidget 공유 → 수치 일치)
   const [sharedWinProbs, setSharedWinProbs] = useState([]);
   useEffect(()=>{
-    if(ranked.length>0) setSharedWinProbs(calcWinProbs(ranked, tournament));
-  }, [ranked.map(r=>r.uid+'_'+r.total).join('|'), JSON.stringify(tournament.bracketResults||{})]);
+    if(ranked.length<2) return;
+    if(!tournament.bracketTeams||tournament.bracketTeams.length<32) return; // bracketTeams 로드 전 스킵
+    // setTimeout으로 tournament 데이터가 완전히 안정된 후 실행
+    const timer = setTimeout(()=>{
+      setSharedWinProbs(calcWinProbs(ranked, tournament));
+    }, 200);
+    return ()=>clearTimeout(timer);
+  }, [ranked.map(r=>r.uid+'_'+r.total).join('|'), JSON.stringify(tournament.bracketResults||{}), (tournament.bracketTeams||[]).length]);
 
   const me = ranked.find(u => u.uid === currentUid);
   const myRank = ranked.findIndex(u => u.uid === currentUid) + 1;
