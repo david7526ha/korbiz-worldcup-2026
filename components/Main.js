@@ -1024,7 +1024,7 @@ function OddsWidget({lang, tournament}){
 // ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
 function WinProbWidget({users, tournament, currentUid, lang, sharedWinProbs}){
   const [trend, setTrend] = useState(null);
-  const prevProbRef = React.useRef(null);
+  const prevProbRef = useRef(null);
 
   // sharedWinProbs에서 직접 읽기 (useEffect + 재계산 없음 → SprintRace와 항상 동일)
   const myEntry = (sharedWinProbs||[]).find(p=>p.uid===currentUid);
@@ -1255,7 +1255,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
 
       {displayOrder.map((u, i) => {
         const isMe = u.uid === currentUid;
-        const pct = topScore > 0 ? (u.total / topScore) * 88 : 0;
+        const pct = (maxPts>0 ? maxPts : topScore) > 0 ? (u.total / (maxPts>0 ? maxPts : topScore)) * 88 : 0;
         const finalPct = animated ? pct : 0;
         const medals = ["🥇","🥈","🥉"];
 
