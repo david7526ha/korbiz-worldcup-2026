@@ -1207,18 +1207,11 @@ function NextMatchCard({lang}){
 // ─── SPRINT RACE ──────────────────────────────────────────────────────────────
 function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, sharedWinProbs}){
   const [animated, setAnimated] = useState(false);
-  const [winProbs, setWinProbs] = useState({});
+  // sharedWinProbs에서 직접 변환 (state/useEffect 없음 → Dashboard와 항상 동일)
+  const winProbs = {};
+  (sharedWinProbs||[]).forEach(p=>{ winProbs[p.uid]={p1:p.prob||0, p2:p.prob2||0, p3:p.prob3||0}; });
 
   useEffect(()=>{ const t = setTimeout(()=>setAnimated(true), 100); return ()=>clearTimeout(t); }, []);
-
-  // 우승 확률 계산 — 살아있는 픽 기반
-  useEffect(()=>{
-    if(!ranked||ranked.length<2) return;
-    const probList = (sharedWinProbs&&sharedWinProbs.length>0) ? sharedWinProbs : calcWinProbs(ranked, tournament);
-    const result = {};
-    probList.forEach(p=>{ result[p.uid]={p1:p.prob||0, p2:p.prob2||0, p3:p.prob3||0}; });
-    setWinProbs(result);
-  },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{}), JSON.stringify(tournament.bracketResults||{})]);
 
   if(ranked.length === 0) return null;
   const topScore = Math.max(...ranked.map(r=>r.total), 1);
