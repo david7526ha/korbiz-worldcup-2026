@@ -743,6 +743,12 @@ function Dashboard({users, tournament, currentUid, lang}){
     })
     .sort((a,b) => b.total - a.total);
 
+  // 승률 한 번만 계산 (SprintRace + WinProbWidget 공유 → 수치 일치)
+  const [sharedWinProbs, setSharedWinProbs] = useState([]);
+  useEffect(()=>{
+    if(ranked.length>0) setSharedWinProbs(calcWinProbs(ranked, tournament));
+  }, [ranked.map(r=>r.uid+'_'+r.total).join('|'), JSON.stringify(tournament.bracketResults||{})]);
+
   const me = ranked.find(u => u.uid === currentUid);
   const myRank = ranked.findIndex(u => u.uid === currentUid) + 1;
   const leader = ranked[0];
@@ -884,14 +890,14 @@ function Dashboard({users, tournament, currentUid, lang}){
       {/* 가젯 2개 - 모바일: 1열, 태블릿+: 2열 */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:10,marginBottom:12}}>
         <OddsWidget lang={lang} tournament={tournament}/>
-        <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
+        <WinProbWidget users={users} tournament={tournament} currentUid={currentUid} lang={lang} sharedWinProbs={sharedWinProbs}/>
       </div>
 
       {/* 브래킷 픽 공개 - 투명성을 위해 모든 사용자의 픽을 볼 수 있음 */}
       <PublicBracketPicks users={users} tournament={tournament} currentUid={currentUid} lang={lang}/>
 
       {/* 스프린트 레이스 (Phase 1+2 종합 순위) */}
-      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament}/>
+      <SprintRace ranked={ranked} currentUid={currentUid} maxPts={MAX_PTS} lang={lang} users={users} tournament={tournament} sharedWinProbs={sharedWinProbs}/>
 
     </div>
   );
@@ -1016,7 +1022,7 @@ function OddsWidget({lang, tournament}){
 
 
 // ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
-function WinProbWidget({users, tournament, currentUid, lang}){
+function WinProbWidget({users, tournament, currentUid, lang, sharedWinProbs}){
   const [prob, setProb] = useState(null);
   const [prob2, setProb2] = useState(0);
   const [prob3, setProb3] = useState(0);
@@ -1038,7 +1044,7 @@ function WinProbWidget({users, tournament, currentUid, lang}){
     const me = ranked.find(u=>u.uid===currentUid);
     if(!me){ setProb(0); return; }
 
-    const probList = calcWinProbs(ranked, tournament);
+    const probList = (sharedWinProbs&&sharedWinProbs.length>0) ? sharedWinProbs : calcWinProbs(ranked, tournament);
     const myProb = probList.find(p=>p.uid===currentUid);
     const newProb = myProb ? myProb.prob : 0;
     const newProb2 = myProb ? (myProb.prob2||0) : 0;
@@ -1090,10 +1096,18 @@ function WinProbWidget({users, tournament, currentUid, lang}){
             {prob===null?"...":prob+"%"}
           </text>
         </svg>
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:3}}>
-              {prob2>0&&<span style={{fontSize:10,color:"#5A7090"}}>T2 <b style={{color:"#9CA3AF"}}>{prob2}%</b></span>}
-              {prob3>0&&<span style={{fontSize:10,color:"#5A7090"}}>T3 <b style={{color:"#9CA3AF"}}>{prob3}%</b></span>}
-          </div>
+          {(prob2>0||prob3>0)&&(
+            <div style={{display:"flex",justifyContent:"center",gap:10,marginTop:4}}>
+              {prob2>0&&<div style={{textAlign:"center"}}>
+                <div style={{fontSize:14}}>🥈</div>
+                <div style={{fontSize:10,color:"#C0C0C0",fontWeight:700}}>{prob2}%</div>
+              </div>}
+              {prob3>0&&<div style={{textAlign:"center"}}>
+                <div style={{fontSize:14}}>🥉</div>
+                <div style={{fontSize:10,color:"#CD7F32",fontWeight:700}}>{prob3}%</div>
+              </div>}
+            </div>
+          )}
 
         {/* 설명 */}
         <div style={{flex:1}}>
@@ -1209,7 +1223,7 @@ function NextMatchCard({lang}){
 }
 
 // ─── SPRINT RACE ──────────────────────────────────────────────────────────────
-function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
+function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, sharedWinProbs}){
   const [animated, setAnimated] = useState(false);
   const [winProbs, setWinProbs] = useState({});
 
@@ -1218,7 +1232,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
   // 우승 확률 계산 — 살아있는 픽 기반
   useEffect(()=>{
     if(!ranked||ranked.length<2) return;
-    const probList = calcWinProbs(ranked, tournament);
+    const probList = (sharedWinProbs&&sharedWinProbs.length>0) ? sharedWinProbs : calcWinProbs(ranked, tournament);
     const result = {};
     probList.forEach(p=>{ result[p.uid]={p1:p.prob||0, p2:p.prob2||0, p3:p.prob3||0}; });
     setWinProbs(result);
@@ -1324,9 +1338,9 @@ width:28,height:28,borderRadius:"50%",
             {/* 점수 + 확률 */}
             <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
               <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
-              {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:5}}>🥇{winProbs[u.uid].p1}%</span>}
-              {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#5A7090",marginLeft:3}}>·{winProbs[u.uid].p2}%</span>}
-              {winProbs[u.uid]?.p3>0&&<span style={{fontSize:9,color:"#5A7090",marginLeft:2}}>·{winProbs[u.uid].p3}%</span>}
+              {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>}
+              {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2}%</span>}
+              {winProbs[u.uid]?.p3>0&&<span style={{fontSize:9,color:"#CD7F32",marginLeft:2}}>🥉{winProbs[u.uid].p3}%</span>}
             </div>
           </div>
         );
