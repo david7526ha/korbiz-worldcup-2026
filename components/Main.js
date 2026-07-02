@@ -435,6 +435,25 @@ const WC_MATCHES = [
   {date:"2026-07-02T21:00:00-04:00",teams:"Argentina vs Cape Verde",group:"R32",time:"9:00 PM ET"},
   {date:"2026-07-03T13:00:00-04:00",teams:"Switzerland vs Algeria",group:"R32",time:"1:00 PM ET"},
   {date:"2026-07-03T17:00:00-04:00",teams:"Colombia vs Ghana",group:"R32",time:"5:00 PM ET"},
+  // Round of 16
+  {date:"2026-07-04T13:00:00-04:00",teams:"R16 Match 1",group:"R16",time:"1:00 PM ET"},
+  {date:"2026-07-04T17:00:00-04:00",teams:"R16 Match 2",group:"R16",time:"5:00 PM ET"},
+  {date:"2026-07-04T21:00:00-04:00",teams:"R16 Match 3",group:"R16",time:"9:00 PM ET"},
+  {date:"2026-07-05T13:00:00-04:00",teams:"R16 Match 4",group:"R16",time:"1:00 PM ET"},
+  {date:"2026-07-05T17:00:00-04:00",teams:"R16 Match 5",group:"R16",time:"5:00 PM ET"},
+  {date:"2026-07-05T21:00:00-04:00",teams:"R16 Match 6",group:"R16",time:"9:00 PM ET"},
+  {date:"2026-07-06T13:00:00-04:00",teams:"R16 Match 7",group:"R16",time:"1:00 PM ET"},
+  {date:"2026-07-06T17:00:00-04:00",teams:"R16 Match 8",group:"R16",time:"5:00 PM ET"},
+  // Quarterfinals
+  {date:"2026-07-08T15:00:00-04:00",teams:"Quarterfinal 1",group:"QF",time:"3:00 PM ET"},
+  {date:"2026-07-08T19:00:00-04:00",teams:"Quarterfinal 2",group:"QF",time:"7:00 PM ET"},
+  {date:"2026-07-09T15:00:00-04:00",teams:"Quarterfinal 3",group:"QF",time:"3:00 PM ET"},
+  {date:"2026-07-09T19:00:00-04:00",teams:"Quarterfinal 4",group:"QF",time:"7:00 PM ET"},
+  // Semifinals
+  {date:"2026-07-12T15:00:00-04:00",teams:"Semifinal 1",group:"SF",time:"3:00 PM ET"},
+  {date:"2026-07-13T15:00:00-04:00",teams:"Semifinal 2",group:"SF",time:"3:00 PM ET"},
+  // Final
+  {date:"2026-07-19T15:00:00-04:00",teams:"World Cup Final",group:"F",time:"3:00 PM ET"},
 ];
 function NextMatchBanner({lang}){
   const calcTime=(date)=>{
