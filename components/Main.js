@@ -2303,7 +2303,7 @@ function calcWinProbs(ranked, tournament) {
 
   var winCounts = {};
   ranked.forEach(function(u){ winCounts[u.uid]={p1:0,p2:0,p3:0}; });
-  var N_SIM = 5000;
+  var N_SIM = 10000;
 
   for(var sim=0;sim<N_SIM;sim++){
     // 브래킷 트리를 R32→R16→QF→SF→F 순서대로 시뮬
