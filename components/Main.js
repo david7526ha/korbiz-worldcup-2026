@@ -1324,17 +1324,15 @@ width:28,height:28,borderRadius:"50%",
             </div>
 
             {/* 점수 + 확률 */}
-            <div style={{width:64,textAlign:"right",flexShrink:0}}>
-              <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}</div>
-              <div style={{fontSize:10,color:(winProbs[u.uid]?.p1||0)>=30?"#22C55E":(winProbs[u.uid]?.p1||0)>=10?"#D4A843":"#5A7090"}}>
-                {winProbs[u.uid]!==undefined ? (
-                  <span style={{whiteSpace:"nowrap"}}>
-                    🥇{winProbs[u.uid].p1}%
-                    {winProbs[u.uid].p2>0&&<span style={{color:"#9CA3AF",marginLeft:4,fontSize:9}}>T2:{winProbs[u.uid].p2}%</span>}
-                    {winProbs[u.uid].p3>0&&<span style={{color:"#9CA3AF",marginLeft:3,fontSize:9}}>T3:{winProbs[u.uid].p3}%</span>}
-                  </span>
-                ) : ""}
-              </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</div>
+              {winProbs[u.uid]!==undefined&&(
+                <div style={{display:"flex",gap:3,justifyContent:"flex-end",flexWrap:"nowrap"}}>
+                  <span style={{fontSize:9,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",whiteSpace:"nowrap"}}>🥇{winProbs[u.uid].p1}%</span>
+                  {winProbs[u.uid].p2>0&&<span style={{fontSize:9,color:"#5A7090",whiteSpace:"nowrap"}}>T2:{winProbs[u.uid].p2}%</span>}
+                  {winProbs[u.uid].p3>0&&<span style={{fontSize:9,color:"#5A7090",whiteSpace:"nowrap"}}>T3:{winProbs[u.uid].p3}%</span>}
+                </div>
+              )}
             </div>
           </div>
         );
