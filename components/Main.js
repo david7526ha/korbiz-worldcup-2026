@@ -1092,8 +1092,8 @@ function WinProbWidget({users, tournament, currentUid, lang}){
         </svg>
           {(prob2>0||prob3>0)&&(
             <div style={{display:"flex",gap:6,justifyContent:"center",marginTop:2}}>
-              {prob2>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>🥈{prob2}%</span>}
-              {prob3>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>🥉{prob3}%</span>}
+              {prob2>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>TOP2 {prob2}%</span>}
+              {prob3>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>TOP3 {prob3}%</span>}
             </div>
           )}
 
@@ -1328,10 +1328,10 @@ width:28,height:28,borderRadius:"50%",
               <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}</div>
               <div style={{fontSize:10,color:(winProbs[u.uid]?.p1||0)>=30?"#22C55E":(winProbs[u.uid]?.p1||0)>=10?"#D4A843":"#5A7090"}}>
                 {winProbs[u.uid]!==undefined ? (
-                  <span>
+                  <span style={{whiteSpace:"nowrap"}}>
                     🥇{winProbs[u.uid].p1}%
-                    {winProbs[u.uid].p2>0&&<span style={{color:"#5A7090",marginLeft:4}}>🥈{winProbs[u.uid].p2}%</span>}
-                    {winProbs[u.uid].p3>0&&<span style={{color:"#5A7090",marginLeft:4}}>🥉{winProbs[u.uid].p3}%</span>}
+                    {winProbs[u.uid].p2>0&&<span style={{color:"#9CA3AF",marginLeft:4,fontSize:9}}>T2:{winProbs[u.uid].p2}%</span>}
+                    {winProbs[u.uid].p3>0&&<span style={{color:"#9CA3AF",marginLeft:3,fontSize:9}}>T3:{winProbs[u.uid].p3}%</span>}
                   </span>
                 ) : ""}
               </div>
@@ -2335,8 +2335,9 @@ function calcWinProbs(ranked, tournament) {
     var top1 = ranked.filter(function(u){return finalScores[u.uid]===s1;});
     var top2 = ranked.filter(function(u){return finalScores[u.uid]===s2 && s2<s1;});
     var top3 = ranked.filter(function(u){return finalScores[u.uid]===s3 && s3<s2;});
-    top1.forEach(function(u){ winCounts[u.uid].p1 += 1/top1.length; });
-    top2.forEach(function(u){ winCounts[u.uid].p2 += 1/top2.length; });
+    // p1=1등확률, p2=상위2안에들확률(1등+2등), p3=상위3안에들확률(1+2+3등)
+    top1.forEach(function(u){ winCounts[u.uid].p1 += 1/top1.length; winCounts[u.uid].p2 += 1/top1.length; winCounts[u.uid].p3 += 1/top1.length; });
+    top2.forEach(function(u){ winCounts[u.uid].p2 += 1/top2.length; winCounts[u.uid].p3 += 1/top2.length; });
     top3.forEach(function(u){ winCounts[u.uid].p3 += 1/top3.length; });
   }
 
