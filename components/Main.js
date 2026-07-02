@@ -2395,16 +2395,50 @@ function calcWinProbs(ranked, tournament) {
     return extra;
   }
 
+  // 미확정 경기 목록 (나보다 높은 사람과 픽 비교용)
+  var pendingKeys = [];
+  ROUNDS.forEach(function(rnd){
+    for(var i=0;i<ROUND_MATCHES[rnd];i++){
+      if(br[rnd+"_"+i]===undefined) pendingKeys.push(rnd+"_"+i);
+    }
+  });
+
   return ranked.map(function(u){
     var p1 = Math.round(100*winCounts[u.uid].p1/N_SIM);
     var p2 = Math.round(100*winCounts[u.uid].p2/N_SIM);
     var p3 = Math.round(100*winCounts[u.uid].p3/N_SIM);
-    // 브래킷 트리 반영 최대 가능 점수로 역전 가능 여부 판단
-    var maxPossible = (u.total||0) + calcMaxPossible(u);
-    var canWin = maxPossible > maxLeaderScore || (u.total||0)===maxLeaderScore;
-    if(canWin && p1===0) p1=1;
-    if(canWin && p2===0) p2=1;
-    if(canWin && p3===0) p3=1;
+
+    var myTotal = u.total||0;
+    var maxPossible = myTotal + calcMaxPossible(u);
+
+    // 🥇 가능 여부 판단
+    var canWinFirst = true;
+
+    // 조건 1: 수학적으로 역전 불가 (최대 점수로도 나보다 높은 사람 못 따라잡음)
+    var aheadUsers = ranked.filter(function(v){ return (v.total||0) > myTotal; });
+    if(aheadUsers.length > 0){
+      var minAheadScore = Math.min.apply(null, aheadUsers.map(function(v){return v.total||0;}));
+      if(maxPossible <= minAheadScore) canWinFirst = false;
+    }
+
+    // 조건 2: 나보다 점수 높은 사람이 전원 나와 남은 픽이 완전히 동일
+    // → 어떤 결과가 나와도 그들이 항상 나보다 같거나 앞서므로 🥇 불가
+    if(canWinFirst && aheadUsers.length > 0){
+      var allSamePicks = aheadUsers.every(function(v){
+        return pendingKeys.every(function(key){
+          return ((u.bracketPicks||{})[key]||null) === ((v.bracketPicks||{})[key]||null);
+        });
+      });
+      if(allSamePicks) canWinFirst = false;
+    }
+
+    if(canWinFirst && p1===0) p1=1;
+
+    // 🥈/🥉는 단순히 최대 가능 점수가 상위권과 겹칠 수 있으면 최소 1%
+    var canPlace = maxPossible > (ranked[1]?ranked[1].total||0:0) || myTotal >= (ranked[1]?ranked[1].total||0:0);
+    if(canPlace && p2===0) p2=Math.max(p1,1);
+    if(canPlace && p3===0) p3=Math.max(p2,1);
+
     p2=Math.max(p1,p2); p3=Math.max(p2,p3);
     return {uid:u.uid, prob:p1, prob2:p2, prob3:p3};
   });
