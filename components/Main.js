@@ -1210,7 +1210,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     if(!ranked||ranked.length<2) return;
     const probList = calcWinProbs(ranked, tournament);
     const result = {};
-    probList.forEach(p=>{ result[p.uid]=p.prob; });
+    probList.forEach(p=>{ result[p.uid]={p1:p.prob||0, p2:p.prob2||0, p3:p.prob3||0}; });
     setWinProbs(result);
   },[ranked.map(r=>r.uid+'_'+r.total+'_'+Object.values(r.groupPicks||{}).flat().join(',')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{}), JSON.stringify(tournament.bracketResults||{})]);
 
@@ -1230,7 +1230,7 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament}){
     scores.forEach(function(s){
       var group = groups[s];
       group.sort(function(a,b){
-        var pa = winProbs[a.uid]||0, pb = winProbs[b.uid]||0;
+        var pa = winProbs[a.uid]?.p1||0, pb = winProbs[b.uid]?.p1||0;
         return pb-pa;
       });
       out = out.concat(group);
@@ -1314,8 +1314,14 @@ width:28,height:28,borderRadius:"50%",
             {/* 점수 + 확률 */}
             <div style={{width:64,textAlign:"right",flexShrink:0}}>
               <div style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}</div>
-              <div style={{fontSize:10,color:winProbs[u.uid]>=30?"#22C55E":winProbs[u.uid]>=10?"#D4A843":"#5A7090"}}>
-                {winProbs[u.uid]!==undefined ? winProbs[u.uid]+"%" : ""}
+              <div style={{fontSize:10,color:(winProbs[u.uid]?.p1||0)>=30?"#22C55E":(winProbs[u.uid]?.p1||0)>=10?"#D4A843":"#5A7090"}}>
+                {winProbs[u.uid]!==undefined ? (
+                  <span>
+                    🥇{winProbs[u.uid].p1}%
+                    {winProbs[u.uid].p2>0&&<span style={{color:"#5A7090",marginLeft:4}}>🥈{winProbs[u.uid].p2}%</span>}
+                    {winProbs[u.uid].p3>0&&<span style={{color:"#5A7090",marginLeft:4}}>🥉{winProbs[u.uid].p3}%</span>}
+                  </span>
+                ) : ""}
               </div>
             </div>
           </div>
@@ -2285,7 +2291,7 @@ function calcWinProbs(ranked, tournament) {
 
   // 몬테카를로 시뮬레이션 (3000회 - 모바일에서 가볍게)
   var winCounts = {};
-  ranked.forEach(function(u){ winCounts[u.uid]=0; });
+  ranked.forEach(function(u){ winCounts[u.uid]={p1:0,p2:0,p3:0}; });
   var N_SIM = 3000;
 
   for(var sim=0;sim<N_SIM;sim++){
@@ -2311,14 +2317,24 @@ function calcWinProbs(ranked, tournament) {
       finalScores[u.uid] = score;
     });
 
-    // 1등 (동점 공동)
-    var maxScore = Math.max.apply(null, Object.values(finalScores));
-    var topUids = ranked.filter(function(u){return finalScores[u.uid]===maxScore;}).map(function(u){return u.uid;});
-    topUids.forEach(function(uid){ winCounts[uid] += 1/topUids.length; });
+    // 1등, 2등, 3등 카운트 (동점 공동 처리)
+    var sortedScores = ranked.map(function(u){return finalScores[u.uid];}).sort(function(a,b){return b-a;});
+    var s1=sortedScores[0], s2=sortedScores[1]||0, s3=sortedScores[2]||0;
+    var top1 = ranked.filter(function(u){return finalScores[u.uid]===s1;});
+    var top2 = ranked.filter(function(u){return finalScores[u.uid]===s2 && s2<s1;});
+    var top3 = ranked.filter(function(u){return finalScores[u.uid]===s3 && s3<s2;});
+    top1.forEach(function(u){ winCounts[u.uid].p1 += 1/top1.length; });
+    top2.forEach(function(u){ winCounts[u.uid].p2 += 1/top2.length; });
+    top3.forEach(function(u){ winCounts[u.uid].p3 += 1/top3.length; });
   }
 
   return ranked.map(function(u){
-    return {uid:u.uid, prob: Math.round(100*winCounts[u.uid]/N_SIM)};
+    return {
+      uid: u.uid,
+      prob: Math.round(100*winCounts[u.uid].p1/N_SIM),
+      prob2: Math.round(100*winCounts[u.uid].p2/N_SIM),
+      prob3: Math.round(100*winCounts[u.uid].p3/N_SIM),
+    };
   });
 }
 
