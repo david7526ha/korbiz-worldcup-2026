@@ -2261,93 +2261,89 @@ function calcWinProbs(ranked, tournament) {
   var ROUND_PTS = {R32:5,R16:10,QF:15,SF:20,F:30};
   var ROUND_MATCHES = {R32:16,R16:8,QF:4,SF:2,F:1};
 
-  // 미확정 경기마다 실제 맞붙는 두 팀을 후보로 설정
-  // (사용자 픽과 무관하게 실제 경기 팀 기준 - 50:50 공정한 시뮬레이션)
-  var pending = {};
-  ROUNDS.forEach(function(round){
-    var matches = ROUND_MATCHES[round];
-    var ri = ROUNDS.indexOf(round);
-    for(var i=0;i<matches;i++){
-      var key = round+"_"+i;
-      if(br[key]!==undefined) continue; // 이미 확정
-
-      var teamA, teamB;
-      if(round==="R32"){
-        teamA = bt[i*2]||null;
-        teamB = bt[i*2+1]||null;
-      } else {
-        var prev = ROUNDS[ri-1];
-        teamA = br[prev+"_"+(i*2)]||null;
-        teamB = br[prev+"_"+(i*2+1)]||null;
-      }
-      // 두 팀이 확정된 경우만 시뮬레이션 (TBD면 스킵)
-      if(teamA && teamB) pending[key] = [teamA, teamB];
+  // 모든 경기가 확정된 경우
+  var allDone = true;
+  ROUNDS.forEach(function(rnd){
+    for(var i=0;i<ROUND_MATCHES[rnd];i++){
+      if(br[rnd+"_"+i]===undefined) allDone=false;
     }
   });
-
-  var pendingKeys = Object.keys(pending).sort(function(a,b){
-    var ra=a.split("_")[0], rb=b.split("_")[0];
-    var ri=ROUNDS.indexOf(ra)-ROUNDS.indexOf(rb);
-    if(ri!==0) return ri;
-    return parseInt(a.split("_")[1])-parseInt(b.split("_")[1]);
-  });
-
-  if(pendingKeys.length===0){
-    var scores = ranked.map(function(u){return u.total||0;});
-    var maxS = Math.max.apply(null,scores);
-    var ws = ranked.filter(function(u){return (u.total||0)===maxS;});
+  if(allDone){
+    var mx=Math.max.apply(null,ranked.map(function(u){return u.total||0;}));
+    var ws=ranked.filter(function(u){return (u.total||0)===mx;});
     return ranked.map(function(u){
-      return {uid:u.uid, prob:(u.total||0)===maxS?Math.round(100/ws.length):0, prob2:0, prob3:0};
+      return {uid:u.uid,prob:(u.total||0)===mx?Math.round(100/ws.length):0,prob2:0,prob3:0};
     });
   }
-
-  var baseScores = {};
-  ranked.forEach(function(u){ baseScores[u.uid] = u.total||0; });
 
   var winCounts = {};
   ranked.forEach(function(u){ winCounts[u.uid]={p1:0,p2:0,p3:0}; });
   var N_SIM = 3000;
 
   for(var sim=0;sim<N_SIM;sim++){
-    // 각 경기: 실제 두 팀 중 50:50 랜덤 선택
+    // 브래킷 트리를 R32→R16→QF→SF→F 순서대로 시뮬
+    // 이전 라운드 결과가 다음 라운드 두 팀을 결정 (한번 진 팀은 이후 모든 픽 자동 0점)
     var simRes = {};
-    pendingKeys.forEach(function(key){
-      var candidates = pending[key]; // 항상 정확히 2개
-      simRes[key] = candidates[Math.random()<0.5?0:1];
-    });
+    Object.assign(simRes, br); // 확정 결과로 시작
 
+    for(var ri=0;ri<ROUNDS.length;ri++){
+      var rnd=ROUNDS[ri];
+      var matches=ROUND_MATCHES[rnd];
+      for(var i=0;i<matches;i++){
+        var key=rnd+"_"+i;
+        if(simRes[key]!==undefined) continue;
+        var tA, tB;
+        if(rnd==="R32"){
+          tA=bt[i*2]||null; tB=bt[i*2+1]||null;
+        } else {
+          var prev=ROUNDS[ri-1];
+          tA=simRes[prev+"_"+(i*2)]||null;
+          tB=simRes[prev+"_"+(i*2+1)]||null;
+        }
+        if(tA && tB) simRes[key]=Math.random()<0.5?tA:tB;
+      }
+    }
+
+    // 각 사용자 최종 점수 (현재 점수 + 시뮬 결과로 추가 점수)
     var finalScores = {};
     ranked.forEach(function(u){
-      var score = baseScores[u.uid];
-      pendingKeys.forEach(function(key){
-        if((u.bracketPicks||{})[key] === simRes[key]){
-          var pts = ROUND_PTS[key.split("_")[0]]||5;
-          score += pts;
+      var score = u.total||0;
+      ROUNDS.forEach(function(rnd){
+        for(var i=0;i<ROUND_MATCHES[rnd];i++){
+          var key=rnd+"_"+i;
+          if(br[key]!==undefined) return; // 이미 확정 → base score에 포함
+          var myPick=(u.bracketPicks||{})[key];
+          if(myPick && simRes[key] && myPick===simRes[key]){
+            score += ROUND_PTS[rnd]||5;
+          }
         }
       });
-      if(simRes["F_0"] && (u.bracketPicks||{})["F_0"]===simRes["F_0"]) score+=40;
-      finalScores[u.uid] = score;
+      // 우승자 보너스 (결승 미확정인 경우만)
+      if(!br["F_0"] && simRes["F_0"] && (u.bracketPicks||{})["F_0"]===simRes["F_0"]) score+=40;
+      finalScores[u.uid]=score;
     });
 
-    var sortedScores = ranked.map(function(u){return finalScores[u.uid];}).sort(function(a,b){return b-a;});
+    // 1,2,3등 카운트 (동점 공동 처리)
+    var sortedScores=ranked.map(function(u){return finalScores[u.uid];}).sort(function(a,b){return b-a;});
     var s1=sortedScores[0], s2=sortedScores[1]||0, s3=sortedScores[2]||0;
     var top1=ranked.filter(function(u){return finalScores[u.uid]===s1;});
     var top2=ranked.filter(function(u){return finalScores[u.uid]===s2&&s2<s1;});
     var top3=ranked.filter(function(u){return finalScores[u.uid]===s3&&s3<s2;});
-    top1.forEach(function(u){ winCounts[u.uid].p1+=1/top1.length; winCounts[u.uid].p2+=1/top1.length; winCounts[u.uid].p3+=1/top1.length; });
-    top2.forEach(function(u){ winCounts[u.uid].p2+=1/top2.length; winCounts[u.uid].p3+=1/top2.length; });
-    top3.forEach(function(u){ winCounts[u.uid].p3+=1/top3.length; });
+    top1.forEach(function(u){winCounts[u.uid].p1+=1/top1.length;winCounts[u.uid].p2+=1/top1.length;winCounts[u.uid].p3+=1/top1.length;});
+    top2.forEach(function(u){winCounts[u.uid].p2+=1/top2.length;winCounts[u.uid].p3+=1/top2.length;});
+    top3.forEach(function(u){winCounts[u.uid].p3+=1/top3.length;});
   }
 
   return ranked.map(function(u){
     return {
-      uid: u.uid,
-      prob: Math.round(100*winCounts[u.uid].p1/N_SIM),
-      prob2: Math.round(100*winCounts[u.uid].p2/N_SIM),
-      prob3: Math.round(100*winCounts[u.uid].p3/N_SIM),
+      uid:u.uid,
+      prob:Math.round(100*winCounts[u.uid].p1/N_SIM),
+      prob2:Math.round(100*winCounts[u.uid].p2/N_SIM),
+      prob3:Math.round(100*winCounts[u.uid].p3/N_SIM),
     };
   });
 }
+
 
 
 
