@@ -1266,57 +1266,59 @@ function SprintRace({ranked, currentUid, maxPts, lang, users, tournament, shared
               {i<3 ? medals[i] : "#"+(i+1)}
             </div>
 
-            {/* 트랙 */}
-            <div style={{flex:1,position:"relative",height:28}}>
-              {/* 트랙 배경 */}
-              <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.04)",borderRadius:18,border:"0.5px solid rgba(255,255,255,.06)"}}/>
-
-              {/* 달리는 바 + 바 끝에 아이콘 (maxPts 기준으로 스케일되니 랭킹대로 정렬됨) */}
-              <div style={{
-                position:"absolute",top:0,left:0,height:"100%",
-width: finalPct + "%",
-minWidth: 32,
-borderRadius:16,
-                background: isMe
-                  ? "linear-gradient(90deg,rgba(212,168,67,.25),rgba(212,168,67,.1))"
-                  : "rgba(255,255,255,.06)",
-                border: isMe ? "1px solid rgba(212,168,67,.4)" : "0.5px solid rgba(255,255,255,.08)",
-                transition: animated ? "width 1.2s cubic-bezier(.34,1.2,.64,1)" : "none",
-                overflow:"visible",
-              }}>
-                {/* 프로필 사진 원 - 바 끝에 위치 */}
+            {/* 트랙 - 모든 행 동일한 길이, 아이콘은 트랙 오른쪽에 고정 */}
+            <div style={{flex:1,position:"relative",height:28,marginRight:18}}>
+              {/* 트랙 배경 - overflow:hidden으로 트랙 길이 고정 */}
+              <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.04)",borderRadius:18,border:"0.5px solid rgba(255,255,255,.06)",overflow:"hidden"}}>
+                {/* 달리는 바 */}
                 <div style={{
-                  position:"absolute",right:-14,top:"50%",transform:"translateY(-50%)",
-width:28,height:28,borderRadius:"50%",
-                  border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
-                  overflow:"hidden",flexShrink:0,
-                  background:"#1a2840",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  boxShadow: isMe ? "0 0 0 3px rgba(212,168,67,.2)" : "none",
-                  zIndex:2,
-                }}>
-                  {u.photoURL ? (
-                    <img src={u.photoURL} alt={u.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
-                  ) : (
-                    <span style={{fontSize:12,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>
-                      {(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2)}
-                    </span>
-                  )}
-                </div>
+                  position:"absolute",top:0,left:0,height:"100%",
+                  width: finalPct + "%",
+                  minWidth: 8,
+                  borderRadius:16,
+                  background: isMe
+                    ? "linear-gradient(90deg,rgba(212,168,67,.35),rgba(212,168,67,.15))"
+                    : "rgba(255,255,255,.09)",
+                  border: isMe ? "1px solid rgba(212,168,67,.5)" : "0.5px solid rgba(255,255,255,.12)",
+                  transition: animated ? "width 1.2s cubic-bezier(.34,1.2,.64,1)" : "none",
+                }}/>
               </div>
 
-              {/* 이름 (바 안에) */}
+              {/* 이름 - 트랙 위 absolute */}
               <div style={{
                 position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",
                 fontSize:10,color:isMe?"#D4A843":"#6b7280",fontWeight:isMe?500:400,
                 pointerEvents:"none",whiteSpace:"nowrap",overflow:"hidden",maxWidth:"60%",
+                zIndex:1,
               }}>
                 {(u.name||"?").split(" ")[0]}
+              </div>
+
+              {/* 아이콘 - 트랙 오른쪽 밖에 고정 (바 길이와 무관, 항상 같은 위치) */}
+              <div style={{
+                position:"absolute",left: finalPct+"%",
+                transform:"translate(-50%,-50%)",top:"50%",
+                width:26,height:26,borderRadius:"50%",
+                border: isMe ? "2px solid #D4A843" : "1.5px solid rgba(255,255,255,.2)",
+                overflow:"hidden",
+                background:"#1a2840",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow: isMe ? "0 0 0 3px rgba(212,168,67,.2)" : "none",
+                zIndex:3,
+                transition: animated ? "left 1.2s cubic-bezier(.34,1.2,.64,1)" : "none",
+              }}>
+                {u.photoURL ? (
+                  <img src={u.photoURL} alt={u.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                ) : (
+                  <span style={{fontSize:11,fontWeight:500,color:isMe?"#D4A843":"#9CA3AF"}}>
+                    {(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2)}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* 점수 + 확률 */}
-            <div style={{flexShrink:0,textAlign:"right",minWidth:90,paddingLeft:18}}>
+            <div style={{flexShrink:0,textAlign:"right",minWidth:90}}>
               <span style={{fontSize:12,fontWeight:600,color:isMe?"#D4A843":"#9CA3AF"}}>{u.total}pt</span>
               {winProbs[u.uid]!==undefined&&<span style={{fontSize:10,color:(winProbs[u.uid].p1||0)>=30?"#22C55E":(winProbs[u.uid].p1||0)>=10?"#D4A843":"#5A7090",marginLeft:4}}>🥇{winProbs[u.uid].p1}%</span>}
               {winProbs[u.uid]?.p2>0&&<span style={{fontSize:9,color:"#C0C0C0",marginLeft:3}}>🥈{winProbs[u.uid].p2}%</span>}
