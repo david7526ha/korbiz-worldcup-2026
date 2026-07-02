@@ -2247,45 +2247,81 @@ function calcRemainingPotential(user, tournament) {
 function calcWinProbs(ranked, tournament) {
   var N = ranked ? ranked.length : 0;
   if(N < 2) return (ranked||[]).map(function(u){return {uid:u.uid,prob:100};});
+  var br = tournament.bracketResults || {};
+  var ROUNDS = ["R32","R16","QF","SF","F"];
+  var ROUND_PTS = {R32:5,R16:10,QF:15,SF:20,F:30};
+  var ROUND_MATCHES = {R32:16,R16:8,QF:4,SF:2,F:1};
 
-  var totalScore = ranked.reduce(function(s,u){return s+(u.total||0);},0);
+  // 미확정 경기 중 사용자들이 실제로 픽한 후보팀 수집
+  var pending = {};
+  ranked.forEach(function(u){
+    Object.entries(u.bracketPicks||{}).forEach(function(e){
+      var key=e[0], team=e[1];
+      if(!team || br[key]!==undefined) return;
+      if(!pending[key]) pending[key]=[];
+      if(pending[key].indexOf(team)===-1) pending[key].push(team);
+    });
+  });
+  var pendingKeys = Object.keys(pending).sort(function(a,b){
+    var ra=a.split("_")[0], rb=b.split("_")[0];
+    var ri=ROUNDS.indexOf(ra)-ROUNDS.indexOf(rb);
+    if(ri!==0) return ri;
+    return parseInt(a.split("_")[1])-parseInt(b.split("_")[1]);
+  });
 
-  // 전원 점수 0 (경기 전) -> 완전 균등
-  if(totalScore === 0) {
-    var eq = Math.round(100/N);
-    return ranked.map(function(u){ return {uid:u.uid, prob:eq}; });
+  if(pendingKeys.length===0){
+    // 모든 경기 확정 - 현재 점수가 최종
+    var scores = ranked.map(function(u){return u.total||0;});
+    var maxS = Math.max.apply(null,scores);
+    var winners = ranked.filter(function(u){return (u.total||0)===maxS;});
+    return ranked.map(function(u){
+      return {uid:u.uid, prob: (u.total||0)===maxS ? Math.round(100/winners.length) : 0};
+    });
   }
 
-  // "현재확정점수 + 남은픽 기대값"을 잠재력으로 사용.
-  // 확정점수만 같아도, 탈락확정 픽이 많은 사람은 잠재력이 낮아져 확률도 낮아짐.
-  var withPotential = ranked.map(function(u){
-    var potential = u.total||0;
-    potential += calcRemainingPotential(u, tournament);
-    return {uid:u.uid, cur:u.total||0, potential:potential};
-  });
+  // 현재 확정 점수
+  var baseScores = {};
+  ranked.forEach(function(u){ baseScores[u.uid] = u.total||0; });
 
-  var maxPotential = Math.max.apply(null, withPotential.map(function(p){ return p.potential; }));
-  var minPotential = Math.min.apply(null, withPotential.map(function(p){ return p.potential; }));
-  var range = Math.max(1, maxPotential - minPotential); // 실제 발생한 격차 범위로 정규화 (0 나누기 방지)
+  // 몬테카를로 시뮬레이션 (3000회 - 모바일에서 가볍게)
+  var winCounts = {};
+  ranked.forEach(function(u){ winCounts[u.uid]=0; });
+  var N_SIM = 3000;
 
-  // 잠재력에 비례해서 가중치 부여 (선형, 격차가 클수록 부드럽게 차등)
-  // 최저~최고 잠재력을 0.1~1.0 가중치로 매핑 (완전히 0이 되지 않게 최소값 보장)
-  var weights = withPotential.map(function(p){
-    var normalized = (p.potential - minPotential) / range; // 0~1
-    var weight = 0.15 + 0.85*normalized; // 0.15~1.0 범위 (가장 낮아도 완전히 0은 아님)
-    return {uid:p.uid, weight:weight};
-  });
-  var weightSum = weights.reduce(function(s,w){return s+w.weight;}, 0);
+  for(var sim=0;sim<N_SIM;sim++){
+    // 각 미확정 경기에서 픽된 팀 중 랜덤 선택
+    var simRes = {};
+    pendingKeys.forEach(function(key){
+      var candidates = pending[key];
+      simRes[key] = candidates[Math.floor(Math.random()*candidates.length)];
+    });
 
-  var result = {};
-  weights.forEach(function(w){
-    result[w.uid] = Math.round(100 * (w.weight/weightSum));
-  });
+    // 각 사용자 최종 점수
+    var finalScores = {};
+    ranked.forEach(function(u){
+      var score = baseScores[u.uid];
+      pendingKeys.forEach(function(key){
+        if((u.bracketPicks||{})[key] === simRes[key]){
+          var pts = ROUND_PTS[key.split("_")[0]]||5;
+          score += pts;
+        }
+      });
+      // 우승자 보너스
+      if(simRes["F_0"] && (u.bracketPicks||{})["F_0"]===simRes["F_0"]) score+=40;
+      finalScores[u.uid] = score;
+    });
+
+    // 1등 (동점 공동)
+    var maxScore = Math.max.apply(null, Object.values(finalScores));
+    var topUids = ranked.filter(function(u){return finalScores[u.uid]===maxScore;}).map(function(u){return u.uid;});
+    topUids.forEach(function(uid){ winCounts[uid] += 1/topUids.length; });
+  }
 
   return ranked.map(function(u){
-    return {uid:u.uid, prob: result[u.uid] !== undefined ? result[u.uid] : 0};
+    return {uid:u.uid, prob: Math.round(100*winCounts[u.uid]/N_SIM)};
   });
 }
+
 
 
 
