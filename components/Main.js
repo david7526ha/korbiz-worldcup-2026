@@ -1023,45 +1023,27 @@ function OddsWidget({lang, tournament}){
 
 // ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
 function WinProbWidget({users, tournament, currentUid, lang, sharedWinProbs}){
-  const [prob, setProb] = useState(null);
-  const [prob2, setProb2] = useState(0);
-  const [prob3, setProb3] = useState(0);
-  const [trend, setTrend] = useState(null); // 'up' | 'down' | null
+  const [trend, setTrend] = useState(null);
+  const prevProbRef = React.useRef(null);
 
+  // sharedWinProbs에서 직접 읽기 (useEffect + 재계산 없음 → SprintRace와 항상 동일)
+  const myEntry = (sharedWinProbs||[]).find(p=>p.uid===currentUid);
+  const prob = myEntry ? (myEntry.prob||0) : null;
+  const prob2 = myEntry ? (myEntry.prob2||0) : 0;
+  const prob3 = myEntry ? (myEntry.prob3||0) : 0;
+
+  // trend 감지
   useEffect(()=>{
-    const approved = Object.values(users).filter(u=>u.approved&&u.paid);
-    if(approved.length < 2){ setProb(100); return; }
-
-    // ranked 형태로 변환
-    const ranked = approved.map(u=>({
-      uid: u.uid,
-      name: u.name,
-      total: calcScore({groupPicks:u.groupPicks||{},bracketPicks:u.bracketPicks||{}}, tournament).total,
-      groupPicks: u.groupPicks||{},
-      bracketPicks: u.bracketPicks||{},
-    })).sort((a,b)=>b.total-a.total);
-
-    const me = ranked.find(u=>u.uid===currentUid);
-    if(!me){ setProb(0); return; }
-
-    const probList = (sharedWinProbs&&sharedWinProbs.length>0) ? sharedWinProbs : calcWinProbs(ranked, tournament);
-    const myProb = probList.find(p=>p.uid===currentUid);
-    const newProb = myProb ? myProb.prob : 0;
-    const newProb2 = myProb ? (myProb.prob2||0) : 0;
-    const newProb3 = myProb ? (myProb.prob3||0) : 0;
-
-    setProb(prev => {
-      if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
-      return newProb;
-    });
-    setProb2(newProb2);
-    setProb3(newProb3);
-  }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().join(','):'')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
+    if(prob===null) return;
+    if(prevProbRef.current !== null){
+      setTrend(prob > prevProbRef.current ? 'up' : prob < prevProbRef.current ? 'down' : null);
+    }
+    prevProbRef.current = prob;
+  }, [prob]);
 
   const lbl = lang==="ko"?"🥇 우승 확률":lang==="es"?"🥇 Mi probabilidad":"🥇 Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
 
-  // 확률 게이지 아크 계산
   const r=54, cx=70, cy=70;
   const startAngle = 180;
   const endAngle = 180 + (prob||0)*1.8;
