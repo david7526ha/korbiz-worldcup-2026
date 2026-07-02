@@ -1018,6 +1018,8 @@ function OddsWidget({lang, tournament}){
 // ─── WIN PROBABILITY WIDGET ────────────────────────────────────────────────────
 function WinProbWidget({users, tournament, currentUid, lang}){
   const [prob, setProb] = useState(null);
+  const [prob2, setProb2] = useState(0);
+  const [prob3, setProb3] = useState(0);
   const [trend, setTrend] = useState(null); // 'up' | 'down' | null
 
   useEffect(()=>{
@@ -1039,14 +1041,18 @@ function WinProbWidget({users, tournament, currentUid, lang}){
     const probList = calcWinProbs(ranked, tournament);
     const myProb = probList.find(p=>p.uid===currentUid);
     const newProb = myProb ? myProb.prob : 0;
+    const newProb2 = myProb ? (myProb.prob2||0) : 0;
+    const newProb3 = myProb ? (myProb.prob3||0) : 0;
 
     setProb(prev => {
       if(prev !== null) setTrend(newProb > prev ? 'up' : newProb < prev ? 'down' : null);
       return newProb;
     });
+    setProb2(newProb2);
+    setProb3(newProb3);
   }, [Object.values(users).map(u=>u.uid+'_'+(u.groupPicks?Object.values(u.groupPicks).flat().join(','):'')).join('|'), JSON.stringify(tournament.groupResults||{}), JSON.stringify(tournament.matchResults||{})]);
 
-  const lbl = lang==="ko"?"우승 확률":lang==="es"?"Mi probabilidad":"Win probability";
+  const lbl = lang==="ko"?"🥇 우승 확률":lang==="es"?"🥇 Mi probabilidad":"🥇 Win probability";
   const color = prob===null ? "#5A7090" : prob>=60?"#22C55E":prob>=30?"#D4A843":"#EF4444";
 
   // 확률 게이지 아크 계산
@@ -1084,6 +1090,12 @@ function WinProbWidget({users, tournament, currentUid, lang}){
             {prob===null?"...":prob+"%"}
           </text>
         </svg>
+          {(prob2>0||prob3>0)&&(
+            <div style={{display:"flex",gap:6,justifyContent:"center",marginTop:2}}>
+              {prob2>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>🥈{prob2}%</span>}
+              {prob3>0&&<span style={{fontSize:11,color:"#9CA3AF"}}>🥉{prob3}%</span>}
+            </div>
+          )}
 
         {/* 설명 */}
         <div style={{flex:1}}>
